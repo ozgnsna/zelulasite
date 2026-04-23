@@ -28,10 +28,20 @@ values
 ('Noir Halo Küpe', 'noir-halo-kupe', 'Akşam stiline güçlü vurgu', 'Işığı taşıyan net form.', 849, null, 'ZL-KP-009', 29, true, false, (select id from c where slug='kupe'), (select id from cl where slug='noir'), 'Çelik', 'Black Gold', true),
 ('Petra Kolye', 'petra-kolye', 'Editoryal görünümlü zarif hat', 'Özel kutu ile gönderim.', 1249, 1499, 'ZL-KL-010', 20, false, true, (select id from c where slug='kolye'), (select id from cl where slug='noir'), 'Premium alaşım', 'Rose Gold', true),
 ('Mina Yüzük', 'mina-yuzuk', 'Günlük kombinlere modern eşlik', 'İnce ve zarif profil.', 689, null, 'ZL-YZ-011', 33, false, true, (select id from c where slug='yuzuk'), (select id from cl where slug='daily-glow'), 'Çelik', 'Silver', true),
-('Lume Bileklik', 'lume-bileklik', 'Yumuşak tonlarda feminen parıltı', 'Hediye kutusu ile premium sunum.', 939, 1099, 'ZL-BL-012', 26, true, true, (select id from c where slug='bileklik'), (select id from cl where slug='aura'), 'Antialerjik alaşım', 'Rose Gold', true)
+('Lume Bileklik', 'lume-bileklik', 'Yumuşak tonlarda feminen parıltı', 'Hediye kutusu ile premium sunum.', 939, 1099, 'ZL-BL-012', 26, true, true, (select id from c where slug='bileklik'), (select id from cl where slug='aura'), 'Antialerjik alaşım', 'Rose Gold', true),
+('Aquarius (Kova Burcu) Gold Renk Çelik Kolye', 'aquarius-kova-burcu-gold-celik-kolye', 'Özgün ruhunuzu ve geleceğin enerjisini boynunuzda taşıyın.', $d$Özgün ruhunuzu ve geleceğin enerjisini boynunuzda taşıyın!
+
+Zodyak'ın en yenilikçi, entelektüel ve özgür ruhlu burcu olan Kova'nın vizyoner enerjisini yansıtan bu özel tasarım kolye, stilinize modern bir dokunuş katacak. Hem sıra dışı kişiliğinizi vurgulayan bir imza parça hem de sınır tanımayan sevdikleriniz için eşsiz bir hediye seçeneği.
+
+Öne çıkan özellikler — Materyal: 316L cerrahi çelik. Renk: Altın (gold) kaplama. Tasarım: Oval madalyon, Aquarius işlemesi. Cilt dostu, antialerjenik.
+
+Zincir: 45 cm + 5 cm uzatma. Bakım: Parfüm ve agresif kimyasallardan uzak tutun.$d$, 1399, 1599, 'ZL-KL-013', 22, true, true, (select id from c where slug='kolye'), (select id from cl where slug='aura'), '316L cerrahi çelik', 'Gold', true)
 on conflict (slug) do nothing;
 
 insert into product_images (product_id, image_url, is_cover, sort_order)
-select p.id, 'https://picsum.photos/seed/' || p.slug || '/1200/1200', true, 0
+select p.id,
+  case when p.slug = 'aquarius-kova-burcu-gold-celik-kolye' then '/products/aquarius-kova-gold-celik-kolye.png'
+  else 'https://picsum.photos/seed/' || p.slug || '/1200/1200' end,
+  true, 0
 from products p
 on conflict do nothing;

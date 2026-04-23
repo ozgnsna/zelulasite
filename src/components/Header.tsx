@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getDetailedCart } from "@/lib/cart";
 import { CartDrawer } from "@/components/CartDrawer";
 
@@ -17,8 +18,19 @@ export async function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-[#e8dfd3] bg-[#fffdfb]/95 backdrop-blur-md">
       <div className="container-premium flex h-16 items-center justify-between gap-4">
-        <Link href="/" className="font-serif text-xl tracking-tight text-stone-900">
-          Zelula
+        <Link
+          href="/"
+          className="relative block h-8 w-[118px] shrink-0 sm:h-9 sm:w-[132px]"
+          aria-label="Zelula — Ana sayfa"
+        >
+          <Image
+            src="/zelula-logo.png"
+            alt="Zelula — jewelry & gift"
+            fill
+            className="object-contain object-left"
+            sizes="132px"
+            priority
+          />
         </Link>
         <nav className="hidden items-center gap-8 text-sm text-stone-700 md:flex">
           <Link href="/koleksiyonlar" className="transition hover:text-stone-900">

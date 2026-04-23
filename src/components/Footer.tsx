@@ -1,12 +1,21 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-[#e6dccf] bg-[#f8f3ec]">
       <div className="container-premium grid gap-8 py-12 md:grid-cols-4">
         <div>
-          <p className="font-serif text-2xl text-stone-900">Zelula</p>
-          <p className="mt-2 max-w-sm text-sm leading-relaxed text-stone-600">
+          <div className="relative h-11 w-[148px] sm:h-12 sm:w-[168px]">
+            <Image
+              src="/zelula-logo.png"
+              alt="Zelula — jewelry & gift"
+              fill
+              className="object-contain object-left"
+              sizes="168px"
+            />
+          </div>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-stone-600">
             Günlük ışıltını tamamlayan seçkiler. Zamansız tasarım, modern dokunuş.
           </p>
         </div>
