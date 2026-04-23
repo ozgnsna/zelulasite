@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zelula MVP (Next.js + Supabase)
 
-## Getting Started
+Premium Türk takı markası için hazırlanmış, mobil-first ve conversion odaklı e-ticaret MVP.
 
-First, run the development server:
+## Özellikler
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js App Router + TypeScript + Tailwind
+- Supabase (DB + Auth + Storage)
+- Homepage, collection, product detail, cart, checkout, success/failure pages
+- Auth korumalı admin panel:
+  - ürün CRUD
+  - kategori/kolleksiyon yönetimi
+  - sipariş durum güncelleme
+  - Supabase Storage görsel yükleme
+- Ödeme sağlayıcı soyutlama:
+  - `src/lib/payments/types.ts`
+  - `src/lib/payments/provider.ts`
+  - `src/lib/payments/paytr.ts`
+- SEO:
+  - metadata
+  - temiz URL
+  - `sitemap.ts`
+- Analytics funnel:
+  - `view_item`
+  - `view_item_list`
+  - `add_to_cart`
+  - `remove_from_cart`
+  - `begin_checkout`
+  - `purchase`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Kurulum
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. `npm install`
+2. `.env.example` dosyasını `.env.local` olarak kopyalayın.
+3. Supabase SQL Editor’da:
+   - `supabase/schema.sql`
+   - `supabase/seed.sql`
+4. Supabase Storage bucket oluşturun: `product-images` (public).
+5. Supabase Auth üzerinden en az bir admin kullanıcı açın.
+6. `npm run dev`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Admin erişimi
 
-## Learn More
+- `/admin/login`
+- Opsiyonel whitelist: `.env.local` içinde `ADMIN_EMAILS`
 
-To learn more about Next.js, take a look at the following resources:
+## Vercel deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Tüm `.env.example` değişkenlerini Vercel Environment Variables bölümüne ekleyin.
+- Supabase URL/keys ve payment env’leri olmadan ödeme katmanı başlatılmaz.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Notlar
 
-## Deploy on Vercel
+- PayTR entegrasyonu provider abstraction ile hazırlanmıştır:
+  - `src/lib/payments/provider.ts`
+  - `src/lib/payments/paytr.ts`
+  - `src/lib/payments/paytr-signature.ts`
+- Callback endpoint: `/api/payments/callback`
+- Callback’te zorunlu alan + imza doğrulaması yapılır, geçersiz callback reddedilir.
+- Callback işleme idempotenttir (`payment_logs.callback_hash` unique index).
+- Aynı başarılı callback tekrar gelirse sipariş tekrar işlenmez.
+- Test/mimari modu için `.env.local` içinde `PAYTR_USE_MOCK="true"` bırakın; gerçek anahtar olmadan akış çalışır.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Reconciliation için kritik kolonlar
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `orders.order_number`: operasyonel sipariş referansı
+- `orders.payment_provider + orders.payment_reference`: sağlayıcı bazlı benzersiz ödeme referansı
+- `orders.payment_status` / `orders.order_status`: finansal ve lojistik durum
+- `payment_logs.callback_hash`: callback idempotency anahtarı
+- `payment_logs.callback_payload`: ham callback JSON kaydı (audit trail)
+- `payment_logs.verification_status`: imza/doğrulama sonucu
+
+## Analytics notları
+
+- Merkezi utility: `src/lib/analytics.ts`
+- App Router page view tracking: `src/components/analytics/AnalyticsProvider.tsx`
+- GA entegrasyonu `NEXT_PUBLIC_GA_MEASUREMENT_ID` tanımlıysa otomatik aktif olur.
+- Debug mod: `NEXT_PUBLIC_ANALYTICS_DEBUG=true`

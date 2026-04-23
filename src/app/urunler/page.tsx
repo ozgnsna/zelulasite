@@ -1,0 +1,139 @@
+import { ProductCard } from "@/components/ProductCard";
+import Link from "next/link";
+import { getProducts } from "@/lib/storefront";
+import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
+
+type Props = {
+  searchParams: Promise<{
+    kategori?: string;
+    koleksiyon?: string;
+    sirala?: "newest" | "price_asc" | "price_desc" | "featured";
+    min?: string;
+    max?: string;
+  }>;
+};
+
+export default async function ProductsPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const categorySlug = sp.kategori ?? "";
+  const collectionSlug = sp.koleksiyon ?? "";
+  const sort = sp.sirala ?? "newest";
+  const min = sp.min ? Number(sp.min) : undefined;
+  const max = sp.max ? Number(sp.max) : undefined;
+  const { categories, collections, products } = await getProducts({
+    category: categorySlug,
+    collection: collectionSlug,
+    sort,
+    min,
+    max,
+  });
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <ViewItemListTracker
+        listName="Urunler Listeleme"
+        listId="products_listing"
+        items={products.map((p) => ({
+          product_id: p.id,
+          product_name: p.name,
+          price: Number(p.price),
+          quantity: 1,
+          category: p.category?.name,
+          collection: p.collection?.name ?? null,
+        }))}
+      />
+      <header className="max-w-2xl">
+        <h1 className="font-serif text-3xl font-medium text-stone-900 sm:text-4xl">
+          Tüm ürünler
+        </h1>
+        <p className="mt-3 text-stone-600">
+          Kategori ve arama ile daraltın. Her ürün için özet, detay ve sepet akışı
+          aynı yerde.
+        </p>
+      </header>
+
+      <div className="mt-10 flex flex-col gap-8 lg:flex-row">
+        <aside className="lg:w-56 lg:shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Kategori</p>
+          <ul className="mt-3 flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap">
+            <li>
+              <Link
+                href="/urunler"
+                className={`block rounded-full px-3 py-1.5 text-sm transition ${
+                  !categorySlug
+                    ? "bg-stone-900 text-white"
+                    : "bg-stone-100 text-stone-700 hover:bg-stone-200"
+                }`}
+              >
+                Tümü
+              </Link>
+            </li>
+            {categories.map((c) => {
+              const href = `/urunler?kategori=${c.slug}${collectionSlug ? `&koleksiyon=${collectionSlug}` : ""}`;
+              return (
+                <li key={c.id}>
+                  <Link
+                    href={href}
+                    className={`block rounded-full px-3 py-1.5 text-sm transition ${
+                      categorySlug === c.slug
+                        ? "bg-stone-900 text-white"
+                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
+                    }`}
+                  >
+                    {c.name}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          <form className="mb-8 grid gap-2 sm:grid-cols-4" action="/urunler" method="get">
+            <input type="hidden" name="kategori" value={categorySlug} />
+            <select name="koleksiyon" defaultValue={collectionSlug} className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm">
+              <option value="">Tüm koleksiyonlar</option>
+              {collections.map((c) => (
+                <option key={c.id} value={c.slug}>{c.name}</option>
+              ))}
+            </select>
+            <select name="sirala" defaultValue={sort} className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm">
+              <option value="newest">En yeni</option>
+              <option value="featured">Öne çıkan</option>
+              <option value="price_asc">Fiyat artan</option>
+              <option value="price_desc">Fiyat azalan</option>
+            </select>
+            <input name="min" type="number" placeholder="Min ₺" className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm" />
+            <button type="submit" className="rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-800">
+              Filtrele
+            </button>
+          </form>
+
+          {products.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center text-stone-600">
+              Bu filtreye uygun ürün yok. Filtreleri temizleyip tekrar deneyin.
+            </p>
+          ) : (
+            <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {products.map((p) => (
+                <li key={p.id}>
+                  <ProductCard
+                    id={p.id}
+                    slug={p.slug}
+                    name={p.name}
+                    summary={p.short_description}
+                    imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900"}
+                    price={Number(p.price)}
+                    compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
+                    category={p.category?.name}
+                    collection={p.collection?.name ?? null}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
