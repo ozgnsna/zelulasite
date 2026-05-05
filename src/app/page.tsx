@@ -63,7 +63,7 @@ export default async function HomePage() {
     {
       label: "Küpe",
       href: "/kategori/kupe",
-      image: "https://images.pexels.com/photos/1454174/pexels-photo-1454174.jpeg?auto=compress&cs=tinysrgb&w=800",
+      image: "https://images.pexels.com/photos/5370707/pexels-photo-5370707.jpeg?auto=compress&cs=tinysrgb&w=800",
     },
     {
       label: "Bileklik",
@@ -73,7 +73,7 @@ export default async function HomePage() {
     {
       label: "Yüzük",
       href: "/kategori/yuzuk",
-      image: "https://images.pexels.com/photos/265906/pexels-photo-265906.jpeg?auto=compress&cs=tinysrgb&w=800",
+      image: "https://images.pexels.com/photos/5370706/pexels-photo-5370706.jpeg?auto=compress&cs=tinysrgb&w=800",
     },
   ];
 
