@@ -1,37 +1,40 @@
 import Image from "next/image";
 import Link from "next/link";
 
-const CATEGORIES = [
+type HomeCategoryGridItem = {
+  label: string;
+  href: string;
+  image: string;
+};
+
+const DEFAULT_CATEGORIES: HomeCategoryGridItem[] = [
   {
     label: "Kolye",
     href: "/kategori/kolye",
-    image:
-      "https://images.pexels.com/photos/9428777/pexels-photo-9428777.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image: "https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=800",
   },
   {
     label: "Küpe",
     href: "/kategori/kupe",
-    image:
-      "https://images.pexels.com/photos/1454171/pexels-photo-1454171.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image: "https://images.pexels.com/photos/1454174/pexels-photo-1454174.jpeg?auto=compress&cs=tinysrgb&w=800",
   },
   {
     label: "Bileklik",
     href: "/kategori/bileklik",
-    image:
-      "https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image: "https://images.pexels.com/photos/10983783/pexels-photo-10983783.jpeg?auto=compress&cs=tinysrgb&w=800",
   },
   {
     label: "Yüzük",
     href: "/kategori/yuzuk",
-    image:
-      "https://images.pexels.com/photos/1454172/pexels-photo-1454172.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image: "https://images.pexels.com/photos/1454171/pexels-photo-1454171.jpeg?auto=compress&cs=tinysrgb&w=800",
   },
 ] as const;
 
-export function HomeCategoryGrid() {
+export function HomeCategoryGrid({ items }: { items?: HomeCategoryGridItem[] }) {
+  const categories = items && items.length > 0 ? items : DEFAULT_CATEGORIES;
   return (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-      {CATEGORIES.map((c) => (
+      {categories.map((c) => (
         <li key={c.href}>
           <Link
             href={c.href}

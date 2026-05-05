@@ -54,6 +54,23 @@ export default async function HomePage() {
 
   const bestSlice = bestSellers.slice(0, 4);
   const kombinSlice = newArrivals.slice(0, 4);
+  const categoryCards = [
+    { label: "Kolye", href: "/kategori/kolye", slug: "kolye" },
+    { label: "Küpe", href: "/kategori/kupe", slug: "kupe" },
+    { label: "Bileklik", href: "/kategori/bileklik", slug: "bileklik" },
+    { label: "Yüzük", href: "/kategori/yuzuk", slug: "yuzuk" },
+  ].map((card) => {
+    const fromProducts = [...bestSellers, ...newArrivals].find(
+      (p) => p.category?.slug === card.slug && Boolean(p.product_images?.[0]?.image_url),
+    );
+    return {
+      label: card.label,
+      href: card.href,
+      image:
+        fromProducts?.product_images?.[0]?.image_url ??
+        "https://images.pexels.com/photos/1454174/pexels-photo-1454174.jpeg?auto=compress&cs=tinysrgb&w=800",
+    };
+  });
 
   return (
     <main className="bg-[#faf8f5] pb-20">
@@ -116,7 +133,7 @@ export default async function HomePage() {
             <p className="mt-2 text-sm font-light text-stone-600">İhtiyacın olan parçayı tek dokunuşla seç.</p>
           </div>
           <div className="mt-10">
-            <HomeCategoryGrid />
+            <HomeCategoryGrid items={categoryCards} />
           </div>
         </section>
       </FadeIn>
