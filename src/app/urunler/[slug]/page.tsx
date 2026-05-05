@@ -14,6 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isProductFavorited } from "@/lib/account/favorites";
 import { ensureUserReferralCode } from "@/lib/referral/server";
 import { ProductFavoriteButton } from "@/components/ProductFavoriteButton";
+import { getSupportWhatsAppHref } from "@/lib/support-contact";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -69,7 +70,7 @@ export default async function ProductPage({ params }: Props) {
   const stockQty = Number(product.stock_quantity ?? 0);
   const isLowStock = stockQty > 0 && stockQty <= 3;
   const supportMessage = "Merhaba, Zelula’daki bir ürün hakkında bilgi almak istiyorum ✨";
-  const whatsappSupportHref = `https://wa.me/905550000000?text=${encodeURIComponent(supportMessage)}`;
+  const whatsappSupportHref = getSupportWhatsAppHref(supportMessage);
   const pdpVideoUrl = process.env.NEXT_PUBLIC_PDP_VIDEO_URL?.trim() || null;
   const supabase = await createClient();
   const {

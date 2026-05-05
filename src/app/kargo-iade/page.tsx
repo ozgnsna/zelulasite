@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { RefreshCcw, Truck } from "lucide-react";
+import { getSupportWhatsAppHref } from "@/lib/support-contact";
 
 export const metadata: Metadata = {
   title: "Kargo & İade",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ShippingReturnsPage() {
   const supportMessage = "Merhaba, iade süreci hakkında destek almak istiyorum ✨";
-  const supportHref = `https://wa.me/905550000000?text=${encodeURIComponent(supportMessage)}`;
+  const supportHref = getSupportWhatsAppHref(supportMessage);
 
   return (
     <main className="container-premium pb-20 pt-12 sm:pt-16">

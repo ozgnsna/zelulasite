@@ -4,13 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { openCookieSettingsFromUi } from "@/lib/cookies/consent";
+import { getSupportWhatsAppHref } from "@/lib/support-contact";
 
 const linkClass =
   "text-sm text-stone-600 transition hover:text-stone-900 hover:underline underline-offset-2 decoration-stone-400/80";
 
 const whatsappDefaultText =
   "Merhaba Zelula, ürünler hakkında bilgi almak istiyorum.";
-const whatsappHref = `https://wa.me/905550000000?text=${encodeURIComponent(whatsappDefaultText)}`;
+const whatsappHref = getSupportWhatsAppHref(whatsappDefaultText);
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (

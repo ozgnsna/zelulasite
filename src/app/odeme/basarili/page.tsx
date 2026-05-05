@@ -5,6 +5,7 @@ import { OrderSuccessReferralShare } from "@/components/referral/OrderSuccessRef
 import { zelulaPuanEarnedFromPaidOrderTotalTry } from "@/lib/loyalty/compute";
 import { ensureUserReferralCode } from "@/lib/referral/server";
 import { siteBaseUrl, withReferralQuery } from "@/lib/referral/share-url";
+import { getSupportPhoneDisplay } from "@/lib/support-contact";
 
 type Props = { searchParams: Promise<{ oid?: string; pm?: string }> };
 
@@ -133,7 +134,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
         <a className="text-stone-700 underline" href="mailto:destek@zeluladesign.com">
           destek@zeluladesign.com
         </a>{" "}
-        • +90 555 000 00 00
+        • {getSupportPhoneDisplay()}
       </p>
       <Link
         href="/urunler"
