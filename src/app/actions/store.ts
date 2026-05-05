@@ -121,27 +121,51 @@ export async function createCheckout(formData: FormData) {
   const cart = await getCartItems();
   if (cart.length === 0) return { ok: false, error: "Sepetiniz boş. Lütfen ürün ekleyin." };
   const ids = cart.map((x) => x.productId);
-  const { data: products } = await supabase.from("products").select("*").in("id", ids);
-  if (!products) return { ok: false, error: "Ürün bilgileri alınamadı. Sayfayı yenileyip tekrar deneyin." };
+  const admin = createAdminClient();
+  const { data: productRows, error: productsError } = await admin
+    .from("products")
+    .select("id,price,is_active,stock_quantity")
+    .in("id", ids);
+  if (productsError || !productRows) {
+    return { ok: false, error: "Ürün bilgileri alınamadı. Sayfayı yenileyip tekrar deneyin." };
+  }
+  const productById = new Map(productRows.map((r) => [r.id, r]));
+
+  for (const line of cart) {
+    const p = productById.get(line.productId);
+    if (!p) {
+      return {
+        ok: false,
+        error: "Sepetinizde artık bulunmayan ürünler var. Sepeti güncelleyip tekrar deneyin.",
+      };
+    }
+    if (!p.is_active) {
+      return {
+        ok: false,
+        error: "Sepetinizde satışa kapalı ürünler var. Sepet sayfasından kaldırıp tekrar deneyin.",
+      };
+    }
+    if (Number(p.stock_quantity ?? 0) < line.quantity) {
+      return {
+        ok: false,
+        error: "Bir veya daha fazla ürün için stok yetersiz. Miktarları güncelleyip tekrar deneyin.",
+      };
+    }
+  }
 
   let subtotal = 0;
-  const orderItems = cart
-    .map((line) => {
-      const p = products.find((x) => x.id === line.productId);
-      if (!p) return null;
-      subtotal += Number(p.price) * line.quantity;
-      const unit = Number(Number(p.price).toFixed(2));
-      const lineTotal = Number((Number(p.price) * line.quantity).toFixed(2));
-      return {
-        product_id: p.id,
-        quantity: line.quantity,
-        unit_price: unit,
-        total_price: lineTotal,
-      };
-    })
-    .filter(Boolean);
-
-  const admin = createAdminClient();
+  const orderItems = cart.map((line) => {
+    const p = productById.get(line.productId)!;
+    subtotal += Number(p.price) * line.quantity;
+    const unit = Number(Number(p.price).toFixed(2));
+    const lineTotal = Number((Number(p.price) * line.quantity).toFixed(2));
+    return {
+      product_id: p.id,
+      quantity: line.quantity,
+      unit_price: unit,
+      total_price: lineTotal,
+    };
+  });
   const cookieStore = await cookies();
   const referralCode = cookieStore.get(ZELULA_REFERRAL_COOKIE)?.value ?? null;
 
@@ -243,14 +267,24 @@ export async function createCheckout(formData: FormData) {
 
   if (error || !order) {
     const msg = error?.message ?? "";
+    const code = error?.code ?? "";
     logPayment("error", "Order creation failed before payment init.", {
-      code: error?.code,
+      code,
       message: msg,
       details: error?.details,
       hint: error?.hint,
     });
-    const isMissingColumn = /column/i.test(msg) && /does not exist/i.test(msg);
-    const isUniqueViolation = error?.code === "23505" || /duplicate key|unique constraint/i.test(msg);
+    const msgLower = msg.toLowerCase();
+    const isMissingColumn =
+      (/column/i.test(msg) && /does not exist|undefined column/i.test(msg)) ||
+      /could not find.*column/i.test(msgLower) ||
+      /schema cache/i.test(msgLower);
+    const isUniqueViolation = code === "23505" || /duplicate key|unique constraint/i.test(msg);
+    const isRlsOrPrivilege =
+      code === "42501" ||
+      /row-level security|violates row-level security|permission denied/i.test(msgLower);
+    const isForeignKey =
+      code === "23503" || /foreign key constraint|violates foreign key/i.test(msgLower);
     if (process.env.NODE_ENV === "development" && msg) {
       return { ok: false, error: `Sipariş oluşturulamadı (geliştirme): ${msg}` };
     }
@@ -259,6 +293,19 @@ export async function createCheckout(formData: FormData) {
         ok: false,
         error:
           "Veritabanı şeması güncel değil (sipariş sütunları eksik). Supabase’de migration’ların uygulandığından emin olun veya destek ile iletişime geçin.",
+      };
+    }
+    if (isRlsOrPrivilege) {
+      return {
+        ok: false,
+        error:
+          "Sipariş kaydı sunucu izniyle oluşturulamadı. Barındırma ortamında SUPABASE_SERVICE_ROLE_KEY değerinin doğru (anon key değil, service_role) tanımlandığını kontrol edin.",
+      };
+    }
+    if (isForeignKey) {
+      return {
+        ok: false,
+        error: "Sipariş ilişkili kayıtlarla eşleşmedi. Oturumu kapatıp tekrar deneyin veya destekle iletişime geçin.",
       };
     }
     if (isUniqueViolation) {
