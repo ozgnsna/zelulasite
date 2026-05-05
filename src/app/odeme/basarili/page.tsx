@@ -28,7 +28,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
   const admin = createAdminClient();
   const { data: order } = await admin
     .from("orders")
-    .select("id,order_number,payment_status,order_status,total,currency,customer_name,email,user_id")
+    .select("id,order_number,payment_status,order_status,payment_provider,total,currency,customer_name,email,user_id")
     .eq("id", orderId)
     .maybeSingle();
   const { data: items } = await admin
