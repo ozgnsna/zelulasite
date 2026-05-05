@@ -70,9 +70,11 @@ export async function getInstagramFeed(limit = 4): Promise<InstagramPost[]> {
   url.searchParams.set("limit", String(Math.min(Math.max(limit, 1), 12)));
   url.searchParams.set("access_token", token);
 
+  const revalidateSeconds = Math.max(60, Number(process.env.INSTAGRAM_FEED_REVALIDATE_SECONDS ?? 300));
+
   try {
     const res = await fetch(url.toString(), {
-      next: { revalidate: 3600 },
+      next: { revalidate: revalidateSeconds },
       headers: { Accept: "application/json" },
     });
     const json = (await res.json()) as GraphResponse;
