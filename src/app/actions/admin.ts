@@ -562,6 +562,37 @@ export async function updateOrderStatus(formData: FormData) {
   revalidateAdminOrderPaths(id);
 }
 
+export async function markOrderHandDelivered(formData: FormData) {
+  const supabase = createAdminClient();
+  const id = String(formData.get("id") ?? "");
+  const paymentStatus = String(formData.get("payment_status") ?? "pending");
+  if (!id) return;
+
+  await supabase
+    .from("orders")
+    .update({
+      order_status: "hand_delivered",
+      payment_status: paymentStatus,
+      shipping_provider: "manual",
+      shipping_status: "hand_delivered",
+      shipping_created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  await supabase.from("payment_logs").insert({
+    order_id: id,
+    provider: "manual",
+    event_type: "manual_hand_delivery",
+    status: "updated",
+    request_payload: { order_status: "hand_delivered", shipping_status: "hand_delivered" },
+    verification_status: "passed",
+    processed_at: new Date().toISOString(),
+  });
+
+  revalidateAdminOrderPaths(id);
+}
+
 const PRODUCT_IMAGES_BUCKET = "product-images";
 
 function safeReturnToForImageActions(raw: string, productId: string): string {

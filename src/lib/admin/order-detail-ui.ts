@@ -39,6 +39,8 @@ export function verificationBadgeClasses(status: string | null | undefined): str
 
 export function orderBadgeClasses(status: string): string {
   switch (status) {
+    case "hand_delivered":
+      return "bg-emerald-50 text-emerald-950 ring-emerald-600/25";
     case "confirmed":
       return "bg-emerald-50 text-emerald-950 ring-emerald-600/25";
     case "processing":

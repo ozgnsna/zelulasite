@@ -17,6 +17,8 @@ export function paymentStatusLabelTr(status: string): string {
 /** Sipariş durumu satırı (ayrı gösterim). */
 export function orderStatusLabelTr(status: string): string {
   switch (status) {
+    case "hand_delivered":
+      return "Elden Teslim";
     case "shipped":
       return "Kargoda";
     case "processing":
@@ -46,6 +48,7 @@ export function orderStatusLabel(row: {
     return "Ödeme bekleniyor";
   }
   if (payment_status === "paid") {
+    if (order_status === "hand_delivered") return "Elden Teslim";
     if (order_status === "shipped") return "Kargoda";
     if (order_status === "processing") return "Hazırlanıyor";
     if (order_status === "confirmed" || order_status === "pending") {

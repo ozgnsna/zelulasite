@@ -67,6 +67,7 @@ export function CheckoutForm({
     percent: number;
   } | null>(null);
   const [useLoyaltyRedeem, setUseLoyaltyRedeem] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "bank_transfer">("card");
   const [invoiceType, setInvoiceType] = useState<"individual" | "sole" | "company">("individual");
   const [invoiceSameAsDelivery, setInvoiceSameAsDelivery] = useState(true);
   const [tcIdentityNo, setTcIdentityNo] = useState("");
@@ -201,6 +202,42 @@ export function CheckoutForm({
                 : "Ücretsiz kargo aktif"}
             </p>
             <p className="mt-1 text-[12px] text-stone-600">Bu alışverişten +{earnedPointsPreview} Zelula Puan kazanacaksın ✨</p>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-stone-800">💳 Ödeme Türü</h3>
+            <input type="hidden" name="payment_method" value={paymentMethod} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("card")}
+                className={`rounded-xl border px-3 py-3 text-left text-sm transition ${
+                  paymentMethod === "card"
+                    ? "border-[#c6a15b] bg-[#faf4ea] text-stone-900 shadow-[0_1px_6px_rgba(198,161,91,0.2)]"
+                    : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
+                }`}
+              >
+                <p className="font-semibold">Banka/Kredi Kartı</p>
+                <p className="mt-1 text-xs text-stone-500">Güvenli ödeme sağlayıcısı üzerinden online ödeme.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("bank_transfer")}
+                className={`rounded-xl border px-3 py-3 text-left text-sm transition ${
+                  paymentMethod === "bank_transfer"
+                    ? "border-[#c6a15b] bg-[#faf4ea] text-stone-900 shadow-[0_1px_6px_rgba(198,161,91,0.2)]"
+                    : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
+                }`}
+              >
+                <p className="font-semibold">Havale / EFT</p>
+                <p className="mt-1 text-xs text-stone-500">Sipariş sonrası IBAN bilgisi ile manuel transfer.</p>
+              </button>
+            </div>
+            {paymentMethod === "bank_transfer" ? (
+              <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+                Havale/EFT seçiminde siparişin oluşturulur; ödeme onayı admin panelinden işlenir.
+              </p>
+            ) : null}
           </section>
 
           {isSignedIn && resolvedAccountEmail ? (
@@ -899,7 +936,7 @@ export function CheckoutForm({
             disabled={disabled || pending}
             className="w-full rounded-full bg-[linear-gradient(135deg,#2f2a24,#1f1b17)] px-6 py-[1.2rem] text-base font-semibold text-white shadow-[0_12px_28px_rgba(40,34,28,0.4)] transition hover:shadow-[0_0_0_1px_rgba(232,201,139,0.35),0_16px_36px_rgba(40,34,28,0.45)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none"
           >
-            {pending ? "İşleniyor, lütfen bekleyin..." : "Güvenli ödemeye geç"}
+            {pending ? "İşleniyor, lütfen bekleyin..." : paymentMethod === "bank_transfer" ? "Siparişi oluştur" : "Güvenli ödemeye geç"}
           </button>
           <p className="text-center text-[11px] leading-relaxed text-stone-600">Ödeme adımında kart bilgilerini girersin</p>
         </div>
@@ -920,7 +957,7 @@ export function CheckoutForm({
             disabled={disabled || pending}
             className="rounded-full bg-[linear-gradient(135deg,#C6A15B,#E8C98B)] px-5 py-2.5 text-sm font-semibold text-[#2f271f] shadow-[0_8px_18px_rgba(198,161,91,0.28)] transition hover:brightness-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
           >
-            {pending ? "İşleniyor…" : "Güvenli ödemeye geç"}
+            {pending ? "İşleniyor…" : paymentMethod === "bank_transfer" ? "Siparişi oluştur" : "Güvenli ödemeye geç"}
           </button>
         </div>
       </div>

@@ -44,6 +44,9 @@ export function buildAdminOrderTimeline(order: {
   if (cancelled) {
     processingDetail = "Bu sipariş iptal edildi";
     processingState = "complete";
+  } else if (os === "hand_delivered") {
+    processingDetail = "Elden teslim edildi";
+    processingState = "complete";
   } else if (os === "shipped") {
     processingDetail = "Kargoya verildi";
     processingState = "complete";

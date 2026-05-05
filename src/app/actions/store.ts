@@ -93,6 +93,7 @@ const checkoutSchema = z.object({
     (v) => (typeof v === "string" ? v.trim().slice(0, 64) : ""),
     z.string().max(64),
   ),
+  payment_method: z.enum(["card", "bank_transfer"]).default("card"),
 });
 
 export async function previewPromoDiscount(subtotal: number, rawCode: string) {
@@ -195,6 +196,8 @@ export async function createCheckout(formData: FormData) {
   console.log("LEGAL_SNAPSHOT:", { snapshot: legalSnapshot, hash: legalContractHash });
   const legalIp = legalIpFromHeaders(requestHeaders);
   const legalUserAgent = safeLegalUserAgent(requestHeaders);
+  const paymentMethod = parsed.data.payment_method;
+  const isBankTransfer = paymentMethod === "bank_transfer";
 
   const { data: order, error } = await admin
     .from("orders")
@@ -224,7 +227,7 @@ export async function createCheckout(formData: FormData) {
       currency: "TRY",
       payment_status: "pending",
       order_status: "pending",
-      payment_provider: process.env.PAYMENT_PROVIDER ?? "paytr",
+      payment_provider: isBankTransfer ? "bank_transfer" : (process.env.PAYMENT_PROVIDER ?? "paytr"),
       shipping_address_json: {
         address_line: parsed.data.address_line,
         city: parsed.data.city,
@@ -285,8 +288,30 @@ export async function createCheckout(formData: FormData) {
   }
 
   await admin.from("order_items").insert(orderItems.map((i) => ({ ...i!, order_id: order.id })));
-
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  if (isBankTransfer) {
+    await admin.from("payment_logs").insert({
+      order_id: order.id,
+      provider: "bank_transfer",
+      event_type: "init",
+      status: "awaiting_transfer",
+      request_payload: {
+        ...Object.fromEntries(Object.entries(parsed.data).filter(([key]) => key !== "promo_code")),
+        payment_method: "bank_transfer",
+      },
+      response_payload: { note: "manual_bank_transfer_flow" },
+      callback_payload: null,
+      callback_hash: null,
+      reference: order.order_number,
+      verification_status: "pending",
+      verification_error: null,
+      processed_at: new Date().toISOString(),
+    });
+    await setCartItems([]);
+    return { ok: true, url: `${siteUrl}/odeme/basarili?oid=${order.id}&pm=bank_transfer` };
+  }
+
   const clientIp = clientIpFromHeaders(requestHeaders);
   const shippingAddressLine = [
     parsed.data.address_line,

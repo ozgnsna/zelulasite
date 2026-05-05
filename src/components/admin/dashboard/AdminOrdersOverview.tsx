@@ -69,6 +69,7 @@ export function AdminOrdersOverview({
             <select name="order_status" defaultValue={o.order_status} className="rounded border p-1 text-xs">
               <option value="pending">pending</option>
               <option value="confirmed">confirmed</option>
+              <option value="hand_delivered">hand_delivered</option>
               <option value="shipped">shipped</option>
               <option value="cancelled">cancelled</option>
             </select>

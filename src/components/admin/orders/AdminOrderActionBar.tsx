@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { reconcileOrderStatus, updateOrderStatus } from "@/app/actions/admin";
+import { markOrderHandDelivered, reconcileOrderStatus, updateOrderStatus } from "@/app/actions/admin";
 
 function PendingButton({
   children,
@@ -37,8 +37,9 @@ export function AdminOrderActionBar({
   className?: string;
 }) {
   const cancelled = orderStatus === "cancelled";
+  const handDelivered = orderStatus === "hand_delivered";
   const confirmDisabled =
-    cancelled || ["confirmed", "shipped", "processing"].includes(orderStatus);
+    cancelled || handDelivered || ["confirmed", "shipped", "processing"].includes(orderStatus);
 
   return (
     <div className={`flex flex-wrap items-center justify-end gap-2 ${className ?? ""}`}>
@@ -65,6 +66,18 @@ export function AdminOrderActionBar({
           className={`${btnBase} border-2 border-rose-200 bg-white text-rose-800 shadow-sm hover:border-rose-300 hover:bg-rose-50`}
         >
           Siparişi İptal Et
+        </PendingButton>
+      </form>
+
+      <form action={markOrderHandDelivered}>
+        <input type="hidden" name="id" value={orderId} />
+        <input type="hidden" name="payment_status" value={paymentStatus} />
+        <PendingButton
+          pendingLabel="İşleniyor…"
+          disabled={cancelled || handDelivered}
+          className={`${btnBase} border border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm hover:bg-emerald-100`}
+        >
+          Elden Teslim Edildi
         </PendingButton>
       </form>
 
