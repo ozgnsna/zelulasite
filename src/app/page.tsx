@@ -55,22 +55,27 @@ export default async function HomePage() {
   const bestSlice = bestSellers.slice(0, 4);
   const kombinSlice = newArrivals.slice(0, 4);
   const categoryCards = [
-    { label: "Kolye", href: "/kategori/kolye", slug: "kolye" },
-    { label: "Küpe", href: "/kategori/kupe", slug: "kupe" },
-    { label: "Bileklik", href: "/kategori/bileklik", slug: "bileklik" },
-    { label: "Yüzük", href: "/kategori/yuzuk", slug: "yuzuk" },
-  ].map((card) => {
-    const fromProducts = [...bestSellers, ...newArrivals].find(
-      (p) => p.category?.slug === card.slug && Boolean(p.product_images?.[0]?.image_url),
-    );
-    return {
-      label: card.label,
-      href: card.href,
-      image:
-        fromProducts?.product_images?.[0]?.image_url ??
-        "https://images.pexels.com/photos/1454174/pexels-photo-1454174.jpeg?auto=compress&cs=tinysrgb&w=800",
-    };
-  });
+    {
+      label: "Kolye",
+      href: "/kategori/kolye",
+      image: "https://images.pexels.com/photos/1454173/pexels-photo-1454173.jpeg?auto=compress&cs=tinysrgb&w=800",
+    },
+    {
+      label: "Küpe",
+      href: "/kategori/kupe",
+      image: "https://images.pexels.com/photos/1454174/pexels-photo-1454174.jpeg?auto=compress&cs=tinysrgb&w=800",
+    },
+    {
+      label: "Bileklik",
+      href: "/kategori/bileklik",
+      image: "https://images.pexels.com/photos/5370704/pexels-photo-5370704.jpeg?auto=compress&cs=tinysrgb&w=800",
+    },
+    {
+      label: "Yüzük",
+      href: "/kategori/yuzuk",
+      image: "https://images.pexels.com/photos/265906/pexels-photo-265906.jpeg?auto=compress&cs=tinysrgb&w=800",
+    },
+  ];
 
   return (
     <main className="bg-[#faf8f5] pb-20">
