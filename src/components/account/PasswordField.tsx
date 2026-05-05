@@ -13,6 +13,7 @@ type PasswordFieldProps = {
   autoComplete: "new-password" | "current-password";
   disabled?: boolean;
   required?: boolean;
+  placeholder?: string;
   showStrength?: boolean;
   helperText?: string;
   showMinLengthError?: boolean;
@@ -61,6 +62,7 @@ export function PasswordField({
   autoComplete,
   disabled,
   required = true,
+  placeholder,
   showStrength = false,
   helperText,
   showMinLengthError = false,
@@ -93,6 +95,7 @@ export function PasswordField({
           autoComplete={autoComplete}
           required={required}
           disabled={disabled}
+          placeholder={placeholder}
           value={value}
           onChange={(e) => {
             const v = e.target.value;

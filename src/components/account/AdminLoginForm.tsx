@@ -28,7 +28,7 @@ export function AdminLoginForm() {
     >
       <EmailField
         id="admin-email"
-        placeholder="admin@zeluladesign.com"
+        placeholder="Yetkili e-posta adresiniz"
         inputClassName={adminField}
         submitBlocked={emailSubmitBlocked}
         onClearSubmitBlocked={() => setEmailSubmitBlocked(false)}
@@ -36,8 +36,10 @@ export function AdminLoginForm() {
       <PasswordField
         id="admin-password"
         autoComplete="current-password"
+        placeholder="Şifrenizi girin"
         inputClassName={cn(adminField, "!pr-12")}
       />
+      <p className="-mt-0.5 text-xs text-stone-500">E-posta ve şifre bilgilerinizi eksiksiz giriniz.</p>
       <button
         type="submit"
         className="w-full rounded-xl bg-stone-900 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
