@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { createCheckout, previewPromoDiscount } from "@/app/actions/store";
 import type { AnalyticsItem } from "@/lib/analytics";
 import { trackBeginCheckout } from "@/lib/analytics";
@@ -83,6 +83,8 @@ export function CheckoutForm({
   const [district, setDistrict] = useState(() => firstSaved?.district ?? "");
   const [invoiceCity, setInvoiceCity] = useState("");
   const [invoiceDistrict, setInvoiceDistrict] = useState("");
+  const legalSectionRef = useRef<HTMLElement | null>(null);
+  const formRootRef = useRef<HTMLFormElement | null>(null);
 
   const applySavedAddressPick = useCallback(
     (nextId: string) => {
@@ -138,6 +140,7 @@ export function CheckoutForm({
     <>
       <form
         id="checkout-form"
+        ref={formRootRef}
         className="checkout-panel zl-shimmer flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[#e8dccb]/90 bg-[linear-gradient(180deg,#fffdfb_0%,#fbf8f3_100%)] shadow-[0_12px_30px_rgba(62,52,38,0.08)] lg:max-h-[min(100dvh-6.5rem,54rem)]"
         onSubmit={(e) => {
           e.preventDefault();
@@ -152,6 +155,7 @@ export function CheckoutForm({
             setLegalAcceptWarning(
               "Devam etmek için mesafeli satış sözleşmesi, ön bilgilendirme formu ve gizlilik politikasını onaylamalısınız.",
             );
+            legalSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
             return;
           }
           setLegalAcceptWarning(null);
@@ -163,6 +167,7 @@ export function CheckoutForm({
               window.location.href = r.url;
             } else {
               setError(r?.error ?? "İşlem başlatılamadı.");
+              formRootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
             }
           });
         }}
@@ -778,6 +783,7 @@ export function CheckoutForm({
             {appliedPromo ? <input type="hidden" name="promo_code" value={appliedPromo.code} /> : null}
 
             <section
+              ref={legalSectionRef}
               className="rounded-2xl border border-[#e8dfd3]/90 bg-neutral-50 p-5 sm:p-6"
               aria-labelledby="checkout-compliance-heading"
             >
