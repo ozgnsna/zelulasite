@@ -3,12 +3,16 @@ import type {
   PaymentInitPayload,
   PaymentInitResult,
 } from "@/lib/payments/types";
-import { createPaytrTokenSignature, verifyPaytrCallbackSignature } from "@/lib/payments/paytr-signature";
+import {
+  buildPaytrIframeStep1Token,
+  verifyPaytrCallbackSignature,
+} from "@/lib/payments/paytr-signature";
 import { logPayment } from "@/lib/payments/logger";
 import { z } from "zod";
 
 const PAYTR_API_URL = process.env.PAYTR_API_URL ?? "https://www.paytr.com/odeme/api/get-token";
 const PAYTR_USE_MOCK = (process.env.PAYTR_USE_MOCK ?? "true") === "true";
+const PAYTR_TEST_MODE = process.env.PAYTR_TEST_MODE ?? "1";
 const callbackSchema = z.object({
   merchant_oid: z.string().min(1),
   status: z.enum(["success", "failed"]),
@@ -30,6 +34,15 @@ function getPaytrEnv() {
 export async function initializePaytrPayment(
   payload: PaymentInitPayload,
 ): Promise<PaymentInitResult> {
+  if (PAYTR_USE_MOCK) {
+    return {
+      ok: true,
+      redirectUrl: `${payload.successUrl}`,
+      reference: `paytr_mock_${payload.orderId}`,
+      raw: { mode: "mock" },
+    };
+  }
+
   const { merchantId, merchantKey, merchantSalt } = getPaytrEnv();
 
   if (!merchantId || !merchantKey || !merchantSalt) {
@@ -41,41 +54,57 @@ export async function initializePaytrPayment(
     };
   }
 
-  if (PAYTR_USE_MOCK) {
-    return {
-      ok: true,
-      redirectUrl: `${payload.successUrl}`,
-      reference: `paytr_mock_${payload.orderId}`,
-      raw: { mode: "mock" },
-    };
-  }
-
-  // PAYTR token request hazırlığı (gerçek merchant paketine göre genişletilebilir)
+  const userIp = String(payload.clientIp ?? "127.0.0.1")
+    .trim()
+    .slice(0, 39);
+  const merchantOid = payload.orderId;
   const userBasket = Buffer.from(
     JSON.stringify([[payload.orderNumber, payload.amount.toFixed(2), 1]]),
   ).toString("base64");
   const amountAsKurus = Math.round(payload.amount * 100);
-  const hashInput = `${merchantId}${payload.customer.email}${amountAsKurus}${userBasket}${merchantSalt}`;
-  const paytrToken = createPaytrTokenSignature(hashInput, merchantKey);
+  const noInstallment = "0";
+  const maxInstallment = "0";
+  const currency = payload.currency === "TRY" ? "TL" : payload.currency;
+  const testMode = PAYTR_TEST_MODE === "0" ? "0" : "1";
+
+  const paytrToken = buildPaytrIframeStep1Token({
+    merchantId,
+    userIp,
+    merchantOid,
+    email: payload.customer.email,
+    paymentAmountKurus: amountAsKurus,
+    userBasketBase64: userBasket,
+    noInstallment,
+    maxInstallment,
+    currency,
+    testMode,
+    merchantSalt,
+    merchantKey,
+  });
+
+  const userAddress = (payload.shippingAddressLine ?? "").trim() || "Teslimat adresi";
 
   const body = new URLSearchParams({
     merchant_id: merchantId,
-    user_email: payload.customer.email,
+    user_ip: userIp,
+    merchant_oid: merchantOid,
+    email: payload.customer.email,
     payment_amount: String(amountAsKurus),
-    merchant_oid: payload.orderId,
-    user_name: payload.customer.name,
-    user_phone: payload.customer.phone,
+    user_basket: userBasket,
+    paytr_token: paytrToken,
+    user_name: payload.customer.name.trim().slice(0, 60),
+    user_address: userAddress.slice(0, 400),
+    user_phone: payload.customer.phone.replace(/\s/g, "").slice(0, 20),
     merchant_ok_url: payload.successUrl,
     merchant_fail_url: payload.failUrl,
-    user_basket: userBasket,
-    no_installment: "0",
-    max_installment: "0",
-    currency: payload.currency,
-    test_mode: "1",
-    debug_on: "1",
-    timeout_limit: "30",
-    paytr_token: paytrToken,
     callback_url: payload.callbackUrl,
+    no_installment: noInstallment,
+    max_installment: maxInstallment,
+    currency,
+    test_mode: testMode,
+    debug_on: process.env.NODE_ENV === "development" ? "1" : "0",
+    timeout_limit: "30",
+    lang: "tr",
   });
 
   const res = await fetch(PAYTR_API_URL, {

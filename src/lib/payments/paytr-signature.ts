@@ -12,6 +12,40 @@ export function createPaytrTokenSignature(input: string, merchantKey: string): s
 }
 
 /**
+ * PayTR iFrame API 1. adım — resmi örnekteki token (HMAC-SHA256, çıktı base64).
+ * hash_str = merchant_id + user_ip + merchant_oid + email + payment_amount + user_basket
+ *   + no_installment + max_installment + currency + test_mode
+ * paytr_token = base64( HMAC_SHA256( merchant_key, hash_str + merchant_salt ) )
+ */
+export function buildPaytrIframeStep1Token(params: {
+  merchantId: string;
+  userIp: string;
+  merchantOid: string;
+  email: string;
+  paymentAmountKurus: number;
+  userBasketBase64: string;
+  noInstallment: string;
+  maxInstallment: string;
+  currency: string;
+  testMode: string;
+  merchantSalt: string;
+  merchantKey: string;
+}): string {
+  const hashStr =
+    params.merchantId +
+    params.userIp +
+    params.merchantOid +
+    params.email +
+    String(params.paymentAmountKurus) +
+    params.userBasketBase64 +
+    params.noInstallment +
+    params.maxInstallment +
+    params.currency +
+    params.testMode;
+  return createPaytrTokenSignature(hashStr + params.merchantSalt, params.merchantKey);
+}
+
+/**
  * PAYTR callback hash doğrulama formatı merchant entegrasyonuna göre değişebilir.
  * Bu fonksiyon bilinen formatları destekler:
  * 1) merchant_oid + merchant_salt + status + total_amount

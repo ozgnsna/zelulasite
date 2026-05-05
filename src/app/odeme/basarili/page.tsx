@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
+import { OrderSuccessReferralShare } from "@/components/referral/OrderSuccessReferralShare";
+import { zelulaPuanEarnedFromPaidOrderTotalTry } from "@/lib/loyalty/compute";
+import { ensureUserReferralCode } from "@/lib/referral/server";
+import { siteBaseUrl, withReferralQuery } from "@/lib/referral/share-url";
 
 type Props = { searchParams: Promise<{ oid?: string }> };
 
@@ -13,7 +17,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
         <h1 className="font-serif text-2xl text-stone-900">Oturum bulunamadı</h1>
         <p className="mt-3 text-stone-600">Geçerli bir ödeme kaydı bulunamadı.</p>
-        <Link href="/sepet" className="mt-8 inline-block text-sm font-medium text-amber-900 hover:underline">
+        <Link href="/sepet" className="mt-8 inline-block text-sm font-medium text-stone-700 hover:underline">
           Sepete dön
         </Link>
       </main>
@@ -23,13 +27,26 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
   const admin = createAdminClient();
   const { data: order } = await admin
     .from("orders")
-    .select("id,order_number,payment_status,order_status,total,currency,customer_name,email")
+    .select("id,order_number,payment_status,order_status,total,currency,customer_name,email,user_id")
     .eq("id", orderId)
     .maybeSingle();
   const { data: items } = await admin
     .from("order_items")
-    .select("quantity,total_price,unit_price,product_id,product:products(name,category:categories(name),collection:collections(name))")
+    .select(
+      "quantity,total_price,unit_price,product_id,product:products(name,slug,category:categories(name),collection:collections(name))",
+    )
     .eq("order_id", orderId);
+
+  const firstItem = (items ?? [])[0];
+  const firstProductSlug = firstItem?.product?.[0]?.slug ?? null;
+  const base = siteBaseUrl();
+  const path = firstProductSlug ? `/urunler/${firstProductSlug}` : "/";
+  const cleanShareUrl = `${base}${path === "/" ? "/" : path}`;
+  let paidShareUrl = cleanShareUrl;
+  if (order?.user_id) {
+    const refCode = await ensureUserReferralCode(admin, order.user_id);
+    if (refCode) paidShareUrl = withReferralQuery(cleanShareUrl, refCode);
+  }
 
   return (
     <main className="mx-auto max-w-lg px-4 py-20 text-center">
@@ -47,7 +64,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
           }))}
         />
       ) : null}
-      <p className="text-sm font-medium uppercase tracking-wide text-emerald-800">Teşekkürler</p>
+      <p className="text-sm font-medium uppercase tracking-wide text-stone-600">Teşekkürler</p>
       <h1 className="mt-3 font-serif text-3xl text-stone-900">
         {order?.payment_status === "paid" ? "Ödeme onaylandı" : "Ödeme doğrulaması bekleniyor"}
       </h1>
@@ -56,13 +73,19 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
         <br />
         {order?.payment_status === "paid"
           ? "Onay e-postası (gerçek ortamda) buraya gönderilir."
-          : "Callback doğrulaması tamamlanınca siparişiniz otomatik olarak onaylanır."}
+          : "Ödeme sağlayıcısından onay bildirimi gelince siparişiniz otomatik olarak ödendi olarak güncellenir; sayfayı bir süre sonra yenileyebilirsin."}
       </p>
       <p className="mt-2 text-sm text-stone-500">
         {order?.payment_status === "paid"
           ? "Siparişiniz alındı ve hazırlık sürecine geçti."
           : "Siparişiniz alındı. Banka doğrulaması nedeniyle kısa bir gecikme olabilir, endişelenmeyin."}
       </p>
+      {order?.payment_status === "paid" && order.user_id ? (
+        <p className="mt-5 text-sm font-light text-stone-700">
+          Bu alışverişinden {zelulaPuanEarnedFromPaidOrderTotalTry(Number(order.total))} Zelula Puan kazandın{" "}
+          <span aria-hidden>✨</span>
+        </p>
+      ) : null}
       <div className="mx-auto mt-6 max-w-md rounded-xl border border-stone-200 bg-white p-4 text-left text-sm">
         <p className="font-medium">Sipariş Özeti</p>
         <p className="mt-1 text-stone-600">{order?.customer_name} • {order?.email}</p>
@@ -79,14 +102,19 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
           <strong>{order?.total} {order?.currency ?? "TRY"}</strong>
         </div>
       </div>
+      {order?.payment_status === "paid" ? <OrderSuccessReferralShare shareUrl={paidShareUrl} /> : null}
       <p className="mt-4 text-sm text-stone-600">
-        Destek: <a className="text-amber-900 underline" href="mailto:hello@zelula.com">hello@zelula.com</a> • +90 555 000 00 00
+        Destek:{" "}
+        <a className="text-stone-700 underline" href="mailto:destek@zeluladesign.com">
+          destek@zeluladesign.com
+        </a>{" "}
+        • +90 555 000 00 00
       </p>
       <Link
         href="/urunler"
         className="mt-10 inline-flex rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white hover:bg-stone-800"
       >
-        Alışverişe devam
+        Alışverişe devam et
       </Link>
     </main>
   );

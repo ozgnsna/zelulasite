@@ -1,5 +1,7 @@
 "use client";
 
+import { getCookieConsent } from "@/lib/cookies/consent";
+
 type Primitive = string | number | boolean | null | undefined;
 type EventParams = Record<
   string,
@@ -29,6 +31,11 @@ function isDebug() {
     process.env.NODE_ENV === "development" ||
     process.env.NEXT_PUBLIC_ANALYTICS_DEBUG === "true"
   );
+}
+
+function analyticsConsentGranted(): boolean {
+  if (typeof window === "undefined") return false;
+  return getCookieConsent()?.analytics === true;
 }
 
 function eventKey(name: string, params: EventParams) {
@@ -84,6 +91,10 @@ export function trackEvent(
   options?: { dedupeKey?: string; dedupe?: boolean },
 ) {
   if (typeof window === "undefined") return;
+  if (!analyticsConsentGranted()) {
+    if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
+    return;
+  }
   const shouldDedupe = options?.dedupe ?? false;
   if (shouldDedupe && shouldSkipDuplicate(name, params, options?.dedupeKey)) return;
 
@@ -132,6 +143,10 @@ function trackEcommerceEvent(
   options?: { dedupeKey?: string; dedupe?: boolean },
 ) {
   if (typeof window === "undefined") return;
+  if (!analyticsConsentGranted()) {
+    if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
+    return;
+  }
   const shouldDedupe = options?.dedupe ?? false;
   if (shouldDedupe && shouldSkipDuplicate(name, params as EventParams, options?.dedupeKey)) return;
 

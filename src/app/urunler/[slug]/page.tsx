@@ -1,13 +1,48 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Check, MessageCircle, Sparkles } from "lucide-react";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { ProductReferralShare } from "@/components/referral/ProductReferralShare";
 import { ProductGallery } from "@/components/ProductGallery";
+import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
 import { getProductBySlug, getProducts } from "@/lib/storefront";
 import { formatTry } from "@/lib/money";
 import { ViewItemTracker } from "@/components/analytics/ViewItemTracker";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isProductFavorited } from "@/lib/account/favorites";
+import { ensureUserReferralCode } from "@/lib/referral/server";
+import { ProductFavoriteButton } from "@/components/ProductFavoriteButton";
 
 type Props = { params: Promise<{ slug: string }> };
+
+const ZODIAC_GALLERY_EXTRAS: { id: string; image_url: string }[] = [
+  {
+    id: "zodiac-model-1",
+    image_url:
+      "https://images.pexels.com/photos/10983783/pexels-photo-10983783.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  },
+  {
+    id: "zodiac-detail-1",
+    image_url:
+      "https://images.pexels.com/photos/1454171/pexels-photo-1454171.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  },
+];
+
+function isZodiacStoryProduct(slug: string, name: string) {
+  const s = slug.toLowerCase();
+  const n = name.toLowerCase();
+  return s.includes("kova") || s.includes("aquarius") || n.includes("kova") || n.includes("aquarius");
+}
+
+function splitDescriptionParagraphs(text: string): string[] {
+  return text
+    .trim()
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -24,124 +59,315 @@ export default async function ProductPage({ params }: Props) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
+  const galleryExtras =
+    isZodiacStoryProduct(slug, product.name) ? ZODIAC_GALLERY_EXTRAS : [];
+  const storyParagraphs = splitDescriptionParagraphs(product.full_description);
+  const compareAt = product.compare_at_price ? Number(product.compare_at_price) : null;
+  const priceNum = Number(product.price);
+  const hasRealDiscount = Boolean(compareAt && compareAt > priceNum);
+  const discountAmount = hasRealDiscount ? Math.round((compareAt ?? 0) - priceNum) : 0;
+  const stockQty = Number(product.stock_quantity ?? 0);
+  const isLowStock = stockQty > 0 && stockQty <= 3;
+  const supportMessage = "Merhaba, Zelula’daki bir ürün hakkında bilgi almak istiyorum ✨";
+  const whatsappSupportHref = `https://wa.me/905550000000?text=${encodeURIComponent(supportMessage)}`;
+  const pdpVideoUrl = process.env.NEXT_PUBLIC_PDP_VIDEO_URL?.trim() || null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const favorited = user?.id ? await isProductFavorited(supabase, user.id, product.id) : false;
+  const referralCode = user?.id ? await ensureUserReferralCode(createAdminClient(), user.id) : null;
   return (
-    <main className="container-premium py-12 sm:py-16">
+    <main className="container-premium pb-28 pt-8 sm:pb-16 sm:pt-10">
       <ViewItemTracker
         item={{
           product_id: product.id,
           product_name: product.name,
-          price: Number(product.price),
+          price: priceNum,
           quantity: 1,
           category: product.category?.name,
           collection: product.collection?.name ?? null,
         }}
       />
       <nav className="text-sm text-stone-500">
-        <Link href="/urunler" className="hover:text-stone-800">
+        <Link href="/urunler" className="transition hover:text-brand-gold">
           Ürünler
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-stone-400">/</span>
         <span className="text-stone-800">{product.name}</span>
       </nav>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16">
-        <ProductGallery
-          images={product.product_images ?? []}
-          fallback="https://picsum.photos/id/15/1200/1200"
-          alt={product.name}
-        />
+      <div className="pdp-page-enter mt-7 grid gap-7 lg:mt-8 lg:grid-cols-[0.95fr_1.15fr] lg:items-start lg:gap-9">
+        <section className="mx-auto w-full max-w-[540px] lg:col-start-1 lg:max-w-[450px]">
+          <ProductGallery
+            images={product.product_images ?? []}
+            extraImages={galleryExtras}
+            fallback="https://picsum.photos/id/15/1200/1200"
+            alt={product.name}
+            loopVideoUrl={pdpVideoUrl}
+          />
+        </section>
 
-        <div className="lg:pt-6">
-          <p className="editorial-kicker text-amber-900/90">{product.category?.name}</p>
-          <h1 className="mt-3 font-serif text-4xl font-medium tracking-tight text-stone-900 sm:text-5xl">
-            {product.name}
-          </h1>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-stone-600">
-            {product.short_description}. Günlük kombinleri zahmetsizce premium gösteren, uzun ömürlü bir seçim.
-          </p>
-          <p className="mt-7 text-3xl font-semibold tracking-tight text-stone-900">{formatTry(Number(product.price))}</p>
-          <p className="mt-2 text-sm text-stone-500">
-            Stok: {product.stock_quantity > 0 ? `${product.stock_quantity} adet` : "Tükendi"}
-          </p>
-          {product.stock_quantity > 0 && product.stock_quantity < 8 ? (
-            <p className="mt-1 text-xs font-medium text-rose-700">Stoklar hızla tükeniyor.</p>
-          ) : (
-            <p className="mt-1 text-xs text-stone-500">En çok tercih edilen ürünlerden.</p>
+        <section className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 lg:pt-0.5">
+          {(product.featured || product.new_arrival) && (
+            <div className="flex flex-wrap items-center gap-2.5">
+              {product.featured ? (
+                <span
+                  className="pdp-badge-in rounded-full border-2 border-brand-gold/60 bg-gradient-to-r from-stone-900 to-stone-800 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#fdf6e9] shadow-[0_6px_16px_rgba(201,168,106,0.26)]"
+                  style={{ animationDelay: "0ms" }}
+                >
+                  Çok Satan
+                </span>
+              ) : null}
+              {product.new_arrival ? (
+                <span
+                  className="pdp-badge-in rounded-full border-2 border-brand-gold/55 bg-brand-rose/90 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-800 shadow-[0_6px_16px_rgba(201,168,106,0.14)]"
+                  style={{ animationDelay: "70ms" }}
+                >
+                  Yeni
+                </span>
+              ) : null}
+            </div>
           )}
+          <p className={`editorial-kicker text-brand-gold ${product.featured || product.new_arrival ? "mt-3" : ""}`}>
+            Zelula özel koleksiyonundan
+          </p>
 
-          <div className="mt-8 max-w-md">
+          <div className="mt-3.5 flex flex-wrap items-start justify-between gap-3">
+            <h1 className="min-w-0 flex-1 font-serif text-4xl font-light leading-[1.08] tracking-tight text-stone-900 sm:text-5xl">
+              {product.name}
+            </h1>
+            <ProductFavoriteButton
+              key={`fav-pdp-${product.id}-${favorited ? "1" : "0"}`}
+              variant="inline"
+              productId={product.id}
+              productSlug={slug}
+              initialFavorited={favorited}
+              isSignedIn={Boolean(user)}
+            />
+          </div>
+          <span className="mt-3 inline-flex w-fit rounded-full bg-[#f5ede1] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#b68f4d]">
+            Zelula seçimi
+          </span>
+
+          <p className="mt-4 max-w-xl font-serif text-lg font-light italic leading-relaxed text-stone-700 sm:text-xl">
+            Zarif ama güçlü. Günün her anında seninle uyum içinde.
+          </p>
+          <p className="mt-3.5 max-w-xl text-sm font-light leading-relaxed text-stone-600">{product.short_description}</p>
+
+          {isZodiacStoryProduct(slug, product.name) ? (
+            <aside className="mt-8 max-w-xl border-l-[3px] border-brand-gold/60 bg-[#faf8f5]/90 px-5 py-5 sm:px-6 sm:py-5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-stone-500">Seçilmiş parça</p>
+              <p className="mt-3 flex items-start gap-2.5 font-serif text-lg font-light leading-[1.55] text-stone-800 sm:text-xl">
+                <Sparkles className="mt-1 size-4 shrink-0 text-[color:var(--brand-gold)] sm:size-[1.05rem]" strokeWidth={1.5} aria-hidden />
+                Kova burcunun özgür ve vizyoner ruhunu taşıyan bu parça, sıradan bir aksesuardan fazlası: her bakışta
+                hatırlanacak duygusal bir bağ kurar. Kendinize veya hayatınızdaki o eşsiz Kovaya, zarafeti ve anlamı
+                bir arada sunar.
+              </p>
+            </aside>
+          ) : null}
+
+          <section className="pdp-reveal-cta mt-6 max-w-none space-y-5 rounded-[1.7rem] border border-[#eee5d9] bg-[#fffdf9] p-6 shadow-[0_20px_40px_rgba(62,52,38,0.14)] sm:p-7">
+            <div className="space-y-2">
+              <h2 className="font-serif text-2xl font-light leading-tight text-stone-900">{product.name}</h2>
+              <p className="text-sm font-light leading-relaxed text-stone-600">{product.short_description}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-end gap-2.5">
+                {hasRealDiscount ? (
+                  <span className="text-sm text-stone-400 line-through sm:text-base">{formatTry(compareAt ?? 0)}</span>
+                ) : null}
+                <p className="text-[2.85rem] font-bold leading-none tracking-tight text-[#7d5f35] sm:text-[3.35rem]">
+                  {formatTry(priceNum)}
+                </p>
+              </div>
+              {hasRealDiscount ? (
+                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-800">
+                  {formatTry(discountAmount)} indirim
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full border border-[#eadfce] bg-[#faf7f2] px-2.5 py-1 text-[11px] font-medium text-stone-600">
+                  Bugüne özel fiyat
+                </span>
+              )}
+              <p className="text-[11px] font-medium text-stone-500">Bugüne özel fiyat</p>
+            </div>
+
             <AddToCartButton
               productId={product.id}
               productName={product.name}
-              price={Number(product.price)}
+              price={priceNum}
               category={product.category?.name}
               collection={product.collection?.name ?? null}
               stock={product.stock_quantity}
+              tone="luxury"
+              label="Şimdi satın al"
+              secondaryLabel="Sepete ekle"
+              helperText="Sana özel güvenli ödeme; siparişin özenle hazırlanır."
+              redirectAfterAdd="/sepet"
+              productSlug={product.slug}
+              className="[&_button]:w-full [&_button]:py-4 [&_button]:text-sm [&_button]:font-bold [&_button]:transition [&_button]:duration-150 [&_button]:ease-in-out [&_button:hover]:scale-[1.01] [&_button:hover]:shadow-[0_14px_28px_rgba(30,24,18,0.24)]"
             />
-          </div>
-          <button className="mt-3 w-full max-w-md rounded-full border border-[#d8cab8] bg-white px-6 py-3 text-sm font-medium text-stone-800 transition hover:bg-[#f9f2e9]">Hemen Al</button>
-          <div className="mt-4 grid max-w-md grid-cols-3 gap-2 text-xs text-stone-600">
-            <p className="rounded-lg border border-[#e8dece] bg-[#f8f2e9] px-2 py-1.5 text-center">Suya dayanıklı</p>
-            <p className="rounded-lg border border-[#e8dece] bg-[#f8f2e9] px-2 py-1.5 text-center">Antialerjik</p>
-            <p className="rounded-lg border border-[#e8dece] bg-[#f8f2e9] px-2 py-1.5 text-center">Hızlı kargo</p>
-          </div>
-          <p className="mt-2 text-xs text-stone-500">Bugün sipariş ver, yarın kargoda.</p>
 
-          <div className="mt-14 space-y-8 border-t border-[#e8dece] pt-10">
-            <section>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400">
-                Ürün hikâyesi
-              </h2>
-              <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-stone-700">
-                {product.full_description}
+            <ul className="space-y-2.5 text-[12px] leading-relaxed text-stone-800">
+              <li className="flex items-center gap-2">
+                <Check className="size-4 shrink-0 text-[#b8945f]" strokeWidth={1.8} aria-hidden />
+                Güvenli ödeme
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="size-4 shrink-0 text-[#b8945f]" strokeWidth={1.8} aria-hidden />
+                Hızlı kargo
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="size-4 shrink-0 text-[#b8945f]" strokeWidth={1.8} aria-hidden />
+                Kolay iade
+              </li>
+            </ul>
+
+            {(product.material || product.color || product.category?.name) && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Ürün seçenekleri</p>
+                <div className="flex flex-wrap gap-2">
+                  {product.material ? (
+                    <span className="rounded-full border border-[#e3d8ca] bg-[#faf7f2] px-2.5 py-1 text-[11px] text-stone-700">
+                      Materyal: {product.material}
+                    </span>
+                  ) : null}
+                  {product.color ? (
+                    <span className="rounded-full border border-[#e3d8ca] bg-[#faf7f2] px-2.5 py-1 text-[11px] text-stone-700">
+                      Renk: {product.color}
+                    </span>
+                  ) : null}
+                  {product.category?.name ? (
+                    <span className="rounded-full border border-[#e3d8ca] bg-[#faf7f2] px-2.5 py-1 text-[11px] text-stone-700">
+                      Kategori: {product.category.name}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {stockQty > 0 ? (
+              <p
+                className={`inline-flex w-fit rounded-full px-3 py-1 text-[12px] font-medium ${
+                  isLowStock ? "border border-amber-200 bg-amber-50 text-amber-800" : "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                }`}
+              >
+                {isLowStock ? `Son ${stockQty} ürün` : "Stokta var"}
               </p>
-            </section>
-            <section className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-[#e6dccf] bg-[#fffdfb] p-5 shadow-[0_8px_20px_rgba(70,53,38,0.05)]">
-                <h3 className="text-sm font-medium text-stone-900">Materyal</h3>
-                <p className="mt-2 text-sm leading-relaxed text-stone-600">{product.material ?? "Premium alaşım"}</p>
+            ) : (
+              <p className="inline-flex w-fit rounded-full border border-stone-200 bg-stone-100 px-3 py-1 text-[12px] font-medium text-stone-700">
+                Şu an stokta yok
+              </p>
+            )}
+
+            <div className="space-y-2">
+              <p className="text-[12px] font-medium text-stone-700">Sorunuz mu var?</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={whatsappSupportHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#d9ccb9] bg-[#fdfbf8] px-3 py-1.5 text-[11px] font-medium text-stone-800 transition hover:border-[#c6a15b]/60 hover:bg-[#f9f1e4] hover:shadow-[0_8px_18px_rgba(198,161,91,0.18)]"
+                >
+                  <MessageCircle className="size-3.5 shrink-0 text-[#b8945f]" strokeWidth={1.6} aria-hidden />
+                  WhatsApp destek
+                </a>
+                <Link
+                  href="/sepet"
+                  className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50"
+                >
+                  Sepeti görüntüle
+                </Link>
               </div>
-              <div className="rounded-2xl border border-[#e6dccf] bg-[#fffdfb] p-5 shadow-[0_8px_20px_rgba(70,53,38,0.05)]">
-                <h3 className="text-sm font-medium text-stone-900">Bakım</h3>
-                <p className="mt-2 text-sm leading-relaxed text-stone-600">Parfüm temasından kaçının, kuru bezle silerek saklayın.</p>
-              </div>
-            </section>
-            <section className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-[#e6dccf] bg-[#fffdfb] p-5 shadow-[0_8px_20px_rgba(70,53,38,0.05)]">
-                <h3 className="text-sm font-medium text-stone-900">Kargo</h3>
-                <p className="mt-2 text-sm leading-relaxed text-stone-600">
-                  Sipariş onayından sonra hazırlık süresi ayrıca bildirilir; demo
-                  ortamında gerçek kargo yoktur.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-[#e6dccf] bg-[#fffdfb] p-5 shadow-[0_8px_20px_rgba(70,53,38,0.05)]">
-                <h3 className="text-sm font-medium text-stone-900">İade</h3>
-                <p className="mt-2 text-sm leading-relaxed text-stone-600">
-                  Ürünü orijinal kutusuyla iade edebilirsiniz. Politika metnini
-                  canlıya alırken hukuk danışmanlığı önerilir.
-                </p>
-              </div>
-            </section>
-          </div>
-        </div>
+            </div>
+
+            <ProductReferralShare referralCode={referralCode} />
+          </section>
+
+        </section>
+
+        <section className="space-y-7 border-t border-brand-gold/20 pt-7 lg:col-start-1 lg:mt-1 sm:space-y-8 sm:pt-8">
+          <section>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
+              Bu parça neden özel?
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-[1.75] text-stone-700">
+              <p>
+                Minimal tasarımıyla her kombine uyum sağlar, ama asıl farkı onu taktığında hissettirdiği zarif
+                özgüvende.
+              </p>
+              <p>
+                İşe giderken, akşam yemeğinde ya da özel bir buluşmada; bu parça sessiz bir imza gibi stiline eşlik
+                eder.
+              </p>
+              {storyParagraphs.slice(0, 1).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-brand-gold/20 bg-[#fffdfb] p-6 shadow-[0_10px_26px_rgba(70,53,38,0.06)] transition hover:shadow-[0_14px_30px_rgba(70,53,38,0.1)]">
+              <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-brand-gold">Materyal</h3>
+              <p className="mt-3 text-sm leading-relaxed text-stone-700">
+                <span className="font-medium text-stone-900">{product.material ?? "Premium alaşım"}</span> — günlük
+                kullanımda dayanıklılık ve parlaklık için seçildi.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-brand-gold/20 bg-[#fffdfb] p-6 shadow-[0_10px_26px_rgba(70,53,38,0.06)] transition hover:shadow-[0_14px_30px_rgba(70,53,38,0.1)]">
+              <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-brand-gold">Bakım</h3>
+              <p className="mt-3 text-sm leading-relaxed text-stone-700">
+                Parfüm ve agresif kimyasallardan uzak tutun; yumuşak kuru bezle silerek saklayın. İlk günkü ışıltı
+                uzun süre korunur.
+              </p>
+            </div>
+          </section>
+          <section className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-[#e6dccf] bg-[#faf7f3] p-6 transition hover:shadow-[0_12px_24px_rgba(70,53,38,0.08)]">
+              <h3 className="text-sm font-semibold text-stone-900">Kargo</h3>
+              <p className="mt-3 text-sm leading-relaxed text-stone-600">
+                Siparişler cumartesi ve pazar hariç 1 iş günü içinde DHL Kargo&apos;ya teslim edilir. Gönderimler
+                yalnızca Türkiye içindedir.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#e6dccf] bg-[#faf7f3] p-6 transition hover:shadow-[0_12px_24px_rgba(70,53,38,0.08)]">
+              <h3 className="text-sm font-semibold text-stone-900">İade</h3>
+              <p className="mt-3 text-sm leading-relaxed text-stone-600">
+                Teslimattan itibaren 14 gün içinde iade talebi oluşturabilirsin. İade kargo ücreti Zelula
+                tarafından karşılanır.
+              </p>
+            </div>
+          </section>
+        </section>
       </div>
+
       <RelatedProducts currentProductId={product.id} />
-      <StyledWithSection currentProductId={product.id} collectionId={product.collection_id ?? null} />
-      <div className="fixed inset-x-0 bottom-3 z-30 mx-auto w-[calc(100%-1rem)] max-w-md rounded-2xl border border-stone-200 bg-white p-3 shadow-lg md:hidden">
+
+      <div className="fixed inset-x-0 bottom-3 z-30 mx-auto w-[calc(100%-1rem)] max-w-md rounded-2xl border border-brand-gold/25 bg-[#fffdfb]/95 p-3 shadow-[0_12px_32px_rgba(45,37,33,0.14)] backdrop-blur-md md:hidden">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs text-stone-500">Toplam</p>
-            <p className="font-semibold">{formatTry(Number(product.price))}</p>
-            <p className="text-[11px] text-stone-500">Hızlı kargo</p>
+            <p className="text-lg font-semibold text-brand-gold">{formatTry(priceNum)}</p>
+            <p className="text-[11px] text-stone-500">{stockQty > 0 ? (isLowStock ? `Son ${stockQty} ürün` : "Stokta var") : "Stokta yok"}</p>
           </div>
-          <AddToCartButton
-            productId={product.id}
-            productName={product.name}
-            price={Number(product.price)}
-            category={product.category?.name}
-            collection={product.collection?.name ?? null}
-            stock={product.stock_quantity}
-          />
+          <div className="min-w-[9.5rem] shrink-0">
+            <AddToCartButton
+              productId={product.id}
+              productName={product.name}
+              price={priceNum}
+              category={product.category?.name}
+              collection={product.collection?.name ?? null}
+              stock={product.stock_quantity}
+              tone="luxury"
+              label="Şimdi satın al"
+              secondaryLabel="Sepete ekle"
+              redirectAfterAdd="/sepet"
+              productSlug={product.slug}
+              className="!space-y-2 [&_button]:!py-3 [&_button]:text-xs"
+            />
+          </div>
         </div>
       </div>
     </main>
@@ -152,44 +378,5 @@ async function RelatedProducts({ currentProductId }: { currentProductId: string 
   const { products } = await getProducts({ sort: "featured" });
   const list = products.filter((p) => p.id !== currentProductId).slice(0, 4);
   if (list.length === 0) return null;
-  return (
-    <section className="mt-20">
-      <h2 className="section-title">Benzer Ürünler</h2>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {list.map((p) => (
-          <Link key={p.id} href={`/urunler/${p.slug}`} className="rounded-2xl border border-[#e6dccf] bg-[#fffdfb] p-4 text-sm transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(70,53,38,0.08)]">
-            {p.name}
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-async function StyledWithSection({
-  currentProductId,
-  collectionId,
-}: {
-  currentProductId: string;
-  collectionId: string | null;
-}) {
-  const { products } = await getProducts({ sort: "newest" });
-  const list = products
-    .filter((p) => p.id !== currentProductId && (collectionId ? p.collection_id === collectionId : true))
-    .slice(0, 4);
-  if (list.length === 0) return null;
-  return (
-    <section className="mt-12">
-      <h2 className="section-title">Birlikte İyi Gider</h2>
-      <p className="mt-2 text-sm text-stone-500">Bu ürünle birlikte en çok tercih edilen kombinler</p>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {list.map((p) => (
-          <Link key={p.id} href={`/urunler/${p.slug}`} className="rounded-2xl border border-[#e6dccf] bg-[#fffdfb] p-4 text-sm transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(70,53,38,0.08)]">
-            <p className="font-medium">{p.name}</p>
-            <p className="mt-1 text-xs text-stone-500">{p.short_description}</p>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
+  return <RelatedProductsCarousel items={list} />;
 }

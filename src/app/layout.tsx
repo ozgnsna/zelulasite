@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
-import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
 import { Header } from "@/components/Header";
@@ -8,6 +8,10 @@ import { Footer } from "@/components/Footer";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
+import { GoogleAnalyticsLoader } from "@/components/analytics/GoogleAnalyticsLoader";
+import { CookieBanner } from "@/components/CookieBanner";
+import { ReferralTrackingBridge } from "@/components/referral/ReferralTrackingBridge";
+import { AddToCartShareHost } from "@/components/referral/AddToCartShareHost";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -36,34 +40,30 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get("x-pathname") ?? "";
+  const isAdminRoute = pathname.startsWith("/admin");
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   return (
     <html lang="tr" className={`${display.variable} ${sans.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-[color:var(--background)] font-sans text-stone-900 antialiased">
-        {gaId ? (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ga-init" strategy="afterInteractive">
-              {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} window.gtag = gtag; gtag('js', new Date()); gtag('config', '${gaId}', { send_page_view: false });`}
-            </Script>
-          </>
-        ) : null}
+        <GoogleAnalyticsLoader gaId={gaId} />
         <Suspense fallback={null}>
           <AnalyticsProvider />
+          <ReferralTrackingBridge />
         </Suspense>
-        <AnnouncementBar />
-        <Header />
+        {isAdminRoute ? null : <AnnouncementBar />}
+        {isAdminRoute ? null : <Header />}
         <div className="flex-1">{children}</div>
-        <Footer />
+        {isAdminRoute ? null : <Footer />}
         <Toaster richColors position="top-right" />
+        <CookieBanner />
+        <AddToCartShareHost />
       </body>
     </html>
   );

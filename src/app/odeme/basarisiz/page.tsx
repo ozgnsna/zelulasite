@@ -16,7 +16,7 @@ export default async function PaymentFailedPage({
   const message = messages[sp.msg ?? ""] ?? messages.generic;
   return (
     <main className="mx-auto max-w-lg px-4 py-20 text-center">
-      <p className="text-sm font-medium uppercase tracking-wide text-rose-700">Ödeme Başarısız</p>
+      <p className="text-sm font-medium uppercase tracking-wide text-stone-600">Ödeme tamamlanamadı</p>
       <h1 className="mt-3 font-serif text-3xl text-stone-900">İşlem tamamlanamadı</h1>
       <p className="mt-4 text-stone-600">{message}</p>
       <p className="mt-2 text-sm text-stone-500">Sepetiniz korunur, bilgilerinizi güncelleyip yeniden deneyebilirsiniz.</p>

@@ -1,9 +1,34 @@
-import Link from "next/link";
-import Image from "next/image";
 import { getDetailedCart } from "@/lib/cart";
+import { createClient } from "@/lib/supabase/server";
 import { CartDrawer } from "@/components/CartDrawer";
+import { getCartUpsellProducts } from "@/lib/storefront";
+import { HeaderShell } from "@/components/header/HeaderShell";
+
+/** Logo: `public/zelula-logo-header.svg` — transparent header mark. */
+
+function greetingFirstNameFromProfile(fullName: string | null | undefined): string | null {
+  const t = (fullName ?? "").trim();
+  if (!t) return null;
+  const first = t.split(/\s+/).filter(Boolean)[0];
+  return first ?? null;
+}
 
 export async function Header() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let greetingFirstName: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    greetingFirstName = greetingFirstNameFromProfile(profile?.full_name);
+  }
+
   const { lines } = await getDetailedCart();
   const count = lines.reduce((sum, x) => sum + x.quantity, 0);
   const drawerLines = lines.map((line) => ({
@@ -14,39 +39,37 @@ export async function Header() {
     quantity: line.quantity,
     price: Number(line.product.price),
   }));
+  const upsellProducts =
+    lines.length === 0
+      ? []
+      : await getCartUpsellProducts(
+          lines.map((line) => ({
+            id: line.product.id,
+            name: line.product.name,
+            categoryName: line.product.category?.name,
+            collectionId: line.product.collection?.id ?? null,
+            material: line.product.material,
+            color: line.product.color,
+            price: Number(line.product.price),
+          })),
+          3,
+        );
+  const drawerUpsellItems = upsellProducts.map((p) => ({
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    price: Number(p.price),
+    imageUrl: p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900",
+    stock: p.stock_quantity,
+  }));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#e8dfd3] bg-[#fffdfb]/95 backdrop-blur-md">
-      <div className="container-premium flex h-16 items-center justify-between gap-4">
-        <Link
-          href="/"
-          className="relative block h-8 w-[118px] shrink-0 sm:h-9 sm:w-[132px]"
-          aria-label="Zelula — Ana sayfa"
-        >
-          <Image
-            src="/zelula-logo.png"
-            alt="Zelula — jewelry & gift"
-            fill
-            className="object-contain object-left"
-            sizes="132px"
-            priority
-          />
-        </Link>
-        <nav className="hidden items-center gap-8 text-sm text-stone-700 md:flex">
-          <Link href="/koleksiyonlar" className="transition hover:text-stone-900">
-            Koleksiyonlar
-          </Link>
-          <Link href="/urunler" className="transition hover:text-stone-900">
-            Tüm Ürünler
-          </Link>
-          <Link href="/#yeni" className="transition hover:text-stone-900">
-            Yeni Gelenler
-          </Link>
-        </nav>
-        <nav className="flex items-center gap-3 text-sm text-stone-600">
-          <CartDrawer count={count} lines={drawerLines} />
-        </nav>
-      </div>
+    <header className="sticky top-0 z-40 border-b border-[#e8e2d9]/90 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
+      <HeaderShell
+        isLoggedIn={Boolean(user)}
+        greetingFirstName={greetingFirstName}
+        cartSlot={<CartDrawer count={count} lines={drawerLines} upsellItems={drawerUpsellItems} />}
+      />
     </header>
   );
 }

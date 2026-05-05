@@ -1,7 +1,9 @@
 import { ProductCard } from "@/components/ProductCard";
 import Link from "next/link";
+import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
+import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
 
 type Props = {
   searchParams: Promise<{
@@ -27,6 +29,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     min,
     max,
   });
+  const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
@@ -69,7 +72,9 @@ export default async function ProductsPage({ searchParams }: Props) {
               </Link>
             </li>
             {categories.map((c) => {
-              const href = `/urunler?kategori=${c.slug}${collectionSlug ? `&koleksiyon=${collectionSlug}` : ""}`;
+              const href = isKnownCategorySlug(c.slug)
+                ? categoryHref(c.slug)
+                : `/urunler?kategori=${c.slug}${collectionSlug ? `&koleksiyon=${collectionSlug}` : ""}`;
               return (
                 <li key={c.id}>
                   <Link
@@ -127,6 +132,8 @@ export default async function ProductsPage({ searchParams }: Props) {
                     compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                     category={p.category?.name}
                     collection={p.collection?.name ?? null}
+                    isSignedIn={isSignedIn}
+                    initialFavorited={favoriteIds.has(p.id)}
                   />
                 </li>
               ))}

@@ -1,30 +1,40 @@
 import Link from "next/link";
-import { ProductCard } from "@/components/ProductCard";
-import { getHomeData } from "@/lib/storefront";
 import Image from "next/image";
-import { ChevronRight, Droplets, RotateCcw, Shield, Truck } from "lucide-react";
+import { ProductCard } from "@/components/ProductCard";
+import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
+import { getHomeData } from "@/lib/storefront";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
+import { FadeIn } from "@/components/home/FadeIn";
+import { HomeHero } from "@/components/home/HomeHero";
+import { CinematicLinkCard } from "@/components/home/CinematicLinkCard";
+import { HomeNewsletter } from "@/components/home/HomeNewsletter";
+import { HomeCategoryGrid } from "@/components/home/HomeCategoryGrid";
+import { HomeWhyZelula } from "@/components/home/HomeWhyZelula";
+import { HomeSocialProof } from "@/components/home/HomeSocialProof";
+import { HomeProductRail, HomeProductRailItem } from "@/components/home/HomeProductRail";
+import { getInstagramFeed } from "@/lib/instagram";
+
+const HERO_IMAGE = "/hero-luxury.png";
+
+const instagramProfileHref = `https://www.instagram.com/${process.env.INSTAGRAM_USERNAME ?? "zelulaofficial"}`;
 
 export default async function HomePage() {
-  const { categories, collections, bestSellers, newArrivals } = await getHomeData();
-  /** Kategori slug → tam kanvas arka plan (kolye / küpe / yüzük / bileklik) */
-  const categoryHeroImage: Record<string, string> = {
-    kolye:
-      "https://images.pexels.com/photos/9428777/pexels-photo-9428777.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    kupe:
+  const { collections, bestSellers, newArrivals } = await getHomeData();
+  const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
+  const instagramPosts = await getInstagramFeed(4);
+  const heroVideoUrl = process.env.NEXT_PUBLIC_HERO_VIDEO_URL?.trim() || null;
+
+  const collectionHeroImage: Record<string, string> = {
+    aura: "https://images.pexels.com/photos/9428777/pexels-photo-9428777.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    noir: "https://images.pexels.com/photos/1454172/pexels-photo-1454172.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    "daily-glow":
       "https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    yuzuk:
-      "https://images.pexels.com/photos/5370707/pexels-photo-5370707.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    bileklik:
-      "https://images.pexels.com/photos/5370704/pexels-photo-5370704.jpeg?auto=compress&cs=tinysrgb&w=1200",
   };
-  const categoryFallbackImage =
-    "https://images.pexels.com/photos/1454171/pexels-photo-1454171.jpeg?auto=compress&cs=tinysrgb&w=1200";
-  const categoryDisplayOrder = ["kolye", "kupe", "yuzuk", "bileklik"];
-  const sortedCategories = [...categories].sort(
-    (a, b) =>
-      categoryDisplayOrder.indexOf(a.slug) - categoryDisplayOrder.indexOf(b.slug),
-  );
+  const collectionFallbackImage =
+    "https://images.pexels.com/photos/10983783/pexels-photo-10983783.jpeg?auto=compress&cs=tinysrgb&w=1200";
+
+  const collectionPreview = collections.slice(0, 4);
+
   const bestSellerItems = bestSellers.map((p) => ({
     product_id: p.id,
     product_name: p.name,
@@ -42,254 +52,277 @@ export default async function HomePage() {
     collection: p.collection?.name ?? null,
   }));
 
+  const bestSlice = bestSellers.slice(0, 4);
+  const kombinSlice = newArrivals.slice(0, 4);
+
   return (
-    <main className="pb-16">
+    <main className="bg-[#faf8f5] pb-20">
       <ViewItemListTracker listName="Homepage Best Sellers" listId="home_best_sellers" items={bestSellerItems} />
       <ViewItemListTracker listName="Homepage New Arrivals" listId="home_new_arrivals" items={newArrivalItems} />
-      <section className="relative overflow-hidden border-b border-[#eadfce] bg-gradient-to-b from-[#f6eee4] via-[#f9f5ef] to-transparent">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_30%_30%,rgba(214,186,162,0.35),transparent_60%)]" />
-        <div className="container-premium relative grid gap-12 py-16 md:grid-cols-[1.05fr_0.95fr] md:items-center md:py-24 lg:py-28">
-          <div className="flex max-w-xl flex-col justify-center rounded-2xl border border-[#ebe3d9]/80 bg-[#fffdfb]/75 p-6 shadow-[0_1px_0_rgba(255,255,255,0.85)_inset] backdrop-blur-[2px] sm:p-7 md:max-w-none md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none lg:max-w-2xl">
-            <p className="editorial-kicker">Zelula</p>
-            <h1 className="mt-4 font-serif text-[clamp(1.875rem,4.5vw,3.5rem)] font-normal leading-[1.1] tracking-[-0.02em] text-balance text-stone-950 sm:mt-5 sm:leading-[1.06] lg:text-[3.5rem] lg:tracking-[-0.025em]">
-              Zamansız şıklık, her an seninle
-            </h1>
-            <p className="mt-6 max-w-xl rounded-xl border border-[#e5d9cc] bg-[#fffdfb]/90 px-4 py-3.5 text-[0.9375rem] font-medium leading-[1.65] tracking-tight text-stone-800 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] sm:mt-8 sm:px-5 sm:py-4 sm:text-base sm:leading-[1.7]">
-              Kararma yapmaz • Suya dayanıklı • Antialerjik • Ücretsiz iade • Hızlı kargo
-            </p>
-            <div className="mt-9 sm:mt-11">
+
+      <HomeHero imageSrc={HERO_IMAGE} videoUrl={heroVideoUrl} />
+
+      <FadeIn delay={0.02}>
+        <section className="border-t border-[#ebe6df] bg-[#fffdfb] py-14 sm:py-16">
+          <div className="container-premium">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Öne çıkan</p>
+                <h2 className="mt-2 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
+                  Çok satanlar
+                </h2>
+              </div>
               <Link
-                href="/koleksiyonlar"
-                className="group inline-flex min-h-[3rem] w-full items-center justify-center gap-1.5 rounded-full bg-stone-950 px-10 py-3.5 text-[0.9375rem] font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(28,25,23,0.28)] transition hover:bg-stone-900 hover:shadow-[0_16px_38px_rgba(28,25,23,0.32)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 sm:w-auto sm:min-w-[15rem] sm:py-4 sm:text-sm"
+                href="/cok-satanlar"
+                className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500 underline-offset-4 transition hover:text-stone-800 hover:underline"
               >
-                Koleksiyonu Keşfet
-                <ChevronRight
-                  className="size-4 opacity-90 transition group-hover:translate-x-0.5"
-                  aria-hidden
-                />
+                Tümünü gör
               </Link>
             </div>
-            <p className="mt-4 text-xs leading-relaxed text-stone-600 sm:mt-5 sm:text-sm">
-              Bugün sipariş ver, yarın kargoda.
-            </p>
+            <HomeProductRail className="mt-10">
+              {bestSlice.map((p) => (
+                <HomeProductRailItem key={p.id}>
+                  <ProductCard
+                    id={p.id}
+                    slug={p.slug}
+                    name={p.name}
+                    summary={p.short_description}
+                    imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/99/900/900"}
+                    price={Number(p.price)}
+                    compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
+                    category={p.category?.name}
+                    collection={p.collection?.name ?? null}
+                    imageForward
+                    imageEmphasis="high"
+                    conversionOverlay
+                    badges={{ bestseller: true, new: p.new_arrival }}
+                    isSignedIn={isSignedIn}
+                    initialFavorited={favoriteIds.has(p.id)}
+                  />
+                </HomeProductRailItem>
+              ))}
+            </HomeProductRail>
           </div>
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-[#e6dccf] bg-[#efe6da] shadow-[0_16px_38px_rgba(85,63,45,0.12)]">
-            <Image
-              src="https://images.pexels.com/photos/1454171/pexels-photo-1454171.jpeg?auto=compress&cs=tinysrgb&w=1400"
-              alt="Model üzerinde Zelula takıları"
-              fill
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent p-6 pt-16 text-white sm:p-8">
-              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/90">Aura</p>
-              <p className="mt-2 max-w-sm font-serif text-xl leading-snug tracking-tight sm:text-2xl">
-                Koleksiyonlarda seçilmiş parçalar
-              </p>
+        </section>
+      </FadeIn>
+
+      <FadeIn delay={0.03}>
+        <section className="container-premium py-14 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Alışverişe başla</p>
+            <h2 className="mt-3 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
+              Kategoriler
+            </h2>
+            <p className="mt-2 text-sm font-light text-stone-600">İhtiyacın olan parçayı tek dokunuşla seç.</p>
+          </div>
+          <div className="mt-10">
+            <HomeCategoryGrid />
+          </div>
+        </section>
+      </FadeIn>
+
+      <FadeIn delay={0.04}>
+        <section className="border-t border-[#ebe6df] bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] py-14 sm:py-16">
+          <div className="container-premium mx-auto max-w-2xl text-center">
+            <p className="font-serif text-lg font-light leading-relaxed text-stone-800 sm:text-xl">
+              Zelula, sadece bir takı değil; bir hissin yansımasıdır.
+            </p>
+            <Link
+              href="/koleksiyonlar"
+              className="mt-6 inline-flex text-[11px] font-medium uppercase tracking-[0.22em] text-[color:var(--brand-gold)] underline-offset-[6px] transition hover:text-stone-800 hover:underline"
+            >
+              Hikayemizi keşfet
+            </Link>
+          </div>
+        </section>
+      </FadeIn>
+
+      <FadeIn delay={0.05}>
+        <section className="container-premium py-14 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Stil</p>
+            <h2 className="mt-3 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
+              Kombinini tamamla
+            </h2>
+            <p className="mt-2 text-sm font-light text-stone-600">Günlük ve özel anlara uyumlu seçkiler.</p>
+          </div>
+          <HomeProductRail className="mt-10">
+            {kombinSlice.map((p) => (
+              <HomeProductRailItem key={p.id}>
+                <div className="h-full transition-[transform,box-shadow] duration-200 ease-out motion-safe:hover:scale-[1.02] motion-safe:hover:shadow-[0_20px_48px_rgba(55,48,40,0.12)]">
+                  <ProductCard
+                    id={p.id}
+                    slug={p.slug}
+                    name={p.name}
+                    summary={p.short_description}
+                    imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900"}
+                    price={Number(p.price)}
+                    compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
+                    category={p.category?.name}
+                    collection={p.collection?.name ?? null}
+                    imageForward
+                    imageEmphasis="high"
+                    conversionOverlay
+                    badges={{ bestseller: p.featured, new: p.new_arrival }}
+                    className="h-full border-[#e8e2d9] shadow-[0_12px_36px_rgba(55,48,40,0.08)]"
+                    isSignedIn={isSignedIn}
+                    initialFavorited={favoriteIds.has(p.id)}
+                  />
+                </div>
+              </HomeProductRailItem>
+            ))}
+          </HomeProductRail>
+        </section>
+      </FadeIn>
+
+      <HomeWhyZelula />
+
+      <FadeIn delay={0.02}>
+        <HomeSocialProof />
+      </FadeIn>
+
+      <FadeIn delay={0.04}>
+        <section className="border-t border-[#ebe6df] bg-[#faf8f5] py-14 sm:py-16">
+          <div className="container-premium">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Koleksiyon</p>
+              <h2 className="mt-3 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
+                Ruhunu yansıtan seriler
+              </h2>
+              <p className="mt-2 text-sm font-light text-stone-600">Her seri kendi ışığını taşır.</p>
+            </div>
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+              {collectionPreview.map((c) => {
+                const cover = collectionHeroImage[c.slug] ?? collectionFallbackImage;
+                return (
+                  <CinematicLinkCard
+                    key={c.id}
+                    href={`/urunler?koleksiyon=${c.slug}`}
+                    imageSrc={cover}
+                    title={c.name}
+                    kicker=""
+                    cta="Keşfet"
+                    description={null}
+                    preset="collection"
+                    sizes="(max-width: 768px) 100vw, 25vw"
+                  />
+                );
+              })}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeIn>
 
-      <section
-        className="border-b border-[#e6dccf] bg-[#faf7f3]"
-        aria-label="Güven vaatleri"
-      >
-        <div className="container-premium">
-          <ul className="grid grid-cols-2 gap-x-5 gap-y-4 py-5 sm:grid-cols-4 sm:gap-x-0 sm:gap-y-0 sm:divide-x sm:divide-[#e5d9cc] sm:py-6">
-            {(
-              [
-                { label: "Ücretsiz iade", Icon: RotateCcw },
-                { label: "Hızlı kargo", Icon: Truck },
-                { label: "Suya dayanıklı", Icon: Droplets },
-                { label: "Antialerjik", Icon: Shield },
-              ] as const
-            ).map(({ label, Icon }) => (
-              <li
-                key={label}
-                className="flex items-center gap-2.5 px-1 py-4 sm:gap-3 sm:px-4 sm:py-5 md:px-6"
-              >
-                <Icon
-                  className="size-[15px] shrink-0 text-[#9a8478] sm:size-4"
-                  strokeWidth={1.25}
-                  aria-hidden
-                />
-                <span className="text-[13px] font-medium leading-snug tracking-tight text-stone-800 sm:text-sm">
-                  {label}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="container-premium py-10 sm:py-12">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="editorial-kicker">Seçki</p>
-            <h2 className="section-title mt-3">En Çok Tercih Edilenler</h2>
-            <p className="mt-2 max-w-lg text-sm leading-relaxed text-stone-600">
-              Zelula müşterilerinin favorileri
+      <FadeIn delay={0.03}>
+        <section className="container-premium py-12 sm:py-16">
+          <div className="rounded-[2rem] border border-[#e8e3da] bg-[#fdfcfa] px-6 py-10 text-center shadow-[0_20px_48px_rgba(55,48,40,0.06)] sm:px-12 sm:py-14">
+            <h2 className="font-serif text-xl font-light text-stone-900 sm:text-2xl">Hazır mısın?</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm font-light text-stone-600">
+              Seçtiğin parça bir tık uzağında; güvenli ödeme ile hemen tamamla.
             </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+              <Link
+                href="/urunler"
+                className="inline-flex min-h-[2.85rem] min-w-[12rem] items-center justify-center rounded-full bg-stone-900 px-8 text-[12px] font-medium uppercase tracking-[0.18em] text-[#fdfbf7] shadow-[0_14px_36px_rgba(28,24,20,0.2)] transition hover:bg-[#2a2420]"
+              >
+                Şimdi alışverişe başla
+              </Link>
+              <Link
+                href="/cok-satanlar"
+                className="inline-flex min-h-[2.85rem] min-w-[12rem] items-center justify-center rounded-full border border-[#e0d5c8] bg-white px-8 text-[12px] font-medium uppercase tracking-[0.16em] text-stone-800 transition hover:border-[color:var(--brand-gold)]/45"
+              >
+                Çok satanlar
+              </Link>
+            </div>
           </div>
-          <Link href="/urunler" className="text-sm font-medium text-amber-900 hover:underline">
-            Tümünü gör
-          </Link>
-        </div>
-        <ul className="mt-10 grid gap-7 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-          {bestSellers.slice(0, 4).map((p) => (
-            <li key={p.id}>
-              <ProductCard
-                id={p.id}
-                slug={p.slug}
-                name={p.name}
-                summary={p.short_description}
-                imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/99/900/900"}
-                price={Number(p.price)}
-                compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
-                category={p.category?.name}
-                collection={p.collection?.name ?? null}
-                imageForward
-                badges={{ bestseller: true, new: p.new_arrival }}
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
+        </section>
+      </FadeIn>
 
-      <section className="container-premium py-12 sm:py-16">
-        <p className="editorial-kicker">Mağaza</p>
-        <h2 className="section-title mt-3">Kategoriler</h2>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-stone-600">
-          Her kategoride seçilmiş parçaları keşfedin.
-        </p>
-        <ul className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-          {sortedCategories.map((c) => {
-            const src = categoryHeroImage[c.slug] ?? categoryFallbackImage;
-            return (
-              <li key={c.id}>
-                <Link
-                  href={`/urunler?kategori=${c.slug}`}
-                  aria-label={`${c.name} kategorisine git`}
-                  className="group relative isolate block aspect-[3/4] overflow-hidden rounded-2xl border border-[#e4d9cc] bg-stone-200 shadow-[0_12px_28px_rgba(55,45,35,0.08)] ring-1 ring-stone-900/5 transition duration-500 hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(55,45,35,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-800 sm:aspect-[4/5]"
-                >
-                  <Image
-                    src={src}
-                    alt=""
-                    role="presentation"
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover transition duration-700 ease-out group-hover:scale-[1.06]"
-                  />
-                  <div
-                    className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-900/35 to-stone-900/10"
-                    aria-hidden
-                  />
-                  <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/65">
-                      Keşfet
-                    </p>
-                    <p className="mt-2 font-serif text-2xl leading-tight tracking-tight text-white sm:text-[1.65rem]">
-                      {c.name}
-                    </p>
-                    <p className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-white/80 transition group-hover:text-white">
-                      Ürünleri gör
-                      <ChevronRight className="size-3.5 opacity-80 transition group-hover:translate-x-0.5" aria-hidden />
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      <section className="container-premium py-12">
-        <div className="grid gap-4 rounded-3xl border border-[#e8dece] bg-[#fffdfb] p-6 sm:grid-cols-3">
-          {["Kararma yapmaz", "Suya dayanıklı", "Antialerjik"].map((text) => (
-            <p key={text} className="rounded-2xl border border-[#eee4d8] bg-[#f9f4ec] px-4 py-3 text-sm text-stone-700">{text}</p>
-          ))}
-        </div>
-        <p className="mt-3 text-center text-xs text-stone-500">Hızlı kargo • 14 gün kolay iade • Güvenli ödeme</p>
-      </section>
-
-      <section className="container-premium py-12">
-        <div className="rounded-[2rem] border border-[#eadfce] bg-[#f7efe4] p-8 md:p-10">
-          <p className="editorial-kicker">Satış Odaklı Seçki</p>
-          <h3 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">En hızlı karar verilen ürünler önde</h3>
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-stone-600">
-            Ana sayfada ürün görünürlüğünü artırarak doğrudan satın alma akışına yönlendiriyoruz:
-            güçlü hero, 4 çok satan ürün, görselli kategori blokları ve net güven mesajları.
-          </p>
-        </div>
-      </section>
-
-      <section className="container-premium py-12">
-        <h2 className="section-title">Koleksiyonlar</h2>
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          {collections.map((c) => (
-            <Link key={c.id} href={`/urunler?koleksiyon=${c.slug}`} className="rounded-2xl border border-[#e7ddcf] bg-[#fffdfb] p-6 transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(70,53,38,0.08)]">
-              <p className="font-serif text-xl text-stone-900">{c.name}</p>
-              <p className="mt-2 text-sm leading-relaxed text-stone-500">{c.description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section id="yeni" className="container-premium py-12">
-        <h2 className="section-title">Yeni Gelenler</h2>
-        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {newArrivals.map((p) => (
-            <li key={p.id}>
-              <ProductCard
-                id={p.id}
-                slug={p.slug}
-                name={p.name}
-                summary={p.short_description}
-                imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900"}
-                price={Number(p.price)}
-                compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
-                category={p.category?.name}
-                collection={p.collection?.name ?? null}
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="container-premium py-12">
-        <div className="rounded-3xl border border-[#e8dece] bg-[#fffdfb] p-8">
-          <h2 className="font-serif text-2xl">#zelulastyle</h2>
-          <p className="mt-2 text-sm text-stone-600">Topluluğumuzdan gerçek görünümler</p>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[1, 2, 3, 4].map((x) => (
-              <Image key={x} src={`https://picsum.photos/id/${120 + x}/500/500`} alt="Instagram stil" width={500} height={500} className="aspect-square rounded-xl object-cover" />
-            ))}
+      <FadeIn>
+        <section className="container-premium py-12 sm:py-16">
+          <div className="rounded-[2rem] border border-[#e8e3da] bg-[#fdfcfa] px-6 py-10 shadow-[0_20px_48px_rgba(55,48,40,0.06)] sm:px-10 sm:py-12">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="font-serif text-2xl font-light text-stone-900">Instagram&apos;da #zelulastyle</h2>
+                <p className="mt-2 text-sm font-light text-stone-600">Gerçek kombinler, gerçek Zelula ışıltısı.</p>
+              </div>
+              <Link
+                href={instagramProfileHref}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500 underline-offset-4 transition hover:text-stone-800 hover:underline"
+              >
+                Instagram
+              </Link>
+            </div>
+            {instagramPosts.length > 0 ? (
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                {instagramPosts.map((post) => (
+                  <Link
+                    key={post.id}
+                    href={post.permalink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group overflow-hidden rounded-xl border border-[#ebe6df] shadow-sm transition duration-500 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-[#e0d5c8] motion-safe:hover:shadow-[0_12px_32px_rgba(55,48,40,0.08)]"
+                  >
+                    <Image
+                      src={post.imageUrl}
+                      alt={post.caption}
+                      width={500}
+                      height={500}
+                      className="aspect-square object-cover transition duration-[700ms] ease-out motion-safe:group-hover:scale-[1.04]"
+                    />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                  {[
+                    "https://images.pexels.com/photos/1454171/pexels-photo-1454171.jpeg?auto=compress&cs=tinysrgb&w=900",
+                    "https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=900",
+                    "https://images.pexels.com/photos/1454172/pexels-photo-1454172.jpeg?auto=compress&cs=tinysrgb&w=900",
+                    "https://images.pexels.com/photos/10983783/pexels-photo-10983783.jpeg?auto=compress&cs=tinysrgb&w=900",
+                  ].map((src, i) => (
+                    <Link
+                      key={`${src}-${i}`}
+                      href={instagramProfileHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group overflow-hidden rounded-xl border border-[#ebe6df] shadow-sm transition duration-500 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-[#e0d5c8] motion-safe:hover:shadow-[0_12px_32px_rgba(55,48,40,0.08)]"
+                    >
+                      <Image
+                        src={src}
+                        alt="Zelula Instagram önizleme"
+                        width={500}
+                        height={500}
+                        className="aspect-square object-cover transition duration-[700ms] ease-out motion-safe:group-hover:scale-[1.04]"
+                      />
+                    </Link>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-dashed border-[#e0d5c8] bg-[#faf8f5]/80 px-6 py-5 text-center">
+                  <p className="text-sm font-light leading-relaxed text-stone-600">
+                    Canlı akış kısa süreli erişilemiyor. En güncel paylaşımlar için profili ziyaret edebilirsin.
+                  </p>
+                  <Link
+                    href={instagramProfileHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center justify-center rounded-full border border-stone-300/80 bg-white px-6 py-2.5 text-xs font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-400 hover:bg-[#faf8f5]"
+                  >
+                    Profili aç @{process.env.INSTAGRAM_USERNAME ?? "zelulaofficial"}
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeIn>
 
-      <section className="container-premium py-14">
-        <div className="rounded-3xl border border-[#e8dece] bg-[#f7efe4] p-8 text-center">
-          <h2 className="font-serif text-2xl">Zelula bültenine katılın</h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-stone-600">Yeni koleksiyonlar, özel kampanyalar ve editoryal içerikler için e-posta listemize kaydolun.</p>
-          <form className="mx-auto mt-6 flex max-w-md gap-2">
-            <input className="w-full rounded-full border border-[#dccfbf] bg-white px-4 py-2.5 text-sm" placeholder="E-posta adresiniz" />
-            <button className="rounded-full bg-stone-900 px-5 text-sm text-white">Katıl</button>
-          </form>
-        </div>
-      </section>
-
-      <section className="container-premium pb-4">
-        <div className="rounded-3xl border border-[#e8dece] bg-white p-6 sm:p-8">
-          <h3 className="font-serif text-2xl">Neden Zelula?</h3>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3 text-sm text-stone-600">
-            <p>Ürün sayfasında materyal, bakım ve kargo detaylarını net gösterir.</p>
-            <p>Ödeme akışında gereksiz adımları kaldırır, tek formda tamamlanır.</p>
-            <p>Her siparişte ödeme doğrulaması ve operasyon takibi şeffaf ilerler.</p>
-          </div>
-        </div>
-      </section>
+      <FadeIn delay={0.05}>
+        <HomeNewsletter />
+      </FadeIn>
     </main>
   );
 }
