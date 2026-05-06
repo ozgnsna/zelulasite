@@ -19,7 +19,7 @@ const HERO_IMAGE = "/hero-luxury.png";
 const instagramProfileHref = `https://www.instagram.com/${process.env.INSTAGRAM_USERNAME ?? "zelulaofficial"}`;
 
 export default async function HomePage() {
-  const { collections, bestSellers, newArrivals } = await getHomeData();
+  const { categories, collections, bestSellers, newArrivals } = await getHomeData();
   const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
   const instagramPosts = await getInstagramFeed(4);
   const heroVideoUrl = process.env.NEXT_PUBLIC_HERO_VIDEO_URL?.trim() || null;
