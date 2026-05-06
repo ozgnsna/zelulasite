@@ -24,7 +24,7 @@ export default async function HomePage() {
   const instagramPosts = await getInstagramFeed(4);
   const heroVideoUrl = process.env.NEXT_PUBLIC_HERO_VIDEO_URL?.trim() || null;
 
-  const collectionHeroImage: Record<string, string> = {
+  const collectionFallbackBySlug: Record<string, string> = {
     aura: "https://images.pexels.com/photos/9428777/pexels-photo-9428777.jpeg?auto=compress&cs=tinysrgb&w=1200",
     noir: "https://images.pexels.com/photos/1454172/pexels-photo-1454172.jpeg?auto=compress&cs=tinysrgb&w=1200",
     "daily-glow":
@@ -54,28 +54,42 @@ export default async function HomePage() {
 
   const bestSlice = bestSellers.slice(0, 4);
   const kombinSlice = newArrivals.slice(0, 4);
-  const categoryCards = [
+  const categoryDefaults = [
     {
+      slug: "kolye",
       label: "Kolye",
       href: "/kategori/kolye",
-      image: "https://images.pexels.com/photos/1454173/pexels-photo-1454173.jpeg?auto=compress&cs=tinysrgb&w=800",
+      fallbackImage: "https://images.pexels.com/photos/1454173/pexels-photo-1454173.jpeg?auto=compress&cs=tinysrgb&w=800",
     },
     {
+      slug: "kupe",
       label: "Küpe",
       href: "/kategori/kupe",
-      image: "https://images.pexels.com/photos/5370707/pexels-photo-5370707.jpeg?auto=compress&cs=tinysrgb&w=800",
+      fallbackImage: "https://images.pexels.com/photos/5370707/pexels-photo-5370707.jpeg?auto=compress&cs=tinysrgb&w=800",
     },
     {
+      slug: "bileklik",
       label: "Bileklik",
       href: "/kategori/bileklik",
-      image: "https://images.pexels.com/photos/5370704/pexels-photo-5370704.jpeg?auto=compress&cs=tinysrgb&w=800",
+      fallbackImage: "https://images.pexels.com/photos/5370704/pexels-photo-5370704.jpeg?auto=compress&cs=tinysrgb&w=800",
     },
     {
+      slug: "yuzuk",
       label: "Yüzük",
       href: "/kategori/yuzuk",
-      image: "https://images.pexels.com/photos/5370706/pexels-photo-5370706.jpeg?auto=compress&cs=tinysrgb&w=800",
+      fallbackImage: "https://images.pexels.com/photos/5370706/pexels-photo-5370706.jpeg?auto=compress&cs=tinysrgb&w=800",
     },
-  ];
+  ] as const;
+  const categoryBySlug = new Map(categories.map((c) => [c.slug, c]));
+  const categoryCards = categoryDefaults.map((cfg) => {
+    const dbRow = categoryBySlug.get(cfg.slug);
+    const imageFromDb = String(dbRow?.image_url ?? "").trim();
+    return {
+      label: dbRow?.name ?? cfg.label,
+      href: cfg.href,
+      image: imageFromDb || cfg.fallbackImage,
+    };
+  });
 
   return (
     <main className="bg-[#faf8f5] pb-20">
@@ -215,7 +229,8 @@ export default async function HomePage() {
             </div>
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
               {collectionPreview.map((c) => {
-                const cover = collectionHeroImage[c.slug] ?? collectionFallbackImage;
+                const imageFromDb = String(c.image_url ?? "").trim();
+                const cover = imageFromDb || collectionFallbackBySlug[c.slug] || collectionFallbackImage;
                 return (
                   <CinematicLinkCard
                     key={c.id}

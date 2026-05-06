@@ -20,6 +20,7 @@ export default async function AdminEditProductPage({
     imageUploadError?: string;
     imageUploadOk?: string;
     imageDeleted?: string;
+    productSaved?: string;
   }>;
 }) {
   const { id } = await params;
@@ -28,6 +29,7 @@ export default async function AdminEditProductPage({
   const imageUploadError = sp.imageUploadError ?? "";
   const imageUploadOk = sp.imageUploadOk === "1";
   const imageDeleted = sp.imageDeleted === "1";
+  const productSaved = sp.productSaved === "1";
 
   const supabase = await createClient();
   const {
@@ -203,6 +205,11 @@ export default async function AdminEditProductPage({
       {imageDeleted ? (
         <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
           Görsel silindi.
+        </div>
+      ) : null}
+      {productSaved ? (
+        <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm font-medium text-emerald-950">
+          Değişiklikler başarıyla kaydedildi.
         </div>
       ) : null}
 

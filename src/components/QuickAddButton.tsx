@@ -14,7 +14,7 @@ export function QuickAddButton({
   category,
   collection,
   className,
-  label = "Şimdi sahip ol",
+  label = "🛒 Stiline Ekle",
   successMessage = "Sepetine zarif bir dokunuş eklendi ✨",
   productSlug,
 }: {

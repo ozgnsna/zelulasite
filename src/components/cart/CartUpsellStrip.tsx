@@ -58,7 +58,7 @@ export function CartUpsellStrip({ items }: { items: CartUpsellItem[] }) {
                 }}
                 className="mt-auto rounded-full border border-[#e4d7c4] bg-[linear-gradient(135deg,#faf6ef,#fffdfb)] px-3 py-2 text-[11px] font-medium text-stone-800 transition hover:border-[#c6a15b]/55 hover:shadow-[0_6px_14px_rgba(198,161,91,0.18)] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {pendingId === p.id ? "Ekleniyor…" : p.stock < 1 ? "Tükendi" : "Sepete ekle"}
+                {pendingId === p.id ? "Ekleniyor…" : p.stock < 1 ? "Tükendi" : "🛒 Stiline Ekle"}
               </button>
             </div>
           </li>

@@ -5,6 +5,8 @@ import { orderStatusLabel } from "@/lib/account/order-status";
 import {
   fetchTrendyolOrdersAction,
   importTrendyolProductsAction,
+  saveCategory,
+  saveCollection,
   signOutAdmin,
   testTrendyolConnectionAction,
 } from "@/app/actions/admin";
@@ -208,7 +210,7 @@ export default async function AdminPage({
   const { start: dayStart, end: dayEnd } = istanbulDayUtcRange();
   const { start: yStart, end: yEnd } = istanbulYesterdayUtcRange();
 
-  const [todayOrdersRes, todayAnalyticsRes, productsRes, todayOrderItemsRes, recentOrdersListRes, yesterdayOrdersRes] =
+  const [todayOrdersRes, todayAnalyticsRes, productsRes, todayOrderItemsRes, recentOrdersListRes, yesterdayOrdersRes, categoriesRes, collectionsRes] =
     await Promise.all([
     admin
       .from("orders")
@@ -248,6 +250,8 @@ export default async function AdminPage({
       .lte("created_at", yEnd.toISOString())
       .order("created_at", { ascending: false })
       .limit(50),
+    admin.from("categories").select("id,name,slug,image_url").order("name", { ascending: true }).limit(100),
+    admin.from("collections").select("id,name,slug,description,image_url").order("name", { ascending: true }).limit(100),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
@@ -256,6 +260,8 @@ export default async function AdminPage({
   const products = productsRes.data ?? [];
   const todayOrderItems = todayOrderItemsRes.data ?? [];
   const yesterdayOrders = yesterdayOrdersRes.data ?? [];
+  const categories = categoriesRes.data ?? [];
+  const collections = collectionsRes.data ?? [];
 
   const ordersToday = todayOrders.length;
   const revenueToday = todayOrders
@@ -959,6 +965,67 @@ export default async function AdminPage({
                 Ürün yönetimini aç
               </Link>
             </article>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-stone-200 bg-white p-5">
+              <h3 className="text-sm font-semibold text-stone-900">Kategori görselleri (Ana sayfa)</h3>
+              <p className="mt-1 text-xs text-stone-500">Slug eşleşen kartlarda bu görseller kullanılır.</p>
+              <div className="mt-4 space-y-3">
+                {categories.map((c) => (
+                  <form key={`cat-${c.id}`} action={saveCategory} className="rounded-xl border border-stone-200/80 bg-stone-50/40 p-3">
+                    <input type="hidden" name="id" value={c.id} />
+                    <input type="hidden" name="name" value={c.name} />
+                    <input type="hidden" name="slug" value={c.slug} />
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-stone-900">{c.name}</p>
+                      <span className="rounded-full bg-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-700">{c.slug}</span>
+                    </div>
+                    <input
+                      name="image_url"
+                      defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
+                      placeholder="https://... kategori görsel URL"
+                      className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-800"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
+                        Kaydet
+                      </button>
+                    </div>
+                  </form>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-stone-200 bg-white p-5">
+              <h3 className="text-sm font-semibold text-stone-900">Koleksiyon görselleri (Ana sayfa)</h3>
+              <p className="mt-1 text-xs text-stone-500">Koleksiyon kartları bu URL alanını kullanır.</p>
+              <div className="mt-4 space-y-3">
+                {collections.map((c) => (
+                  <form key={`col-${c.id}`} action={saveCollection} className="rounded-xl border border-stone-200/80 bg-stone-50/40 p-3">
+                    <input type="hidden" name="id" value={c.id} />
+                    <input type="hidden" name="name" value={c.name} />
+                    <input type="hidden" name="slug" value={c.slug} />
+                    <input type="hidden" name="description" value={String((c as { description?: string | null }).description ?? "")} />
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-stone-900">{c.name}</p>
+                      <span className="rounded-full bg-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-700">{c.slug}</span>
+                    </div>
+                    <input
+                      name="image_url"
+                      defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
+                      placeholder="https://... koleksiyon görsel URL"
+                      className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-800"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
+                        Kaydet
+                      </button>
+                    </div>
+                  </form>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       ) : null}

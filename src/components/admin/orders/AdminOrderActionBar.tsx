@@ -85,6 +85,7 @@ export function AdminOrderActionBar({
         <input type="hidden" name="id" value={orderId} />
         <PendingButton
           pendingLabel="Kontrol ediliyor…"
+          disabled={cancelled}
           className={`${btnBase} border border-[#e8dfd3] bg-white text-stone-700 shadow-sm hover:border-stone-300 hover:bg-[#fffdfb]`}
         >
           Ödemeyi Kontrol Et

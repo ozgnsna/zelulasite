@@ -4,6 +4,7 @@ create table if not exists categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
+  image_url text,
   parent_id uuid references categories(id) on delete set null,
   created_at timestamptz default now()
 );
@@ -13,6 +14,7 @@ create table if not exists collections (
   name text not null,
   slug text not null unique,
   description text,
+  image_url text,
   created_at timestamptz default now()
 );
 

@@ -2,6 +2,7 @@ export type Category = {
   id: string;
   name: string;
   slug: string;
+  image_url?: string | null;
   /** Opsiyonel; Supabase `categories.parent_id` ile uyumlu */
   parent_id?: string | null;
 };
@@ -11,6 +12,7 @@ export type Collection = {
   name: string;
   slug: string;
   description: string | null;
+  image_url?: string | null;
 };
 
 export type Product = {

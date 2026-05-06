@@ -120,7 +120,7 @@ export function RelatedProductsCarousel({ items }: { items: RelatedItem[] }) {
                     category={item.category?.name}
                     collection={item.collection?.name ?? null}
                     productSlug={item.slug}
-                    label="+ Sepete ekle"
+                    label="🛒 Stiline Ekle"
                     successMessage="Sepete eklendi ✨"
                     className="w-full rounded-full border-[#dccdb8] bg-[#fdfbf8] py-2 text-[11px] font-medium text-stone-800 transition hover:border-[#c6a15b]/60 hover:bg-[#f9f1e4] hover:shadow-[0_8px_18px_rgba(198,161,91,0.18)]"
                   />

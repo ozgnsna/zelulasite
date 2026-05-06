@@ -9,7 +9,7 @@ type Props = {
   searchParams: Promise<{
     kategori?: string;
     koleksiyon?: string;
-    sirala?: "newest" | "price_asc" | "price_desc" | "featured";
+    sirala?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
     min?: string;
     max?: string;
   }>;
@@ -104,6 +104,7 @@ export default async function ProductsPage({ searchParams }: Props) {
             </select>
             <select name="sirala" defaultValue={sort} className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm">
               <option value="newest">En yeni</option>
+              <option value="oldest">En eski</option>
               <option value="featured">Öne çıkan</option>
               <option value="price_asc">Fiyat artan</option>
               <option value="price_desc">Fiyat azalan</option>

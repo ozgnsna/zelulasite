@@ -51,7 +51,7 @@ export async function getProducts(params: {
   /** Birden fazla DB kategori slug’ı (ör. takılar hub) */
   categorySlugs?: string[];
   collection?: string;
-  sort?: "newest" | "price_asc" | "price_desc" | "featured";
+  sort?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
   min?: number;
   max?: number;
   /** Çok satanlar vb.: yalnızca featured=true */
@@ -94,6 +94,9 @@ export async function getProducts(params: {
     if (params.max) query = query.lte("price", params.max);
 
     switch (params.sort) {
+      case "oldest":
+        query = query.order("created_at", { ascending: true });
+        break;
       case "price_asc":
         query = query.order("price", { ascending: true });
         break;

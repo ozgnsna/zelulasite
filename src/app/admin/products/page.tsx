@@ -109,6 +109,7 @@ export default async function AdminProductsPage({
     stock?: string;
     review?: string;
     sales?: string;
+    sort?: "newest" | "oldest";
     editProduct?: string;
     deleted?: string;
     deleteError?: string;
@@ -124,6 +125,7 @@ export default async function AdminProductsPage({
   const stockFilter = (sp.stock ?? "all").trim();
   const reviewFilter = (sp.review ?? "all").trim();
   const salesFilter = (sp.sales ?? "all").trim();
+  const sortFilter = (sp.sort ?? "newest").trim() === "oldest" ? "oldest" : "newest";
   const deletedCount = Number(sp.deleted ?? 0);
   const deleteError = sp.deleteError ?? "";
   const bulkOk = (sp.bulkOk ?? "").trim();
@@ -143,7 +145,11 @@ export default async function AdminProductsPage({
     "id,name,sku,price,compare_at_price,stock_quantity,is_active,category_id,trendyol_active,trendyol_category_id,trendyol_barcode,trendyol_stock_code,short_description,full_description,product_images(image_url,is_cover,sort_order)";
 
   const [{ data: products }, { data: orderItemsSales }, { data: viewEvents }] = await Promise.all([
-    admin.from("products").select(productSelect).order("created_at", { ascending: false }).limit(400),
+    admin
+      .from("products")
+      .select(productSelect)
+      .order("created_at", { ascending: sortFilter === "oldest" })
+      .limit(400),
     admin
       .from("order_items")
       .select("product_id,quantity,order:orders!inner(payment_status,order_status)")
@@ -257,6 +263,7 @@ export default async function AdminProductsPage({
       <input type="hidden" name="stock" value={stockFilter} />
       <input type="hidden" name="review" value={reviewFilter} />
       <input type="hidden" name="sales" value={salesFilter} />
+      <input type="hidden" name="sort" value={sortFilter} />
     </>
   );
 
@@ -484,7 +491,7 @@ export default async function AdminProductsPage({
             </div>
           </div>
           <form
-            className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1.5fr)_repeat(5,minmax(100px,1fr))_auto_auto] lg:items-stretch"
+            className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1.5fr)_repeat(6,minmax(100px,1fr))_auto_auto] lg:items-stretch"
             method="get"
           >
             <input
@@ -538,6 +545,14 @@ export default async function AdminProductsPage({
               <option value="no_sales">Satış: Satmıyor (ürün)</option>
               <option value="has_sales">Satış: Satış var</option>
               <option value="popular">Satış: Popüler (üst dilim)</option>
+            </select>
+            <select
+              name="sort"
+              defaultValue={sortFilter}
+              className="h-9 rounded-lg border border-stone-200/90 bg-white px-2.5 text-sm text-stone-800 shadow-sm"
+            >
+              <option value="newest">Sıralama: En yeni</option>
+              <option value="oldest">Sıralama: En eski</option>
             </select>
             <button
               type="submit"
@@ -934,6 +949,7 @@ export default async function AdminProductsPage({
               <input type="hidden" name="stock" value={stockFilter} />
               <input type="hidden" name="review" value={reviewFilter} />
               <input type="hidden" name="sales" value={salesFilter} />
+              <input type="hidden" name="sort" value={sortFilter} />
             </form>
           ))}
 

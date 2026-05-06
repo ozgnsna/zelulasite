@@ -122,7 +122,7 @@ export function ProductCard({
                   category={category}
                   collection={collection}
                   productSlug={slug}
-                  label="Şimdi sahip ol"
+                  label="🛒 Stiline Ekle"
                   className="rounded-full border-0 bg-gradient-to-b from-stone-900 to-stone-950 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_rgba(15,12,10,0.35)] transition hover:from-[#3d3228] hover:to-brand-gold hover:shadow-[0_16px_36px_rgba(201,168,106,0.35)]"
                 />
               </div>
@@ -174,7 +174,7 @@ export function ProductCard({
               category={category}
               collection={collection}
               productSlug={slug}
-              label={conversionOverlay ? "Şimdi sahip ol" : "Stiline ekle"}
+              label="🛒 Stiline Ekle"
               className={
                 conversionOverlay
                   ? "border-brand-gold/35 bg-[#fffdfb] font-semibold shadow-sm motion-safe:hover:border-brand-gold/60"

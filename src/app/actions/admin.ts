@@ -261,7 +261,7 @@ export async function saveProduct(formData: FormData) {
   revalidatePath("/admin");
   if (returnTo !== "/admin") revalidatePath(returnTo);
   if (id && returnTo !== "/admin") {
-    redirect(returnTo);
+    redirect(withQueryParam(returnTo, "productSaved", "1"));
   }
 }
 
@@ -521,10 +521,12 @@ export async function saveCategory(formData: FormData) {
   const payload = {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? ""),
+    image_url: String(formData.get("image_url") ?? "").trim() || null,
   };
   if (id) await supabase.from("categories").update(payload).eq("id", id);
   else await supabase.from("categories").insert(payload);
   revalidatePath("/admin");
+  revalidatePath("/");
 }
 
 export async function saveCollection(formData: FormData) {
@@ -534,10 +536,12 @@ export async function saveCollection(formData: FormData) {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? ""),
     description: String(formData.get("description") ?? ""),
+    image_url: String(formData.get("image_url") ?? "").trim() || null,
   };
   if (id) await supabase.from("collections").update(payload).eq("id", id);
   else await supabase.from("collections").insert(payload);
   revalidatePath("/admin");
+  revalidatePath("/");
 }
 
 export async function updateOrderStatus(formData: FormData) {
@@ -735,7 +739,7 @@ export async function reconcileOrderStatus(formData: FormData) {
   if (!id) return;
 
   const [{ data: order }, { data: logs }] = await Promise.all([
-    supabase.from("orders").select("id,payment_status,payment_provider").eq("id", id).maybeSingle(),
+    supabase.from("orders").select("id,payment_status,order_status,payment_provider").eq("id", id).maybeSingle(),
     supabase
       .from("payment_logs")
       .select("status,callback_hash,created_at")
@@ -747,7 +751,8 @@ export async function reconcileOrderStatus(formData: FormData) {
 
   const hasSuccess = (logs ?? []).some((l) => l.status === "success");
   const nextPaymentStatus = hasSuccess ? "paid" : order.payment_status;
-  const nextOrderStatus = hasSuccess ? "confirmed" : "pending";
+  const isCancelled = String(order.order_status ?? "") === "cancelled";
+  const nextOrderStatus = isCancelled ? "cancelled" : hasSuccess ? "confirmed" : String(order.order_status ?? "pending");
 
   if (!(order.payment_status === "paid" && !hasSuccess)) {
     await supabase
