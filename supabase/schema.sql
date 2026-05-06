@@ -168,6 +168,10 @@ alter table order_items enable row level security;
 alter table customers enable row level security;
 alter table addresses enable row level security;
 alter table payment_logs enable row level security;
+alter table analytics_events enable row level security;
+
+revoke all on table public.analytics_events from anon;
+revoke all on table public.analytics_events from authenticated;
 
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,

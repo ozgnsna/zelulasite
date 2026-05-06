@@ -60,6 +60,7 @@ Premium Türk takı markası için hazırlanmış, mobil-first ve conversion oda
 - Callback işleme idempotenttir (`payment_logs.callback_hash` unique index).
 - Aynı başarılı callback tekrar gelirse sipariş tekrar işlenmez.
 - Test/mimari modu için `.env.local` içinde `PAYTR_USE_MOCK="true"` bırakın; gerçek anahtar olmadan akış çalışır.
+- Supabase Security Advisor notu: Free planda `Leaked Password Protection` açılamaz. Pro plan ve üzeri pakete geçildiğinde `Authentication > Attack Protection > Prevent use of leaked passwords` etkinleştirilmelidir.
 
 ## Reconciliation için kritik kolonlar
 

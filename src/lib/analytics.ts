@@ -70,7 +70,7 @@ function sendToBackend(event_name: string, payload: Record<string, unknown>) {
   const body = JSON.stringify({
     event_name,
     occurred_at: new Date().toISOString(),
-    page_path: window.location.pathname + window.location.search,
+    page_path: window.location.pathname,
     client_id: getClientId(),
     ...payload,
   });
