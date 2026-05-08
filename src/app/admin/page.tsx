@@ -193,6 +193,15 @@ function formatOrderRelativeTimeTr(iso: string): string {
   return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 }
 
+/** Canlı şerit için kısa süre gösterimi (örn. "42 sn önce"). */
+function formatLiveOrderStripAge(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const sec = Math.floor(Math.max(0, Date.now() - t) / 1000);
+  if (sec < 120) return `${Math.max(1, sec)} sn önce`;
+  return formatOrderRelativeTimeTr(iso);
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
@@ -511,7 +520,7 @@ export default async function AdminPage({
                 ordersToday === 0 ? (
                   <>Sonraki adım: ürün oluştur → fiyat &amp; stok → Trendyol&apos;da yayınla. İlk siparişe en kısa rota.</>
                 ) : (
-                  <>Siparişleri onayla / paketle; kargo bilgisini güncel tut. Son liste aşağıda.</>
+                  <>Siparişleri onayla / paketle; kargo bilgisini güncel tut. Son liste hemen aşağıda.</>
                 )
               }
             />
@@ -575,6 +584,116 @@ export default async function AdminPage({
           <p className="text-center text-[11px] font-medium text-stone-500">
             Son kontrol: <span className="font-semibold text-stone-700">{dashboardCheckedAtTr}</span> · İstanbul
           </p>
+
+          <section className="rounded-2xl border border-emerald-200/55 bg-gradient-to-b from-white via-white to-emerald-50/35 p-4 shadow-[0_6px_28px_-12px_rgba(16,80,60,0.12)] ring-1 ring-emerald-900/[0.06]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="flex items-center gap-2 text-base font-semibold text-stone-950">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                  </span>
+                  Son siparişler
+                </h2>
+                <p className="mt-0.5 text-[11px] font-medium text-stone-600">
+                  Canlı kuyruk · son 50 · {dashboardCheckedAtTr}
+                </p>
+              </div>
+              <Link
+                href="/admin/products"
+                className="shrink-0 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50"
+              >
+                Katalog
+              </Link>
+            </div>
+            {recentOrdersList.length > 0 ? (
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-emerald-200/60 bg-emerald-950/[0.04] px-3 py-2 text-[12px] leading-snug text-stone-800">
+                <span className="font-bold text-emerald-800">Yeni sipariş</span>
+                <span className="text-stone-400" aria-hidden>
+                  ·
+                </span>
+                <span className="max-w-[min(200px,40vw)] truncate font-semibold text-stone-900">
+                  {recentOrdersList[0].customer_name}
+                </span>
+                <span className="text-stone-400" aria-hidden>
+                  ·
+                </span>
+                <span className="font-bold tabular-nums text-stone-900">{toTry(Number(recentOrdersList[0].total ?? 0))}</span>
+                <span className="text-stone-400" aria-hidden>
+                  ·
+                </span>
+                <span className="text-[11px] font-semibold tabular-nums text-stone-600">
+                  {formatLiveOrderStripAge(String(recentOrdersList[0].created_at ?? ""))}
+                </span>
+                <Link
+                  href={`/admin/orders/${recentOrdersList[0].id}`}
+                  className="ml-auto text-[11px] font-bold text-emerald-800 underline-offset-2 hover:underline"
+                >
+                  Aç →
+                </Link>
+              </div>
+            ) : null}
+            <ul className="mt-3 space-y-2.5">
+              {recentOrdersList.length === 0 ? (
+                <li className="rounded-xl border border-dashed border-stone-300 bg-stone-50/80 px-4 py-5 text-sm text-stone-700">
+                  <p className="font-medium text-stone-900">Henüz sipariş yok</p>
+                  <p className="mt-2 text-sm leading-relaxed text-stone-700">
+                    İlk sipariş için görselleri iyileştirin, fiyatı netleştirin ve ürünleri Trendyol&apos;a göndererek erişimi
+                    büyütün.
+                  </p>
+                </li>
+              ) : (
+                recentOrdersList.map((o, index) => {
+                  const badge = adminOrderListBadge(o);
+                  const paymentBadge = paymentStatusBadge(String(o.payment_status ?? ""));
+                  const isNewest = index === 0;
+                  return (
+                    <li
+                      key={o.id}
+                      className={`group grid grid-cols-1 gap-3 rounded-xl border px-4 py-3 transition-all duration-200 hover:-translate-y-px hover:shadow-[0_10px_24px_-12px_rgba(28,25,23,0.18)] md:grid-cols-[minmax(0,1fr)_auto] ${
+                        isNewest
+                          ? "border-emerald-300/80 bg-gradient-to-r from-emerald-50/70 via-white to-stone-50/50 ring-2 ring-emerald-500/20 hover:border-emerald-400/90 hover:ring-emerald-500/25"
+                          : "border-stone-200/80 bg-stone-50/35 hover:border-stone-300/80 hover:bg-stone-50 hover:ring-1 hover:ring-stone-300/35"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-mono text-xs font-medium tracking-wide text-stone-700" title={o.order_number}>
+                            {shortenOrderNumberDisplay(o.order_number)}
+                          </p>
+                          {isNewest ? (
+                            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                              En yeni
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-stone-950">{o.customer_name}</p>
+                        <p className="mt-1 text-[11px] font-medium tabular-nums text-stone-500">
+                          {formatOrderRelativeTimeTr(o.created_at)}
+                        </p>
+                        <p className="mt-1.5 text-[11px] text-stone-500 opacity-0 transition-opacity group-hover:opacity-100">
+                          {paymentBadge.label} · {badge.label}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-end gap-2 md:flex-nowrap">
+                        <span className={paymentBadge.pill}>{paymentBadge.label}</span>
+                        <span className={badge.pill}>{badge.label}</span>
+                        <div className="min-w-[84px] text-right">
+                          <OrderListTryPrice n={Number(o.total ?? 0)} />
+                        </div>
+                        <Link
+                          href={`/admin/orders/${o.id}`}
+                          className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-400 hover:bg-stone-100 hover:text-stone-950 active:scale-[0.99]"
+                        >
+                          Detay
+                        </Link>
+                      </div>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </section>
 
           <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
             <Link
@@ -806,50 +925,6 @@ export default async function AdminPage({
             </ul>
           </section>
 
-          <section className="rounded-2xl border border-stone-200/75 bg-white p-5 shadow-[0_3px_16px_-8px_rgba(28,25,23,0.06)]">
-            <h2 className="text-base font-semibold text-stone-950">Analytics özeti (bugün)</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Metric title="Visitors today" value={dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")} />
-              <Metric title="Product views" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
-              <Metric title="Add to carts" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
-              <Metric title="Checkout starts" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
-              <Metric title="Purchases" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
-              <Metric
-                title="Conversion rate"
-                value={`${dashboardAnalytics.conversionRate.toLocaleString("tr-TR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}%`}
-              />
-            </div>
-            <div className="mt-4 rounded-xl border border-stone-200/70 bg-stone-50/50 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">
-                Funnel: View product → Add to cart → Checkout → Purchase
-              </p>
-              <p className="mt-1 text-sm text-stone-700">
-                {dashboardAnalytics.funnel.view_item.toLocaleString("tr-TR")} →{" "}
-                {dashboardAnalytics.funnel.add_to_cart.toLocaleString("tr-TR")} →{" "}
-                {dashboardAnalytics.funnel.begin_checkout.toLocaleString("tr-TR")} →{" "}
-                {dashboardAnalytics.funnel.purchase.toLocaleString("tr-TR")}
-              </p>
-            </div>
-            <div className="mt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Top viewed products</p>
-              {dashboardAnalytics.topViewedProducts.length === 0 ? (
-                <p className="mt-2 text-sm text-stone-500">Henüz görüntülenme verisi yok.</p>
-              ) : (
-                <ul className="mt-2 space-y-1.5">
-                  {dashboardAnalytics.topViewedProducts.map((row) => (
-                    <li key={row.productId} className="flex items-center justify-between rounded-lg border border-stone-200/70 bg-white px-3 py-2">
-                      <span className="truncate text-sm text-stone-800">{row.productName}</span>
-                      <span className="text-sm font-semibold tabular-nums text-stone-900">{row.views.toLocaleString("tr-TR")}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-
           <section>
             <h2 className="text-base font-semibold text-stone-950">Bugün yapılacaklar</h2>
             <p className="mt-1 text-sm text-stone-700">Küçük adımlar; büyük etki. Bugün bitmesi iyi olanlar.</p>
@@ -943,59 +1018,49 @@ export default async function AdminPage({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-stone-200/75 bg-white p-4 shadow-[0_3px_18px_-8px_rgba(28,25,23,0.055)]">
-            <h2 className="text-sm font-semibold text-stone-950">Son siparişler</h2>
-            <p className="mt-0.5 text-[11px] font-medium text-stone-500">
-              50 kayıt · kısa sipariş no · son yenileme {dashboardCheckedAtTr}
-            </p>
-            <ul className="mt-4 space-y-2.5">
-              {recentOrdersList.length === 0 ? (
-                <li className="rounded-xl border border-dashed border-stone-300 bg-stone-50/80 px-4 py-5 text-sm text-stone-700">
-                  <p className="font-medium text-stone-900">Henüz sipariş yok</p>
-                  <p className="mt-2 text-sm leading-relaxed text-stone-700">
-                    İlk sipariş için görselleri iyileştirin, fiyatı netleştirin ve ürünleri Trendyol&apos;a göndererek erişimi
-                    büyütün.
-                  </p>
-                </li>
+          <section className="rounded-2xl border border-stone-200/75 bg-white p-5 shadow-[0_3px_16px_-8px_rgba(28,25,23,0.06)]">
+            <h2 className="text-base font-semibold text-stone-950">Analytics özeti (bugün)</h2>
+            <p className="mt-1 text-[11px] font-medium text-stone-500">Vitrin davranışı · operasyon kartlarının altında</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric title="Visitors today" value={dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")} />
+              <Metric title="Product views" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
+              <Metric title="Add to carts" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
+              <Metric title="Checkout starts" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
+              <Metric title="Purchases" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
+              <Metric
+                title="Conversion rate"
+                value={`${dashboardAnalytics.conversionRate.toLocaleString("tr-TR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}%`}
+              />
+            </div>
+            <div className="mt-4 rounded-xl border border-stone-200/70 bg-stone-50/50 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">
+                Funnel: View product → Add to cart → Checkout → Purchase
+              </p>
+              <p className="mt-1 text-sm text-stone-700">
+                {dashboardAnalytics.funnel.view_item.toLocaleString("tr-TR")} →{" "}
+                {dashboardAnalytics.funnel.add_to_cart.toLocaleString("tr-TR")} →{" "}
+                {dashboardAnalytics.funnel.begin_checkout.toLocaleString("tr-TR")} →{" "}
+                {dashboardAnalytics.funnel.purchase.toLocaleString("tr-TR")}
+              </p>
+            </div>
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Top viewed products</p>
+              {dashboardAnalytics.topViewedProducts.length === 0 ? (
+                <p className="mt-2 text-sm text-stone-500">Henüz görüntülenme verisi yok.</p>
               ) : (
-                recentOrdersList.map((o) => {
-                  const badge = adminOrderListBadge(o);
-                  const paymentBadge = paymentStatusBadge(String(o.payment_status ?? ""));
-                  return (
-                    <li
-                      key={o.id}
-                      className="group grid grid-cols-1 gap-3 rounded-xl border border-stone-200/80 bg-stone-50/35 px-4 py-3 transition-all duration-200 hover:-translate-y-px hover:border-stone-300/80 hover:bg-stone-50 hover:shadow-[0_10px_24px_-12px_rgba(28,25,23,0.18)] hover:ring-1 hover:ring-stone-300/35 md:grid-cols-[minmax(0,1fr)_auto]"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-mono text-xs font-medium tracking-wide text-stone-700" title={o.order_number}>
-                          {shortenOrderNumberDisplay(o.order_number)}
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-stone-950">{o.customer_name}</p>
-                        <p className="mt-1 text-[11px] font-medium tabular-nums text-stone-500">
-                          {formatOrderRelativeTimeTr(o.created_at)}
-                        </p>
-                        <p className="mt-1.5 text-[11px] text-stone-500 opacity-0 transition-opacity group-hover:opacity-100">
-                          {paymentBadge.label} · {badge.label}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2 md:flex-nowrap">
-                        <span className={paymentBadge.pill}>{paymentBadge.label}</span>
-                        <span className={badge.pill}>{badge.label}</span>
-                        <div className="min-w-[84px] text-right">
-                          <OrderListTryPrice n={Number(o.total ?? 0)} />
-                        </div>
-                        <Link
-                          href={`/admin/orders/${o.id}`}
-                          className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-400 hover:bg-stone-100 hover:text-stone-950 active:scale-[0.99]"
-                        >
-                          Detay
-                        </Link>
-                      </div>
+                <ul className="mt-2 space-y-1.5">
+                  {dashboardAnalytics.topViewedProducts.map((row) => (
+                    <li key={row.productId} className="flex items-center justify-between rounded-lg border border-stone-200/70 bg-white px-3 py-2">
+                      <span className="truncate text-sm text-stone-800">{row.productName}</span>
+                      <span className="text-sm font-semibold tabular-nums text-stone-900">{row.views.toLocaleString("tr-TR")}</span>
                     </li>
-                  );
-                })
+                  ))}
+                </ul>
               )}
-            </ul>
+            </div>
           </section>
         </section>
       ) : null}
