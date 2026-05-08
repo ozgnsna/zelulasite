@@ -145,3 +145,50 @@ export async function notifyAdminOrderEvent(payload: OrderNotifyPayload): Promis
     }
   }
 }
+
+export type AdminNotifyResult = {
+  email: { attempted: boolean; ok: boolean; error?: string };
+  whatsapp: { attempted: boolean; ok: boolean; error?: string };
+};
+
+export async function notifyAdminOrderEventWithResult(
+  payload: OrderNotifyPayload,
+): Promise<AdminNotifyResult> {
+  const emailAttempted =
+    Boolean(process.env.RESEND_API_KEY?.trim()) &&
+    (getAdminEmailRecipients().length > 0);
+  const whatsappAttempted =
+    Boolean(process.env.WHATSAPP_CLOUD_ACCESS_TOKEN?.trim()) &&
+    Boolean(process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID?.trim()) &&
+    (getAdminWhatsAppRecipients().length > 0);
+
+  const [emailResult, whatsappResult] = await Promise.allSettled([
+    sendAdminEmail(payload),
+    sendAdminWhatsApp(payload),
+  ]);
+
+  const out: AdminNotifyResult = {
+    email: {
+      attempted: emailAttempted,
+      ok: emailResult.status === "fulfilled",
+      error: emailResult.status === "rejected" ? String(emailResult.reason ?? "email_failed") : undefined,
+    },
+    whatsapp: {
+      attempted: whatsappAttempted,
+      ok: whatsappResult.status === "fulfilled",
+      error:
+        whatsappResult.status === "rejected"
+          ? String(whatsappResult.reason ?? "whatsapp_failed")
+          : undefined,
+    },
+  };
+
+  if (emailResult.status === "rejected") {
+    console.warn("[notify] admin email notify failed", emailResult.reason);
+  }
+  if (whatsappResult.status === "rejected") {
+    console.warn("[notify] admin whatsapp notify failed", whatsappResult.reason);
+  }
+
+  return out;
+}

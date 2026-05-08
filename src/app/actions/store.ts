@@ -14,7 +14,7 @@ import { getUserLoyaltyBalance } from "@/lib/loyalty/balance";
 import { pickCheckoutReferrer, ZELULA_REFERRAL_COOKIE } from "@/lib/referral/server";
 import { LEGAL_CONTRACT_VERSION } from "@/lib/legal/legal-content";
 import { buildLegalSnapshot } from "@/lib/legal/legal-snapshot";
-import { notifyAdminOrderEvent } from "@/lib/notifications/order-admin";
+import { notifyAdminOrderEventWithResult } from "@/lib/notifications/order-admin";
 
 /** ZLL0001… atomik sıra; migration / RPC yoksa eski uzun format. */
 async function allocateOrderNumber(admin: ReturnType<typeof createAdminClient>): Promise<string> {
@@ -384,7 +384,7 @@ export async function createCheckout(formData: FormData) {
   const siteUrl = resolveSiteUrl(requestHeaders);
 
   if (isBankTransfer) {
-    await notifyAdminOrderEvent({
+    const notifyResult = await notifyAdminOrderEventWithResult({
       event: "order_created_bank_transfer",
       orderId: order.id,
       orderNumber: order.order_number,
@@ -421,6 +421,21 @@ export async function createCheckout(formData: FormData) {
       reference: order.order_number,
       verification_status: "pending",
       verification_error: null,
+      processed_at: new Date().toISOString(),
+    });
+    await admin.from("payment_logs").insert({
+      order_id: order.id,
+      provider: "internal_notify",
+      event_type: "admin_notify",
+      status: notifyResult.email.ok || notifyResult.whatsapp.ok ? "sent_partial_or_full" : "failed",
+      response_payload: notifyResult,
+      callback_payload: null,
+      callback_hash: null,
+      reference: order.order_number,
+      verification_status:
+        notifyResult.email.ok || notifyResult.whatsapp.ok ? "passed" : "failed",
+      verification_error:
+        notifyResult.email.error || notifyResult.whatsapp.error || null,
       processed_at: new Date().toISOString(),
     });
     return { ok: true, url: `${siteUrl}/odeme/basarili?oid=${order.id}&pm=bank_transfer` };
