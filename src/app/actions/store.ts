@@ -14,6 +14,7 @@ import { getUserLoyaltyBalance } from "@/lib/loyalty/balance";
 import { pickCheckoutReferrer, ZELULA_REFERRAL_COOKIE } from "@/lib/referral/server";
 import { LEGAL_CONTRACT_VERSION } from "@/lib/legal/legal-content";
 import { buildLegalSnapshot } from "@/lib/legal/legal-snapshot";
+import { notifyAdminOrderEvent } from "@/lib/notifications/order-admin";
 
 /** ZLL0001… atomik sıra; migration / RPC yoksa eski uzun format. */
 async function allocateOrderNumber(admin: ReturnType<typeof createAdminClient>): Promise<string> {
@@ -124,7 +125,7 @@ export async function createCheckout(formData: FormData) {
   const admin = createAdminClient();
   const { data: productRows, error: productsError } = await admin
     .from("products")
-    .select("id,price,is_active,stock_quantity")
+    .select("id,name,price,is_active,stock_quantity")
     .in("id", ids);
   if (productsError || !productRows) {
     return { ok: false, error: "Ürün bilgileri alınamadı. Sayfayı yenileyip tekrar deneyin." };
@@ -217,51 +218,68 @@ export async function createCheckout(formData: FormData) {
   const legalAcceptedAt = new Date().toISOString();
   const legalSnapshot = buildLegalSnapshot(legalAcceptedAt);
   const legalContractHash = createHash("sha256").update(JSON.stringify(legalSnapshot)).digest("hex");
-  console.log("LEGAL_SNAPSHOT:", { snapshot: legalSnapshot, hash: legalContractHash });
   const legalIp = legalIpFromHeaders(requestHeaders);
   const legalUserAgent = safeLegalUserAgent(requestHeaders);
   const paymentMethod = parsed.data.payment_method;
   const isBankTransfer = paymentMethod === "bank_transfer";
+  const baseOrderInsert = {
+    user_id: user?.id ?? null,
+    order_number: orderNumber,
+    customer_name: parsed.data.customer_name,
+    email: parsed.data.email,
+    phone: parsed.data.phone,
+    subtotal: Number(subtotal.toFixed(2)),
+    discount_amount: Number(discountAmount.toFixed(2)),
+    discount_label: discountLabel,
+    total: Number(total.toFixed(2)),
+    currency: "TRY",
+    payment_status: "pending",
+    order_status: "pending",
+    payment_provider: isBankTransfer ? "bank_transfer" : (process.env.PAYMENT_PROVIDER ?? "paytr"),
+    shipping_address_json: {
+      address_line: parsed.data.address_line,
+      city: parsed.data.city,
+      district: parsed.data.district,
+      postal_code: parsed.data.postal_code,
+      delivery_note: parsed.data.delivery_note || null,
+    },
+  };
+  const extendedOrderInsert = {
+    ...baseOrderInsert,
+    loyalty_redeem_points: loyaltyRedeemPoints,
+    referrer_user_id: referralAttribution.referrerUserId,
+    referral_code: referralAttribution.referralCode,
+    accept_distance_sales: true,
+    accept_pre_contract_info: true,
+    kvkk_consent: true,
+    kvkk_consent_at: legalAcceptedAt,
+    legal_accepted_at: legalAcceptedAt,
+    legal_contract_version: LEGAL_CONTRACT_VERSION,
+    legal_contract_snapshot: legalSnapshot,
+    legal_contract_hash: legalContractHash,
+    legal_ip: legalIp,
+    legal_user_agent: legalUserAgent,
+  };
 
-  const { data: order, error } = await admin
+  let { data: order, error } = await admin
     .from("orders")
-    .insert({
-      user_id: user?.id ?? null,
-      order_number: orderNumber,
-      customer_name: parsed.data.customer_name,
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      subtotal: Number(subtotal.toFixed(2)),
-      discount_amount: Number(discountAmount.toFixed(2)),
-      discount_label: discountLabel,
-      total: Number(total.toFixed(2)),
-      loyalty_redeem_points: loyaltyRedeemPoints,
-      referrer_user_id: referralAttribution.referrerUserId,
-      referral_code: referralAttribution.referralCode,
-      accept_distance_sales: true,
-      accept_pre_contract_info: true,
-      kvkk_consent: true,
-      kvkk_consent_at: legalAcceptedAt,
-      legal_accepted_at: legalAcceptedAt,
-      legal_contract_version: LEGAL_CONTRACT_VERSION,
-      legal_contract_snapshot: legalSnapshot,
-      legal_contract_hash: legalContractHash,
-      legal_ip: legalIp,
-      legal_user_agent: legalUserAgent,
-      currency: "TRY",
-      payment_status: "pending",
-      order_status: "pending",
-      payment_provider: isBankTransfer ? "bank_transfer" : (process.env.PAYMENT_PROVIDER ?? "paytr"),
-      shipping_address_json: {
-        address_line: parsed.data.address_line,
-        city: parsed.data.city,
-        district: parsed.data.district,
-        postal_code: parsed.data.postal_code,
-        delivery_note: parsed.data.delivery_note || null,
-      },
-    })
+    .insert(extendedOrderInsert)
     .select("*")
     .single();
+
+  if (error) {
+    const msg = error.message ?? "";
+    const msgLower = msg.toLowerCase();
+    const isMissingColumn =
+      (/column/i.test(msg) && /does not exist|undefined column/i.test(msg)) ||
+      /could not find.*column/i.test(msgLower) ||
+      /schema cache/i.test(msgLower);
+    if (isMissingColumn) {
+      const retry = await admin.from("orders").insert(baseOrderInsert).select("*").single();
+      order = retry.data ?? null;
+      error = retry.error;
+    }
+  }
 
   // TODO(emails): Sipariş onayı e-postası eklendiğinde `legal_contract_snapshot` PDF ekine dönüştürülebilir.
 
@@ -338,6 +356,28 @@ export async function createCheckout(formData: FormData) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   if (isBankTransfer) {
+    await notifyAdminOrderEvent({
+      event: "order_created_bank_transfer",
+      orderId: order.id,
+      orderNumber: order.order_number,
+      customerName: order.customer_name,
+      customerEmail: order.email,
+      customerPhone: order.phone,
+      total: Number(order.total ?? 0),
+      currency: String(order.currency ?? "TRY"),
+      paymentStatus: String(order.payment_status ?? "pending"),
+      paymentProvider: String(order.payment_provider ?? "bank_transfer"),
+      items: cart.map((line) => {
+        const p = productById.get(line.productId);
+        return {
+          name: String(p?.name ?? "Urun"),
+          quantity: line.quantity,
+          totalPrice: Number((Number(p?.price ?? 0) * line.quantity).toFixed(2)),
+        };
+      }),
+      adminOrderUrl: `${siteUrl}/admin/orders/${order.id}`,
+    });
+
     await admin.from("payment_logs").insert({
       order_id: order.id,
       provider: "bank_transfer",
