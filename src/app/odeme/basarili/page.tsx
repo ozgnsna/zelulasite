@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
 import { OrderSuccessReferralShare } from "@/components/referral/OrderSuccessReferralShare";
-import { ClearCartOnSuccess } from "@/components/cart/ClearCartOnSuccess";
 import { zelulaPuanEarnedFromPaidOrderTotalTry } from "@/lib/loyalty/compute";
 import { ensureUserReferralCode } from "@/lib/referral/server";
 import { siteBaseUrl, withReferralQuery } from "@/lib/referral/share-url";
@@ -51,14 +50,12 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
     if (refCode) paidShareUrl = withReferralQuery(cleanShareUrl, refCode);
   }
   const isBankTransferFlow = paymentMethod === "bank_transfer" || order?.payment_provider === "bank_transfer";
-  const shouldClearCart = Boolean(order && (isBankTransferFlow || order.payment_status === "paid"));
   const bankName = process.env.BANK_TRANSFER_BANK_NAME ?? "Banka Adı";
   const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
   const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
 
   return (
     <main className="mx-auto max-w-lg px-4 py-20 text-center">
-      {shouldClearCart ? <ClearCartOnSuccess /> : null}
       {order?.payment_status === "paid" ? (
         <PurchaseTracker
           transactionId={order.order_number}
