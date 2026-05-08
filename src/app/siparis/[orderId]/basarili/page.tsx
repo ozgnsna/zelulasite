@@ -9,36 +9,37 @@ type Props = {
 };
 
 export default async function OrderSuccessBankTransferPage({ params, searchParams }: Props) {
-  const { orderId } = await params;
-  const sp = await searchParams;
-  const paymentMethod = sp.pm ?? "bank_transfer";
+  try {
+    const { orderId } = await params;
+    const sp = await searchParams;
+    const paymentMethod = sp.pm ?? "bank_transfer";
 
-  const admin = createAdminClient();
-  const { data: order, error: orderError } = await admin
-    .from("orders")
-    .select("id,order_number,payment_status,order_status,payment_provider,total,currency,email")
-    .eq("id", orderId)
-    .maybeSingle();
+    const admin = createAdminClient();
+    const { data: order, error: orderError } = await admin
+      .from("orders")
+      .select("id,order_number,payment_status,order_status,payment_provider,total,currency,email")
+      .eq("id", orderId)
+      .maybeSingle();
 
-  if (orderError || !order) {
+    if (orderError || !order) {
+      return (
+        <main className="mx-auto max-w-2xl px-4 py-16">
+          <h1 className="text-2xl font-semibold text-stone-900">Sipariş kaydı bulunamadı</h1>
+          <p className="mt-2 text-sm text-stone-600">Sipariş başarıyla oluşturulduysa birkaç saniye sonra tekrar deneyin.</p>
+          <Link href="/sepet" className="mt-6 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50">
+            Sepete dön
+          </Link>
+        </main>
+      );
+    }
+
+    const bankName = process.env.BANK_TRANSFER_BANK_NAME ?? "Banka Adı";
+    const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
+    const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
+    const paymentProvider = String(order.payment_provider ?? paymentMethod ?? "bank_transfer");
+
     return (
-      <main className="mx-auto max-w-2xl px-4 py-16">
-        <h1 className="text-2xl font-semibold text-stone-900">Sipariş kaydı bulunamadı</h1>
-        <p className="mt-2 text-sm text-stone-600">Sipariş başarıyla oluşturulduysa birkaç saniye sonra tekrar deneyin.</p>
-        <Link href="/sepet" className="mt-6 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50">
-          Sepete dön
-        </Link>
-      </main>
-    );
-  }
-
-  const bankName = process.env.BANK_TRANSFER_BANK_NAME ?? "Banka Adı";
-  const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
-  const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
-  const paymentProvider = String(order.payment_provider ?? paymentMethod ?? "bank_transfer");
-
-  return (
-    <main className="mx-auto max-w-2xl px-4 py-14">
+      <main className="mx-auto max-w-2xl px-4 py-14">
       <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Sipariş alındı</p>
         <h1 className="mt-2 text-3xl font-semibold text-stone-950">Siparişiniz alındı</h1>
@@ -119,5 +120,21 @@ export default async function OrderSuccessBankTransferPage({ params, searchParam
         </Link>
       </div>
     </main>
-  );
+    );
+  } catch {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold text-stone-900">Geçici bir sorun oluştu</h1>
+        <p className="mt-3 text-sm leading-relaxed text-stone-600">
+          Siparişiniz kaydedildiyse özet ve havale bilgileri e-posta ile de iletilebilir. Birkaç dakika sonra bu sayfayı yenileyin veya destek ile iletişime geçin.
+        </p>
+        <Link
+          href="/urunler"
+          className="mt-8 inline-flex rounded-full bg-stone-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
+        >
+          Alışverişe devam et
+        </Link>
+      </main>
+    );
+  }
 }

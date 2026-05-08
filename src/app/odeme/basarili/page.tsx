@@ -26,36 +26,37 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
     );
   }
 
-  const admin = createAdminClient();
-  const { data: order } = await admin
-    .from("orders")
-    .select("id,order_number,payment_status,order_status,payment_provider,total,currency,customer_name,email,user_id")
-    .eq("id", orderId)
-    .maybeSingle();
-  const { data: items } = await admin
-    .from("order_items")
-    .select(
-      "quantity,total_price,unit_price,product_id,product:products(name,slug,category:categories(name),collection:collections(name))",
-    )
-    .eq("order_id", orderId);
+  try {
+    const admin = createAdminClient();
+    const { data: order } = await admin
+      .from("orders")
+      .select("id,order_number,payment_status,order_status,payment_provider,total,currency,customer_name,email,user_id")
+      .eq("id", orderId)
+      .maybeSingle();
+    const { data: items } = await admin
+      .from("order_items")
+      .select(
+        "quantity,total_price,unit_price,product_id,product:products(name,slug,category:categories(name),collection:collections(name))",
+      )
+      .eq("order_id", orderId);
 
-  const firstItem = (items ?? [])[0];
-  const firstProductSlug = firstItem?.product?.[0]?.slug ?? null;
-  const base = siteBaseUrl();
-  const path = firstProductSlug ? `/urunler/${firstProductSlug}` : "/";
-  const cleanShareUrl = `${base}${path === "/" ? "/" : path}`;
-  let paidShareUrl = cleanShareUrl;
-  if (order?.user_id) {
-    const refCode = await ensureUserReferralCode(admin, order.user_id);
-    if (refCode) paidShareUrl = withReferralQuery(cleanShareUrl, refCode);
-  }
-  const isBankTransferFlow = paymentMethod === "bank_transfer" || order?.payment_provider === "bank_transfer";
-  const bankName = process.env.BANK_TRANSFER_BANK_NAME ?? "Banka Adı";
-  const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
-  const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
+    const firstItem = (items ?? [])[0];
+    const firstProductSlug = firstItem?.product?.[0]?.slug ?? null;
+    const base = siteBaseUrl();
+    const path = firstProductSlug ? `/urunler/${firstProductSlug}` : "/";
+    const cleanShareUrl = `${base}${path === "/" ? "/" : path}`;
+    let paidShareUrl = cleanShareUrl;
+    if (order?.user_id) {
+      const refCode = await ensureUserReferralCode(admin, order.user_id);
+      if (refCode) paidShareUrl = withReferralQuery(cleanShareUrl, refCode);
+    }
+    const isBankTransferFlow = paymentMethod === "bank_transfer" || order?.payment_provider === "bank_transfer";
+    const bankName = process.env.BANK_TRANSFER_BANK_NAME ?? "Banka Adı";
+    const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
+    const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
 
-  return (
-    <main className="mx-auto max-w-lg px-4 py-20 text-center">
+    return (
+      <main className="mx-auto max-w-lg px-4 py-20 text-center">
       {order?.payment_status === "paid" ? (
         <PurchaseTracker
           transactionId={order.order_number}
@@ -143,5 +144,21 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
         Alışverişe devam et
       </Link>
     </main>
-  );
+    );
+  } catch {
+    return (
+      <main className="mx-auto max-w-lg px-4 py-20 text-center">
+        <h1 className="font-serif text-2xl text-stone-900">Geçici bir sorun oluştu</h1>
+        <p className="mt-3 text-sm text-stone-600">
+          Sipariş referansı: <span className="font-mono">{orderId}</span>
+        </p>
+        <p className="mt-2 text-sm text-stone-600">
+          Ödeme onaylandıysa bilgiler e-posta ile de iletilebilir. Birkaç dakika sonra sayfayı yenileyin.
+        </p>
+        <Link href="/urunler" className="mt-8 inline-flex rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white hover:bg-stone-800">
+          Alışverişe devam et
+        </Link>
+      </main>
+    );
+  }
 }

@@ -46,8 +46,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const requestHeaders = await headers();
-  const pathname = requestHeaders.get("x-pathname") ?? "";
+  let pathname = "";
+  try {
+    const requestHeaders = await headers();
+    pathname = requestHeaders.get("x-pathname") ?? "";
+  } catch {
+    pathname = "";
+  }
   const isAdminRoute = pathname.startsWith("/admin");
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
