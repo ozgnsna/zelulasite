@@ -1,6 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
-import { trackCategoryClick } from "@/lib/analytics";
+import { CategoryClickLink } from "@/components/analytics/CategoryClickLink";
 
 type HomeCategoryGridItem = {
   label: string;
@@ -37,12 +36,11 @@ export function HomeCategoryGrid({ items }: { items?: HomeCategoryGridItem[] }) 
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
       {categories.map((c) => (
         <li key={c.href}>
-          <Link
+          <CategoryClickLink
             href={c.href}
+            category={c.label}
+            location="home_category_grid"
             className="group relative block overflow-hidden rounded-2xl border border-[#e8e2d9] bg-[#fffdfb] shadow-[0_8px_28px_rgba(55,48,40,0.06)] transition-shadow duration-300 hover:shadow-[0_16px_40px_rgba(55,48,40,0.1)]"
-            onClick={() =>
-              trackCategoryClick({ category: c.label, location: "home_category_grid", href: c.href })
-            }
           >
             <div className="relative aspect-[16/11] overflow-hidden bg-stone-100">
               <Image
@@ -57,7 +55,7 @@ export function HomeCategoryGrid({ items }: { items?: HomeCategoryGridItem[] }) 
                 {c.label}
               </p>
             </div>
-          </Link>
+          </CategoryClickLink>
         </li>
       ))}
     </ul>
