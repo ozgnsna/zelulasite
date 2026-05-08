@@ -222,6 +222,14 @@ export async function createCheckout(formData: FormData) {
   const legalUserAgent = safeLegalUserAgent(requestHeaders);
   const paymentMethod = parsed.data.payment_method;
   const isBankTransfer = paymentMethod === "bank_transfer";
+  const isMissingColumnError = (message: string) => {
+    const msgLower = message.toLowerCase();
+    return (
+      (/column/i.test(message) && /does not exist|undefined column/i.test(message)) ||
+      /could not find.*column/i.test(msgLower) ||
+      /schema cache/i.test(msgLower)
+    );
+  };
   const baseOrderInsert = {
     user_id: user?.id ?? null,
     order_number: orderNumber,
@@ -260,6 +268,16 @@ export async function createCheckout(formData: FormData) {
     legal_ip: legalIp,
     legal_user_agent: legalUserAgent,
   };
+  const slimOrderInsert = {
+    user_id: user?.id ?? null,
+    order_number: orderNumber,
+    customer_name: parsed.data.customer_name,
+    email: parsed.data.email,
+    phone: parsed.data.phone,
+    total: Number(total.toFixed(2)),
+    payment_status: "pending",
+    order_status: "pending",
+  };
 
   let { data: order, error } = await admin
     .from("orders")
@@ -268,16 +286,15 @@ export async function createCheckout(formData: FormData) {
     .single();
 
   if (error) {
-    const msg = error.message ?? "";
-    const msgLower = msg.toLowerCase();
-    const isMissingColumn =
-      (/column/i.test(msg) && /does not exist|undefined column/i.test(msg)) ||
-      /could not find.*column/i.test(msgLower) ||
-      /schema cache/i.test(msgLower);
-    if (isMissingColumn) {
+    if (isMissingColumnError(error.message ?? "")) {
       const retry = await admin.from("orders").insert(baseOrderInsert).select("*").single();
       order = retry.data ?? null;
       error = retry.error;
+      if (error && isMissingColumnError(error.message ?? "")) {
+        const retrySlim = await admin.from("orders").insert(slimOrderInsert).select("*").single();
+        order = retrySlim.data ?? null;
+        error = retrySlim.error;
+      }
     }
   }
 
@@ -293,10 +310,7 @@ export async function createCheckout(formData: FormData) {
       hint: error?.hint,
     });
     const msgLower = msg.toLowerCase();
-    const isMissingColumn =
-      (/column/i.test(msg) && /does not exist|undefined column/i.test(msg)) ||
-      /could not find.*column/i.test(msgLower) ||
-      /schema cache/i.test(msgLower);
+    const isMissingColumn = isMissingColumnError(msg);
     const isUniqueViolation = code === "23505" || /duplicate key|unique constraint/i.test(msg);
     const isRlsOrPrivilege =
       code === "42501" ||
