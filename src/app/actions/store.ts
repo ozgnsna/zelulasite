@@ -37,6 +37,15 @@ function clientIpFromHeaders(h: Headers): string {
   return "127.0.0.1";
 }
 
+function resolveSiteUrl(h: Headers): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  const proto = h.get("x-forwarded-proto")?.trim() || "https";
+  const host = h.get("x-forwarded-host")?.trim() || h.get("host")?.trim() || "";
+  if (!host) return "http://localhost:3000";
+  return `${proto}://${host}`.replace(/\/+$/, "");
+}
+
 /** Yasal kayıt için: XFF ilk IP, yoksa X-Real-IP, yoksa null. */
 function legalIpFromHeaders(h: Headers): string | null {
   const xff = h.get("x-forwarded-for");
@@ -367,7 +376,7 @@ export async function createCheckout(formData: FormData) {
   }
 
   await admin.from("order_items").insert(orderItems.map((i) => ({ ...i!, order_id: order.id })));
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(requestHeaders);
 
   if (isBankTransfer) {
     await notifyAdminOrderEvent({
@@ -409,7 +418,6 @@ export async function createCheckout(formData: FormData) {
       verification_error: null,
       processed_at: new Date().toISOString(),
     });
-    await setCartItems([]);
     return { ok: true, url: `${siteUrl}/odeme/basarili?oid=${order.id}&pm=bank_transfer` };
   }
 
@@ -478,6 +486,5 @@ export async function createCheckout(formData: FormData) {
     }
     return { ok: false, error: "Ödeme adımı başlatılamadı. Lütfen tekrar deneyin veya destekle iletişime geçin." };
   }
-  await setCartItems([]);
   return { ok: true, url: payment.redirectUrl };
 }

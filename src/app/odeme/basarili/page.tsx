@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { setCartItems } from "@/lib/cart";
 import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
 import { OrderSuccessReferralShare } from "@/components/referral/OrderSuccessReferralShare";
 import { zelulaPuanEarnedFromPaidOrderTotalTry } from "@/lib/loyalty/compute";
@@ -50,6 +51,9 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
     if (refCode) paidShareUrl = withReferralQuery(cleanShareUrl, refCode);
   }
   const isBankTransferFlow = paymentMethod === "bank_transfer" || order?.payment_provider === "bank_transfer";
+  if (order && (isBankTransferFlow || order.payment_status === "paid")) {
+    await setCartItems([]);
+  }
   const bankName = process.env.BANK_TRANSFER_BANK_NAME ?? "Banka Adı";
   const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
   const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
