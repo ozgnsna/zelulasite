@@ -33,7 +33,13 @@ function getAdminEmailRecipients(): string[] {
 }
 
 function getAdminWhatsAppRecipients(): string[] {
-  return splitCsv(process.env.ADMIN_NOTIFY_WHATSAPP_TO);
+  const raw = splitCsv(process.env.ADMIN_NOTIFY_WHATSAPP_TO);
+  const normalized = raw
+    .map((v) => v.replace(/[^\d+]/g, "").trim())
+    .map((v) => (v.startsWith("+") ? v.slice(1) : v))
+    .map((v) => (v.startsWith("00") ? v.slice(2) : v))
+    .filter((v) => /^\d{8,15}$/.test(v));
+  return [...new Set(normalized)];
 }
 
 function toTry(value: number, currency: string): string {
@@ -112,23 +118,47 @@ async function sendAdminWhatsApp(payload: OrderNotifyPayload): Promise<void> {
   if (!accessToken || !phoneNumberId || recipients.length === 0) return;
 
   const text = buildPlainText(payload).slice(0, 3900);
+  const templateName = process.env.WHATSAPP_CLOUD_TEMPLATE_NAME?.trim();
+  const templateLang = process.env.WHATSAPP_CLOUD_TEMPLATE_LANG?.trim() || "tr";
   for (const to of recipients) {
-    const res = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: text },
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`whatsapp_notify_failed:${res.status}:${body}`);
+    if (templateName) {
+      const templateRes = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to,
+          type: "template",
+          template: {
+            name: templateName,
+            language: { code: templateLang },
+          },
+        }),
+      });
+      if (templateRes.ok) continue;
+      const templateBody = await templateRes.text().catch(() => "");
+      throw new Error(`whatsapp_template_notify_failed:${templateRes.status}:${templateBody}`);
+    } else {
+      const res = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to,
+          type: "text",
+          text: { body: text },
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`whatsapp_notify_failed:${res.status}:${body}`);
+      }
     }
   }
 }
