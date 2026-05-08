@@ -14,13 +14,13 @@ export default async function OrderSuccessBankTransferPage({ params, searchParam
   const paymentMethod = sp.pm ?? "bank_transfer";
 
   const admin = createAdminClient();
-  const { data: order } = await admin
+  const { data: order, error: orderError } = await admin
     .from("orders")
     .select("id,order_number,payment_status,order_status,payment_provider,total,currency,email")
     .eq("id", orderId)
     .maybeSingle();
 
-  if (!order) {
+  if (orderError || !order) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-16">
         <h1 className="text-2xl font-semibold text-stone-900">Sipariş kaydı bulunamadı</h1>
@@ -68,7 +68,9 @@ export default async function OrderSuccessBankTransferPage({ params, searchParam
           </div>
           <div>
             <dt className="text-stone-500">Toplam tutar</dt>
-            <dd className="mt-1 text-lg font-semibold text-stone-950">{formatTry(Number(order.total ?? 0))}</dd>
+            <dd className="mt-1 text-lg font-semibold text-stone-950">
+              {formatTry(Number.isFinite(Number(order.total)) ? Number(order.total) : 0)}
+            </dd>
           </div>
           <div>
             <dt className="text-stone-500">Müşteri e-posta</dt>

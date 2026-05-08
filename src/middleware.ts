@@ -25,8 +25,9 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  const supabase = createServerClient(url, anon,
-    {
+  let user: { id: string } | null = null;
+  try {
+    const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -39,12 +40,16 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
-    },
-  );
+    });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user: u },
+    } = await supabase.auth.getUser();
+    user = u ?? null;
+  } catch {
+    // Ağ / Supabase kesintisinde tüm siteyi kilitleme; korumalı rotalar aşağıda yine kontrol edilir.
+    user = null;
+  }
 
   const pathname = request.nextUrl.pathname;
   if (pathname.startsWith("/hesabim") && !user) {
