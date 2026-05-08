@@ -15,6 +15,7 @@ import { isProductFavorited } from "@/lib/account/favorites";
 import { ensureUserReferralCode } from "@/lib/referral/server";
 import { ProductFavoriteButton } from "@/components/ProductFavoriteButton";
 import { getSupportWhatsAppHref } from "@/lib/support-contact";
+import { TrackedExternalLink } from "@/components/analytics/TrackedExternalLink";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -266,15 +267,15 @@ export default async function ProductPage({ params }: Props) {
             <div className="space-y-2">
               <p className="text-[12px] font-medium text-stone-700">Sorunuz mu var?</p>
               <div className="flex flex-wrap items-center gap-2">
-                <a
+                <TrackedExternalLink
                   href={whatsappSupportHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  eventType="whatsapp_click"
+                  location="pdp_support"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#d9ccb9] bg-[#fdfbf8] px-3 py-1.5 text-[11px] font-medium text-stone-800 transition hover:border-[#c6a15b]/60 hover:bg-[#f9f1e4] hover:shadow-[0_8px_18px_rgba(198,161,91,0.18)]"
                 >
                   <MessageCircle className="size-3.5 shrink-0 text-[#b8945f]" strokeWidth={1.6} aria-hidden />
                   WhatsApp destek
-                </a>
+                </TrackedExternalLink>
                 <Link
                   href="/sepet"
                   className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50"

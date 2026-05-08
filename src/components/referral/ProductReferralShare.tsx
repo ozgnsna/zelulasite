@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { referralWhatsAppShareBody } from "@/lib/referral/share-copy";
+import { trackWhatsAppClick } from "@/lib/analytics";
 
 export function ProductReferralShare({ referralCode }: { referralCode: string | null }) {
   const pathname = usePathname();
@@ -17,6 +18,7 @@ export function ProductReferralShare({ referralCode }: { referralCode: string | 
 
   const whatsapp = () => {
     const text = referralWhatsAppShareBody(shareUrl);
+    trackWhatsAppClick({ location: "product_referral_share", href: "https://wa.me/" });
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { createCheckout, previewPromoDiscount } from "@/app/actions/store";
 import type { AnalyticsItem } from "@/lib/analytics";
-import { trackBeginCheckout } from "@/lib/analytics";
+import { trackBeginCheckout, trackCouponUsage, trackInstagramClick } from "@/lib/analytics";
 import { formatTry } from "@/lib/money";
 import { ZELULA_PUAN_PER_100_TRY } from "@/lib/loyalty/constants";
 import type { SavedAddress } from "@/lib/types";
@@ -45,6 +45,11 @@ export function CheckoutForm({
   loyaltyAvailablePoints: number;
   savedAddresses?: SavedAddress[] | null;
 }) {
+  type CheckoutSuccessFallback = {
+    orderNumber: string;
+    href: string;
+    email: string;
+  };
   const savedList = useMemo(
     () => (savedAddressesProp == null ? EMPTY_SAVED_ADDRESSES : savedAddressesProp),
     [savedAddressesProp],
@@ -58,7 +63,11 @@ export function CheckoutForm({
   const [previewing, startPreview] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [legalAcceptWarning, setLegalAcceptWarning] = useState<string | null>(null);
+  const [acceptDistanceSales, setAcceptDistanceSales] = useState(false);
+  const [acceptPreContractInfo, setAcceptPreContractInfo] = useState(false);
+  const [acceptKvkkConsent, setAcceptKvkkConsent] = useState(false);
   const [successHint, setSuccessHint] = useState<string | null>(null);
+  const [successFallback, setSuccessFallback] = useState<CheckoutSuccessFallback | null>(null);
   const [promoDraft, setPromoDraft] = useState("");
   const [promoError, setPromoError] = useState<string | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{
@@ -135,6 +144,8 @@ export function CheckoutForm({
   const showPhoneFieldForSignedIn = isSignedIn && !resolvedAccountPhone;
   const showEmailField = !isSignedIn || !resolvedAccountEmail;
   const showPhoneField = !isSignedIn || showPhoneFieldForSignedIn;
+  const legalAllAccepted = acceptDistanceSales && acceptPreContractInfo && acceptKvkkConsent;
+  const submitDisabled = Boolean(disabled || pending || !legalAllAccepted);
 
   return (
     <>
@@ -163,7 +174,20 @@ export function CheckoutForm({
           start(async () => {
             const r = await createCheckout(fd);
             if (r?.ok && r.url) {
-              setSuccessHint("Hazır ✨");
+              const orderNumber = typeof r.orderNumber === "string" && r.orderNumber.trim() ? r.orderNumber : "—";
+              const fallbackHref =
+                (typeof r.fallbackUrl === "string" && r.fallbackUrl.trim()) ||
+                (typeof r.url === "string" && r.url.trim()) ||
+                (typeof r.orderId === "string" && r.orderId.trim()
+                  ? `/siparis/${r.orderId}/basarili?pm=bank_transfer`
+                  : "/siparis-basarili");
+              const formEmail = String(fd.get("email") ?? "").trim();
+              setSuccessFallback({
+                orderNumber,
+                href: fallbackHref,
+                email: formEmail || resolvedAccountEmail || "—",
+              });
+              setSuccessHint("Siparişiniz alındı, yönlendiriliyorsunuz...");
               window.location.href = r.url;
             } else {
               setError(r?.error ?? "İşlem başlatılamadı.");
@@ -712,6 +736,12 @@ export function CheckoutForm({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-2 inline-flex items-center rounded-full border border-[#d9c19a] bg-[linear-gradient(135deg,#f5e8d3,#ecd6b5)] px-3 py-1.5 text-xs font-semibold text-stone-800 underline-offset-2 transition hover:text-stone-900 hover:brightness-[0.98]"
+                onClick={() =>
+                  trackInstagramClick({
+                    location: "checkout_coupon_details",
+                    href: instagramProfileHref,
+                  })
+                }
               >
                 @{instagramUsername} — Instagram
               </Link>
@@ -739,8 +769,16 @@ export function CheckoutForm({
                       startPreview(async () => {
                         const r = await previewPromoDiscount(subtotalAfterLoyalty, promoDraft);
                         if (r.ok) {
+                          const nextCode = promoDraft.trim().toUpperCase();
+                          trackCouponUsage({
+                            code: nextCode,
+                            discount_amount: r.discountAmount,
+                            percent: r.percent,
+                            subtotal_before_discount: subtotalAfterLoyalty,
+                            subtotal_after_discount: Math.max(0, subtotalAfterLoyalty - r.discountAmount),
+                          });
                           setAppliedPromo({
-                            code: promoDraft.trim().toUpperCase(),
+                            code: nextCode,
                             discountAmount: r.discountAmount,
                             percent: r.percent,
                           });
@@ -784,113 +822,95 @@ export function CheckoutForm({
 
             <section
               ref={legalSectionRef}
-              className="rounded-2xl border border-[#e8dfd3]/90 bg-neutral-50 p-5 sm:p-6"
+              className="rounded-xl border border-[#e7dfd4]/85 bg-[linear-gradient(180deg,#fdfbf8_0%,#f8f4ee_100%)] p-3.5 sm:p-4"
               aria-labelledby="checkout-compliance-heading"
             >
               <h2 id="checkout-compliance-heading" className="sr-only">
                 Yasal onaylar
               </h2>
-              <div className="flex flex-wrap gap-2" aria-label="Güven taahhütleri">
-                <span className="inline-flex items-center rounded-full border border-[#e4d9cc] bg-white/90 px-3 py-1.5 text-[11px] font-medium tracking-wide text-stone-800">
-                  14 Gün Kolay İade
-                </span>
-                <span className="inline-flex items-center rounded-full border border-[#e4d9cc] bg-white/90 px-3 py-1.5 text-[11px] font-medium tracking-wide text-stone-800">
-                  %100 Güvenli Ödeme
-                </span>
-                <span className="inline-flex items-center rounded-full border border-[#e4d9cc] bg-white/90 px-3 py-1.5 text-[11px] font-medium tracking-wide text-stone-800">
-                  Hızlı Kargo
-                </span>
-              </div>
-
-              <div className="mt-5 rounded-xl border border-[#e8dfd3]/95 bg-[linear-gradient(165deg,#fffdfb_0%,#f6f0e8_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-                <p className="text-sm font-semibold text-stone-900">Instagram&apos;a özel %10 indirim</p>
-                <p className="mt-2 text-[13px] leading-relaxed text-stone-700">
-                  <a
-                    href={instagramProfileHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-[#7a5f38] underline decoration-[#c6a15b]/80 underline-offset-[3px] transition hover:text-[#5c482c]"
-                  >
-                    @{instagramUsername}
-                  </a>{" "}
-                  hesabını takip et, DM&apos;den &ldquo;İNDİRİM KODU&rdquo; yaz, özel kodunu checkout ekranında manuel
-                  uygula.
-                </p>
-                <p className="mt-2 text-[11px] font-medium text-stone-500">Kod otomatik uygulanmaz.</p>
-              </div>
-
-              <div className="mt-5 space-y-3.5">
-                <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-stone-800">
+              <div className="space-y-2.5">
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[#e5ddd1]/90 bg-white/80 px-2.5 py-2 text-[13px] leading-snug text-stone-800">
                   <input
                     type="checkbox"
                     name="accept_distance_sales"
                     value="on"
-                    onChange={() => setLegalAcceptWarning(null)}
-                    className="mt-1 size-4 shrink-0 rounded border-stone-400 text-stone-900 focus:ring-amber-600/40"
+                    checked={acceptDistanceSales}
+                    onChange={(e) => {
+                      setAcceptDistanceSales(e.currentTarget.checked);
+                      setLegalAcceptWarning(null);
+                    }}
+                    className="mt-0.5 size-4 shrink-0 rounded border-stone-400 text-stone-900 focus:ring-amber-600/40"
                   />
                   <span>
-                    Mesafeli satış sözleşmesini okudum ve kabul ediyorum.{" "}
+                    Mesafeli satış sözleşmesi{" "}
                     <Link
                       href="/mesafeli-satis-sozlesmesi"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/80 underline-offset-[3px] transition hover:text-[#5c482c]"
+                      className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/75 underline-offset-2 transition hover:text-[#5c482c]"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      Mesafeli satış sözleşmesi
+                      (görüntüle)
                     </Link>
                   </span>
                 </label>
-                <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-stone-800">
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[#e5ddd1]/90 bg-white/80 px-2.5 py-2 text-[13px] leading-snug text-stone-800">
                   <input
                     type="checkbox"
                     name="accept_pre_contract_info"
                     value="on"
-                    onChange={() => setLegalAcceptWarning(null)}
-                    className="mt-1 size-4 shrink-0 rounded border-stone-400 text-stone-900 focus:ring-amber-600/40"
+                    checked={acceptPreContractInfo}
+                    onChange={(e) => {
+                      setAcceptPreContractInfo(e.currentTarget.checked);
+                      setLegalAcceptWarning(null);
+                    }}
+                    className="mt-0.5 size-4 shrink-0 rounded border-stone-400 text-stone-900 focus:ring-amber-600/40"
                   />
                   <span>
-                    Ön bilgilendirme formunu okudum ve kabul ediyorum.{" "}
+                    Ön bilgilendirme formu{" "}
                     <Link
                       href="/on-bilgilendirme-formu"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/80 underline-offset-[3px] transition hover:text-[#5c482c]"
+                      className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/75 underline-offset-2 transition hover:text-[#5c482c]"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      Ön bilgilendirme formu
+                      (görüntüle)
                     </Link>
                   </span>
                 </label>
-                <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-stone-800">
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[#e5ddd1]/90 bg-white/80 px-2.5 py-2 text-[13px] leading-snug text-stone-800">
                   <input
                     type="checkbox"
                     name="kvkk_consent"
                     value="on"
-                    onChange={() => setLegalAcceptWarning(null)}
-                    className="mt-1 size-4 shrink-0 rounded border-stone-400 text-stone-900 focus:ring-amber-600/40"
+                    checked={acceptKvkkConsent}
+                    onChange={(e) => {
+                      setAcceptKvkkConsent(e.currentTarget.checked);
+                      setLegalAcceptWarning(null);
+                    }}
+                    className="mt-0.5 size-4 shrink-0 rounded border-stone-400 text-stone-900 focus:ring-amber-600/40"
                   />
                   <span>
-                    Kişisel verilerimin işlenmesine ilişkin{" "}
+                    Gizlilik politikası{" "}
                     <Link
                       href="/gizlilik-politikasi"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/80 underline-offset-[3px] transition hover:text-[#5c482c]"
+                      className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/75 underline-offset-2 transition hover:text-[#5c482c]"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      gizlilik politikasını
+                      (görüntüle)
                     </Link>{" "}
-                    okudum ve kabul ediyorum.
+                    için onay veriyorum.
                   </span>
                 </label>
-                <p className="-mt-1 ml-7 text-xs text-neutral-500">Kişisel verileriniz sipariş sürecinin yürütülmesi amacıyla işlenir.</p>
               </div>
-              <p className="text-xs leading-relaxed text-neutral-500">
-                Siparişi tamamlayarak seçili sözleşme ve bilgilendirme metinlerini kabul etmiş olursunuz.
+              <p className="mt-2 px-1 text-[11px] leading-snug text-stone-500">
+                Siparişi tamamlayarak gerekli sözleşmeleri kabul etmiş olursunuz.
               </p>
               {legalAcceptWarning ? (
-                <p className="mt-3 rounded-lg border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-[13px] font-medium text-amber-950" role="alert">
+                <p className="mt-2 rounded-lg border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-[12px] font-medium text-amber-950" role="alert">
                   {legalAcceptWarning}
                 </p>
               ) : null}
@@ -930,6 +950,18 @@ export function CheckoutForm({
               {successHint}
             </p>
           ) : null}
+          {successFallback ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-3 text-sm text-emerald-900">
+              <p className="font-semibold">Siparişiniz alındı.</p>
+              <p className="mt-1">
+                Sipariş no: <span className="font-mono">{successFallback.orderNumber}</span>
+              </p>
+              <p className="mt-1 text-xs">E-posta: {successFallback.email}</p>
+              <Link href={successFallback.href} className="mt-2 inline-flex text-xs font-semibold underline underline-offset-2">
+                Başarı sayfasına git
+              </Link>
+            </div>
+          ) : null}
 
         </div>
 
@@ -939,11 +971,16 @@ export function CheckoutForm({
           <p className="text-[12px] text-stone-700">Bu alışverişten +{earnedPointsPreview} Zelula Puan kazanacaksın ✨</p>
           <button
             type="submit"
-            disabled={disabled || pending}
+            disabled={submitDisabled}
             className="w-full rounded-full bg-[linear-gradient(135deg,#2f2a24,#1f1b17)] px-6 py-[1.2rem] text-base font-semibold text-white shadow-[0_12px_28px_rgba(40,34,28,0.4)] transition hover:shadow-[0_0_0_1px_rgba(232,201,139,0.35),0_16px_36px_rgba(40,34,28,0.45)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none"
           >
             {pending ? "İşleniyor, lütfen bekleyin..." : paymentMethod === "bank_transfer" ? "Siparişi oluştur" : "Güvenli ödemeye geç"}
           </button>
+          {!legalAllAccepted ? (
+            <p className="text-center text-[11px] text-stone-500">
+              Siparişi tamamlamak için sözleşmeleri onaylamalısınız.
+            </p>
+          ) : null}
           <p className="text-center text-[11px] leading-relaxed text-stone-600">Ödeme adımında kart bilgilerini girersin</p>
         </div>
       </form>
@@ -960,12 +997,17 @@ export function CheckoutForm({
           <button
             type="submit"
             form="checkout-form"
-            disabled={disabled || pending}
+            disabled={submitDisabled}
             className="rounded-full bg-[linear-gradient(135deg,#C6A15B,#E8C98B)] px-5 py-2.5 text-sm font-semibold text-[#2f271f] shadow-[0_8px_18px_rgba(198,161,91,0.28)] transition hover:brightness-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
           >
             {pending ? "İşleniyor…" : paymentMethod === "bank_transfer" ? "Siparişi oluştur" : "Güvenli ödemeye geç"}
           </button>
         </div>
+        {!legalAllAccepted ? (
+          <p className="mt-2 text-center text-[11px] text-stone-500">
+            Siparişi tamamlamak için sözleşmeleri onaylamalısınız.
+          </p>
+        ) : null}
       </div>
     </>
   );

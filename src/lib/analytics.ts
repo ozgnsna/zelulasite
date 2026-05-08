@@ -117,6 +117,8 @@ type Ga4Item = {
   item_category2?: string;
 };
 
+type ChannelSource = "instagram" | "whatsapp" | "trendyol";
+
 function toGa4Item(item: AnalyticsItem): Ga4Item {
   return {
     item_id: item.product_id,
@@ -242,5 +244,83 @@ export function trackPurchase(params: {
     "purchase",
     { currency: "TRY", ...params },
     { dedupeKey: `purchase:${params.transaction_id}`, dedupe: true },
+  );
+}
+
+export function trackInstagramClick(params: { location: string; href?: string }) {
+  trackEvent("instagram_click", {
+    channel: "instagram" satisfies ChannelSource,
+    location: params.location,
+    href: params.href,
+  });
+}
+
+export function trackWhatsAppClick(params: { location: string; href?: string }) {
+  trackEvent("whatsapp_click", {
+    channel: "whatsapp" satisfies ChannelSource,
+    location: params.location,
+    href: params.href,
+  });
+}
+
+export function trackTrendyolRedirect(params: { location: string; href?: string }) {
+  trackEvent("trendyol_redirect", {
+    channel: "trendyol" satisfies ChannelSource,
+    location: params.location,
+    href: params.href,
+  });
+}
+
+export function trackSearchUsage(params: {
+  query: string;
+  location: string;
+  results_count?: number;
+  filters?: Record<string, string | number | boolean | null | undefined>;
+}) {
+  const q = params.query.trim();
+  if (!q) return;
+  trackEvent(
+    "search_usage",
+    {
+      query: q,
+      location: params.location,
+      results_count: params.results_count,
+      filters: params.filters,
+    },
+    { dedupeKey: `search:${params.location}:${q}:${params.results_count ?? ""}`, dedupe: true },
+  );
+}
+
+export function trackCategoryClick(params: { category: string; location: string; href?: string }) {
+  const category = params.category.trim();
+  if (!category) return;
+  trackEvent("category_click", {
+    category,
+    location: params.location,
+    href: params.href,
+  });
+}
+
+export function trackCouponUsage(params: {
+  code: string;
+  discount_amount: number;
+  percent?: number;
+  subtotal_before_discount: number;
+  subtotal_after_discount: number;
+}) {
+  const code = params.code.trim().toUpperCase();
+  if (!code) return;
+  trackEvent(
+    "coupon_usage",
+    {
+      coupon: code,
+      discount_amount: params.discount_amount,
+      percent: params.percent,
+      subtotal_before_discount: params.subtotal_before_discount,
+      subtotal_after_discount: params.subtotal_after_discount,
+      currency: "TRY",
+      value: params.subtotal_after_discount,
+    },
+    { dedupeKey: `coupon:${code}:${params.subtotal_after_discount}`, dedupe: true },
   );
 }

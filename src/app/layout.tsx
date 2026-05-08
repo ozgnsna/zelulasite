@@ -9,6 +9,7 @@ import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { GoogleAnalyticsLoader } from "@/components/analytics/GoogleAnalyticsLoader";
+import { MicrosoftClarityLoader } from "@/components/analytics/MicrosoftClarityLoader";
 import { CookieBanner } from "@/components/CookieBanner";
 import { ReferralTrackingBridge } from "@/components/referral/ReferralTrackingBridge";
 import { AddToCartShareHost } from "@/components/referral/AddToCartShareHost";
@@ -49,10 +50,12 @@ export default async function RootLayout({
   const pathname = requestHeaders.get("x-pathname") ?? "";
   const isAdminRoute = pathname.startsWith("/admin");
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
   return (
     <html lang="tr" className={`${display.variable} ${sans.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-[color:var(--background)] font-sans text-stone-900 antialiased">
         <GoogleAnalyticsLoader gaId={gaId} />
+        <MicrosoftClarityLoader projectId={clarityId} />
         <Suspense fallback={null}>
           <AnalyticsProvider />
           <ReferralTrackingBridge />

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { getReferralShareLinkForProductSlug } from "@/app/actions/referral-share-context";
 import { ZELULA_ATC_SHARE_EVENT, type AtcShareEventDetail, referralWhatsAppShareBody } from "@/lib/referral/share-copy";
+import { trackWhatsAppClick } from "@/lib/analytics";
 
 const SESSION_KEY = "zelula_atc_share_moment_once";
 
@@ -77,6 +78,7 @@ export function AddToCartShareHost() {
 
   const whatsapp = () => {
     const text = referralWhatsAppShareBody(shareUrl);
+    trackWhatsAppClick({ location: "atc_share_moment", href: "https://wa.me/" });
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 

@@ -13,6 +13,7 @@ import { HomeWhyZelula } from "@/components/home/HomeWhyZelula";
 import { HomeSocialProof } from "@/components/home/HomeSocialProof";
 import { HomeProductRail, HomeProductRailItem } from "@/components/home/HomeProductRail";
 import { getInstagramFeed } from "@/lib/instagram";
+import { TrackedExternalLink } from "@/components/analytics/TrackedExternalLink";
 
 const HERO_IMAGE = "/hero-luxury.png";
 
@@ -283,23 +284,23 @@ export default async function HomePage() {
                 <h2 className="font-serif text-2xl font-light text-stone-900">Instagram&apos;da #zelulastyle</h2>
                 <p className="mt-2 text-sm font-light text-stone-600">Gerçek kombinler, gerçek Zelula ışıltısı.</p>
               </div>
-              <Link
+              <TrackedExternalLink
                 href={instagramProfileHref}
-                target="_blank"
-                rel="noreferrer"
+                eventType="instagram_click"
+                location="home_instagram_header"
                 className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500 underline-offset-4 transition hover:text-stone-800 hover:underline"
               >
                 Instagram
-              </Link>
+              </TrackedExternalLink>
             </div>
             {instagramPosts.length > 0 ? (
               <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                 {instagramPosts.map((post) => (
-                  <Link
+                  <TrackedExternalLink
                     key={post.id}
                     href={post.permalink}
-                    target="_blank"
-                    rel="noreferrer"
+                    eventType="instagram_click"
+                    location="home_instagram_feed"
                     className="group overflow-hidden rounded-xl border border-[#ebe6df] shadow-sm transition duration-500 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-[#e0d5c8] motion-safe:hover:shadow-[0_12px_32px_rgba(55,48,40,0.08)]"
                   >
                     <Image
@@ -309,7 +310,7 @@ export default async function HomePage() {
                       height={500}
                       className="aspect-square object-cover transition duration-[700ms] ease-out motion-safe:group-hover:scale-[1.04]"
                     />
-                  </Link>
+                  </TrackedExternalLink>
                 ))}
               </div>
             ) : (
@@ -321,11 +322,11 @@ export default async function HomePage() {
                     "https://images.pexels.com/photos/1454172/pexels-photo-1454172.jpeg?auto=compress&cs=tinysrgb&w=900",
                     "https://images.pexels.com/photos/10983783/pexels-photo-10983783.jpeg?auto=compress&cs=tinysrgb&w=900",
                   ].map((src, i) => (
-                    <Link
+                    <TrackedExternalLink
                       key={`${src}-${i}`}
                       href={instagramProfileHref}
-                      target="_blank"
-                      rel="noreferrer"
+                      eventType="instagram_click"
+                      location="home_instagram_fallback_grid"
                       className="group overflow-hidden rounded-xl border border-[#ebe6df] shadow-sm transition duration-500 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-[#e0d5c8] motion-safe:hover:shadow-[0_12px_32px_rgba(55,48,40,0.08)]"
                     >
                       <Image
@@ -335,21 +336,21 @@ export default async function HomePage() {
                         height={500}
                         className="aspect-square object-cover transition duration-[700ms] ease-out motion-safe:group-hover:scale-[1.04]"
                       />
-                    </Link>
+                    </TrackedExternalLink>
                   ))}
                 </div>
                 <div className="rounded-2xl border border-dashed border-[#e0d5c8] bg-[#faf8f5]/80 px-6 py-5 text-center">
                   <p className="text-sm font-light leading-relaxed text-stone-600">
                     Canlı akış kısa süreli erişilemiyor. En güncel paylaşımlar için profili ziyaret edebilirsin.
                   </p>
-                  <Link
+                  <TrackedExternalLink
                     href={instagramProfileHref}
-                    target="_blank"
-                    rel="noreferrer"
+                    eventType="instagram_click"
+                    location="home_instagram_fallback_cta"
                     className="mt-4 inline-flex items-center justify-center rounded-full border border-stone-300/80 bg-white px-6 py-2.5 text-xs font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-400 hover:bg-[#faf8f5]"
                   >
                     Profili aç @{process.env.INSTAGRAM_USERNAME ?? "zelulaofficial"}
-                  </Link>
+                  </TrackedExternalLink>
                 </div>
               </div>
             )}

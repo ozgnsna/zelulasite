@@ -12,6 +12,7 @@ import {
 } from "@/app/actions/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { buildDashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,17 @@ function TryPriceSplit({ n, className }: { n: number; className?: string }) {
       <span>{main}</span>
       <span className="text-[0.62em] font-medium text-stone-500">,{decimals}</span>
       <span className="ml-0.5 text-[0.55em] font-semibold text-stone-400">₺</span>
+    </span>
+  );
+}
+
+function OrderListTryPrice({ n }: { n: number }) {
+  const { main, decimals } = splitTryParts(n);
+  return (
+    <span className="inline-flex items-baseline gap-0.5 tabular-nums">
+      <span className="text-sm font-semibold text-stone-500">₺</span>
+      <span className="text-lg font-extrabold tracking-tight text-stone-950">{main}</span>
+      <span className="text-xs font-semibold text-stone-400">,{decimals}</span>
     </span>
   );
 }
@@ -115,36 +127,55 @@ function adminOrderListBadge(o: { payment_status: string; order_status: string }
   if (o.order_status === "cancelled") {
     return {
       label,
-      pill: "rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset bg-rose-50 text-rose-900 ring-rose-600/22",
+      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-rose-50 text-rose-900 ring-rose-600/25",
     };
   }
   if (o.payment_status === "failed") {
     return {
       label,
-      pill: "rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset bg-rose-50 text-rose-900 ring-rose-600/22",
+      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-rose-50 text-rose-900 ring-rose-600/25",
     };
   }
   if (o.order_status === "shipped") {
     return {
       label,
-      pill: "rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset bg-sky-50 text-sky-950 ring-sky-700/25",
+      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-sky-50 text-sky-950 ring-sky-700/30",
     };
   }
   if (o.order_status === "processing") {
     return {
       label,
-      pill: "rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset bg-amber-50 text-amber-950 ring-amber-700/25",
+      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-amber-50 text-amber-950 ring-amber-700/30",
     };
   }
   if (o.payment_status === "paid") {
     return {
       label,
-      pill: "rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset bg-emerald-50 text-emerald-950 ring-emerald-800/22",
+      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-emerald-50 text-emerald-950 ring-emerald-800/25",
     };
   }
   return {
     label,
-    pill: "rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset bg-stone-100 text-stone-800 ring-stone-500/14",
+    pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-stone-100 text-stone-800 ring-stone-500/20",
+  };
+}
+
+function paymentStatusBadge(paymentStatus: string): { label: string; pill: string } {
+  if (paymentStatus === "paid") {
+    return {
+      label: "Ödeme alındı",
+      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-700/20",
+    };
+  }
+  if (paymentStatus === "failed") {
+    return {
+      label: "Ödeme başarısız",
+      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-rose-100 text-rose-900 ring-1 ring-inset ring-rose-700/25",
+    };
+  }
+  return {
+    label: "Ödeme bekliyor",
+    pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-stone-200/90 text-stone-800 ring-1 ring-inset ring-stone-500/20",
   };
 }
 
@@ -221,7 +252,7 @@ export default async function AdminPage({
       .limit(50),
     admin
       .from("analytics_events")
-      .select("event_name")
+      .select("event_name,client_id,ecommerce")
       .gte("occurred_at", dayStart.toISOString())
       .lte("occurred_at", dayEnd.toISOString())
       .limit(3000),
@@ -271,9 +302,10 @@ export default async function AdminPage({
   const revenueYesterday = yesterdayOrders
     .filter((o) => o.payment_status === "paid" && o.order_status !== "cancelled")
     .reduce((sum, o) => sum + Number(o.total ?? 0), 0);
-  const addToCartToday = todayAnalytics.filter((e) => e.event_name === "add_to_cart").length;
-  const viewItemToday = todayAnalytics.filter((e) => e.event_name === "view_item").length;
-  const purchaseToday = todayAnalytics.filter((e) => e.event_name === "purchase").length;
+  const dashboardAnalytics = buildDashboardAnalyticsMetrics(todayAnalytics);
+  const addToCartToday = dashboardAnalytics.addToCarts;
+  const viewItemToday = dashboardAnalytics.productViews;
+  const purchaseToday = dashboardAnalytics.purchases;
 
   const lowStockCount = products.filter((p) => Boolean(p.is_active) && Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= 3).length;
   const missingMarketplaceCount = products.filter((p) => {
@@ -774,6 +806,50 @@ export default async function AdminPage({
             </ul>
           </section>
 
+          <section className="rounded-2xl border border-stone-200/75 bg-white p-5 shadow-[0_3px_16px_-8px_rgba(28,25,23,0.06)]">
+            <h2 className="text-base font-semibold text-stone-950">Analytics özeti (bugün)</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric title="Visitors today" value={dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")} />
+              <Metric title="Product views" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
+              <Metric title="Add to carts" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
+              <Metric title="Checkout starts" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
+              <Metric title="Purchases" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
+              <Metric
+                title="Conversion rate"
+                value={`${dashboardAnalytics.conversionRate.toLocaleString("tr-TR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}%`}
+              />
+            </div>
+            <div className="mt-4 rounded-xl border border-stone-200/70 bg-stone-50/50 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">
+                Funnel: View product → Add to cart → Checkout → Purchase
+              </p>
+              <p className="mt-1 text-sm text-stone-700">
+                {dashboardAnalytics.funnel.view_item.toLocaleString("tr-TR")} →{" "}
+                {dashboardAnalytics.funnel.add_to_cart.toLocaleString("tr-TR")} →{" "}
+                {dashboardAnalytics.funnel.begin_checkout.toLocaleString("tr-TR")} →{" "}
+                {dashboardAnalytics.funnel.purchase.toLocaleString("tr-TR")}
+              </p>
+            </div>
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Top viewed products</p>
+              {dashboardAnalytics.topViewedProducts.length === 0 ? (
+                <p className="mt-2 text-sm text-stone-500">Henüz görüntülenme verisi yok.</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {dashboardAnalytics.topViewedProducts.map((row) => (
+                    <li key={row.productId} className="flex items-center justify-between rounded-lg border border-stone-200/70 bg-white px-3 py-2">
+                      <span className="truncate text-sm text-stone-800">{row.productName}</span>
+                      <span className="text-sm font-semibold tabular-nums text-stone-900">{row.views.toLocaleString("tr-TR")}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
           <section>
             <h2 className="text-base font-semibold text-stone-950">Bugün yapılacaklar</h2>
             <p className="mt-1 text-sm text-stone-700">Küçük adımlar; büyük etki. Bugün bitmesi iyi olanlar.</p>
@@ -872,7 +948,7 @@ export default async function AdminPage({
             <p className="mt-0.5 text-[11px] font-medium text-stone-500">
               50 kayıt · kısa sipariş no · son yenileme {dashboardCheckedAtTr}
             </p>
-            <ul className="mt-3 space-y-1.5">
+            <ul className="mt-4 space-y-2.5">
               {recentOrdersList.length === 0 ? (
                 <li className="rounded-xl border border-dashed border-stone-300 bg-stone-50/80 px-4 py-5 text-sm text-stone-700">
                   <p className="font-medium text-stone-900">Henüz sipariş yok</p>
@@ -884,33 +960,37 @@ export default async function AdminPage({
               ) : (
                 recentOrdersList.map((o) => {
                   const badge = adminOrderListBadge(o);
+                  const paymentBadge = paymentStatusBadge(String(o.payment_status ?? ""));
                   return (
                     <li
                       key={o.id}
-                      className="group flex flex-wrap items-center gap-2 rounded-lg border border-stone-200/70 bg-stone-50/35 px-3 py-2 transition-all duration-200 hover:-translate-y-px hover:border-stone-300/75 hover:bg-stone-100/65 hover:shadow-[0_6px_20px_-8px_rgba(28,25,23,0.09)] hover:ring-1 hover:ring-stone-300/30"
+                      className="group grid grid-cols-1 gap-3 rounded-xl border border-stone-200/80 bg-stone-50/35 px-4 py-3 transition-all duration-200 hover:-translate-y-px hover:border-stone-300/80 hover:bg-stone-50 hover:shadow-[0_10px_24px_-12px_rgba(28,25,23,0.18)] hover:ring-1 hover:ring-stone-300/35 md:grid-cols-[minmax(0,1fr)_auto]"
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-[11px] font-semibold text-stone-950" title={o.order_number}>
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs font-medium tracking-wide text-stone-700" title={o.order_number}>
                           {shortenOrderNumberDisplay(o.order_number)}
                         </p>
-                        <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                          <span className="text-[11px] font-medium text-stone-700">{o.customer_name}</span>
-                          <span className="text-[10px] font-semibold tabular-nums text-stone-400">
-                            {formatOrderRelativeTimeTr(o.created_at)}
-                          </span>
+                        <p className="mt-1 text-sm font-semibold text-stone-950">{o.customer_name}</p>
+                        <p className="mt-1 text-[11px] font-medium tabular-nums text-stone-500">
+                          {formatOrderRelativeTimeTr(o.created_at)}
+                        </p>
+                        <p className="mt-1.5 text-[11px] text-stone-500 opacity-0 transition-opacity group-hover:opacity-100">
+                          {paymentBadge.label} · {badge.label}
                         </p>
                       </div>
-                      <span className={`shrink-0 ${badge.pill}`}>{badge.label}</span>
-                      <TryPriceSplit
-                        n={Number(o.total ?? 0)}
-                        className="shrink-0 text-xs font-bold tabular-nums text-stone-900"
-                      />
-                      <Link
-                        href={`/admin/orders/${o.id}`}
-                        className="shrink-0 rounded-md bg-stone-900 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm transition hover:bg-stone-800 hover:shadow active:scale-[0.98]"
-                      >
-                        Detay
-                      </Link>
+                      <div className="flex flex-wrap items-center justify-end gap-2 md:flex-nowrap">
+                        <span className={paymentBadge.pill}>{paymentBadge.label}</span>
+                        <span className={badge.pill}>{badge.label}</span>
+                        <div className="min-w-[84px] text-right">
+                          <OrderListTryPrice n={Number(o.total ?? 0)} />
+                        </div>
+                        <Link
+                          href={`/admin/orders/${o.id}`}
+                          className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-400 hover:bg-stone-100 hover:text-stone-950 active:scale-[0.99]"
+                        >
+                          Detay
+                        </Link>
+                      </div>
                     </li>
                   );
                 })

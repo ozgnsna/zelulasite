@@ -5,6 +5,7 @@ import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { getReferralShareLinkForProductSlug } from "@/app/actions/referral-share-context";
 import { referralWhatsAppShareBody } from "@/lib/referral/share-copy";
+import { trackWhatsAppClick } from "@/lib/analytics";
 
 export function HomeNewsletter() {
   const [pending, setPending] = useState(false);
@@ -26,6 +27,7 @@ export function HomeNewsletter() {
         return;
       }
 
+      trackWhatsAppClick({ location: "home_newsletter_share", href: "https://wa.me/" });
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
     } catch {
       toast.error("Paylaşım başlatılamadı");

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { referralWhatsAppShareBody } from "@/lib/referral/share-copy";
+import { trackWhatsAppClick } from "@/lib/analytics";
 
 export function OrderSuccessReferralShare({ shareUrl }: { shareUrl: string }) {
   const [copied, setCopied] = useState(false);
@@ -20,6 +21,7 @@ export function OrderSuccessReferralShare({ shareUrl }: { shareUrl: string }) {
 
   const whatsapp = () => {
     const text = referralWhatsAppShareBody(shareUrl);
+    trackWhatsAppClick({ location: "order_success_referral_share", href: "https://wa.me/" });
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 

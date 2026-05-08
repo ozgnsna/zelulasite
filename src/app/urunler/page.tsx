@@ -1,12 +1,14 @@
 import { ProductCard } from "@/components/ProductCard";
-import Link from "next/link";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
+import { SearchUsageTracker } from "@/components/analytics/SearchUsageTracker";
+import { CategoryClickLink } from "@/components/analytics/CategoryClickLink";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
 
 type Props = {
   searchParams: Promise<{
+    q?: string;
     kategori?: string;
     koleksiyon?: string;
     sirala?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
@@ -33,6 +35,18 @@ export default async function ProductsPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <SearchUsageTracker
+        location="products_page"
+        query={sp.q ?? ""}
+        resultsCount={products.length}
+        filters={{
+          kategori: categorySlug || null,
+          koleksiyon: collectionSlug || null,
+          sirala: sort,
+          min: min ?? null,
+          max: max ?? null,
+        }}
+      />
       <ViewItemListTracker
         listName="Urunler Listeleme"
         listId="products_listing"
@@ -60,8 +74,10 @@ export default async function ProductsPage({ searchParams }: Props) {
           <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Kategori</p>
           <ul className="mt-3 flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap">
             <li>
-              <Link
+              <CategoryClickLink
                 href="/urunler"
+                category="Tum Kategoriler"
+                location="products_sidebar"
                 className={`block rounded-full px-3 py-1.5 text-sm transition ${
                   !categorySlug
                     ? "bg-stone-900 text-white"
@@ -69,7 +85,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                 }`}
               >
                 Tümü
-              </Link>
+              </CategoryClickLink>
             </li>
             {categories.map((c) => {
               const href = isKnownCategorySlug(c.slug)
@@ -77,8 +93,10 @@ export default async function ProductsPage({ searchParams }: Props) {
                 : `/urunler?kategori=${c.slug}${collectionSlug ? `&koleksiyon=${collectionSlug}` : ""}`;
               return (
                 <li key={c.id}>
-                  <Link
+                  <CategoryClickLink
                     href={href}
+                    category={c.name}
+                    location="products_sidebar"
                     className={`block rounded-full px-3 py-1.5 text-sm transition ${
                       categorySlug === c.slug
                         ? "bg-stone-900 text-white"
@@ -86,7 +104,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     }`}
                   >
                     {c.name}
-                  </Link>
+                  </CategoryClickLink>
                 </li>
               );
             })}

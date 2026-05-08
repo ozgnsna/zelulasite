@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { openCookieSettingsFromUi } from "@/lib/cookies/consent";
 import { getSupportWhatsAppHref } from "@/lib/support-contact";
+import { trackInstagramClick, trackWhatsAppClick } from "@/lib/analytics";
 
 const linkClass =
   "text-sm text-stone-600 transition hover:text-stone-900 hover:underline underline-offset-2 decoration-stone-400/80";
@@ -131,6 +132,9 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline font-semibold text-[#8b5a2b] underline decoration-[#c6a15b]/70 underline-offset-2 transition hover:text-[#6b4320]"
+                onClick={() =>
+                  trackInstagramClick({ location: "footer_contact", href: instagramHref })
+                }
               >
                 @zelulaofficial
               </a>
@@ -140,6 +144,9 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 flex min-w-0 max-w-full items-center gap-2 text-sm font-medium text-green-600 underline-offset-2 transition hover:text-green-700 hover:underline"
+              onClick={() =>
+                trackWhatsAppClick({ location: "footer_support", href: whatsappHref })
+              }
             >
               <WhatsAppIcon className="shrink-0 text-[#25D366]" />
               <span className="min-w-0 break-words">WhatsApp ile hızlı destek al</span>

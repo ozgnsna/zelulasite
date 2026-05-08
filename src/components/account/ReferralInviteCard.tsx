@@ -6,6 +6,7 @@ import { CheckCircle2, Link2, Sparkles, Users } from "lucide-react";
 import { toast } from "sonner";
 import { claimReferralFirstShareReward } from "@/app/actions/referral";
 import { referralSmsShareBody, referralWhatsAppShareBody } from "@/lib/referral/share-copy";
+import { trackWhatsAppClick } from "@/lib/analytics";
 
 export function ReferralInviteCard({
   referralLink,
@@ -54,6 +55,7 @@ export function ReferralInviteCard({
     const text = referralWhatsAppShareBody(referralLink);
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     void runShareRewardThen(() => {
+      trackWhatsAppClick({ location: "account_referral_invite", href: "https://wa.me/" });
       window.open(url, "_blank", "noopener,noreferrer");
     });
   };

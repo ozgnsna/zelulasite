@@ -438,7 +438,18 @@ export async function createCheckout(formData: FormData) {
         notifyResult.email.error || notifyResult.whatsapp.error || null,
       processed_at: new Date().toISOString(),
     });
-    return { ok: true, url: `${siteUrl}/odeme/basarili?oid=${order.id}&pm=bank_transfer` };
+    // Bank transfer siparişi kaydedildikten sonra sepet temizlenir.
+    await setCartItems([]);
+    revalidatePath("/sepet");
+    const bankSuccessPath = `/siparis/${order.id}/basarili?pm=bank_transfer`;
+    return {
+      ok: true,
+      url: `${siteUrl}${bankSuccessPath}`,
+      fallbackUrl: bankSuccessPath,
+      orderId: order.id,
+      orderNumber: order.order_number,
+      paymentMethod: "bank_transfer" as const,
+    };
   }
 
   const clientIp = clientIpFromHeaders(requestHeaders);

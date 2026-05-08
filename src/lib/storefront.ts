@@ -419,17 +419,116 @@ export async function getCartUpsellProducts(cartItems: CartUpsellContextItem[], 
 }
 
 export async function getProductBySlug(slug: string) {
+  const normalizeSlug = (value: string) =>
+    value
+      .trim()
+      .toLocaleLowerCase("tr-TR")
+      .replaceAll("ü", "u")
+      .replaceAll("ğ", "g")
+      .replaceAll("ı", "i")
+      .replaceAll("ö", "o")
+      .replaceAll("ş", "s")
+      .replaceAll("ç", "c")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+  const boundedLevenshtein = (a: string, b: string, max = 2) => {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    const prev = new Array(b.length + 1).fill(0);
+    const curr = new Array(b.length + 1).fill(0);
+    for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+    for (let i = 1; i <= a.length; i += 1) {
+      curr[0] = i;
+      let minRow = curr[0];
+      for (let j = 1; j <= b.length; j += 1) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        curr[j] = Math.min(
+          prev[j] + 1,
+          curr[j - 1] + 1,
+          prev[j - 1] + cost,
+        );
+        minRow = Math.min(minRow, curr[j]);
+      }
+      if (minRow > max) return max + 1;
+      for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j];
+    }
+    return prev[b.length];
+  };
+
+  const tokenizeSlug = (value: string) =>
+    normalizeSlug(value)
+      .split("-")
+      .filter((t) => t.length >= 2);
+
   try {
     const supabase = await createClient();
+    const decodedSlug = (() => {
+      try {
+        return decodeURIComponent(slug);
+      } catch {
+        return slug;
+      }
+    })();
+
     const { data } = await supabase
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
-      .eq("slug", slug)
+      .eq("slug", decodedSlug)
       .eq("is_active", true)
-      .single();
-    if (!data) return null;
-    const p = data as Product;
-    return { ...p, categorySlug: p.category?.slug };
+      .maybeSingle();
+    if (data) {
+      const p = data as Product;
+      return { ...p, categorySlug: p.category?.slug };
+    }
+
+    // Fallback: slug varyasyonları (Türkçe karakter/encoding/ufak typo) için toleranslı eşleşme.
+    const { data: allActive } = await supabase
+      .from("products")
+      .select("*, category:categories(*), collection:collections(*), product_images(*)")
+      .eq("is_active", true)
+      .limit(1200);
+    const products = (allActive ?? []) as Product[];
+    if (products.length === 0) return null;
+
+    const normalizedInput = normalizeSlug(decodedSlug);
+    const exactNormalized = products.find((p) => normalizeSlug(String(p.slug ?? "")) === normalizedInput);
+    if (exactNormalized) return { ...exactNormalized, categorySlug: exactNormalized.category?.slug };
+
+    const inputTokens = tokenizeSlug(decodedSlug);
+    const specialToken = inputTokens.find((t) => /\d/.test(t) && t.length >= 3) ?? null;
+    if (inputTokens.length > 0) {
+      let bestTokenMatch: Product | null = null;
+      let bestTokenScore = -1;
+      for (const product of products) {
+        const productTokens = new Set(tokenizeSlug(String(product.slug ?? "")));
+        if (specialToken && !productTokens.has(specialToken)) continue;
+        let score = 0;
+        for (const token of inputTokens) {
+          if (productTokens.has(token)) score += 1;
+        }
+        if (score > bestTokenScore) {
+          bestTokenScore = score;
+          bestTokenMatch = product;
+        }
+      }
+      const minScore = Math.max(3, Math.floor(inputTokens.length * 0.45));
+      if (bestTokenMatch && bestTokenScore >= minScore) {
+        return { ...bestTokenMatch, categorySlug: bestTokenMatch.category?.slug };
+      }
+    }
+
+    let best: Product | null = null;
+    let bestDistance = 5;
+    for (const product of products) {
+      const d = boundedLevenshtein(normalizedInput, normalizeSlug(String(product.slug ?? "")), 4);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = product;
+      }
+    }
+    if (!best || bestDistance > 4) return null;
+    return { ...best, categorySlug: best.category?.slug };
   } catch {
     return null;
   }
