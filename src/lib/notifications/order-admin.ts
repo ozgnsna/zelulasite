@@ -1,0 +1,147 @@
+type OrderNotifyItem = {
+  name: string;
+  quantity: number;
+  totalPrice: number;
+};
+
+type OrderNotifyPayload = {
+  event: "order_created_bank_transfer" | "order_paid";
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  total: number;
+  currency: string;
+  paymentStatus: string;
+  paymentProvider: string;
+  items: OrderNotifyItem[];
+  adminOrderUrl?: string;
+};
+
+function splitCsv(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function getAdminEmailRecipients(): string[] {
+  const preferred = splitCsv(process.env.ADMIN_NOTIFY_EMAILS);
+  if (preferred.length > 0) return preferred;
+  return splitCsv(process.env.ADMIN_EMAILS);
+}
+
+function getAdminWhatsAppRecipients(): string[] {
+  return splitCsv(process.env.ADMIN_NOTIFY_WHATSAPP_TO);
+}
+
+function toTry(value: number, currency: string): string {
+  if (currency === "TRY") {
+    return `${value.toLocaleString("tr-TR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} ₺`;
+  }
+  return `${value.toFixed(2)} ${currency}`;
+}
+
+function buildSubject(payload: OrderNotifyPayload): string {
+  if (payload.event === "order_paid") {
+    return `Yeni odendi siparis: ${payload.orderNumber}`;
+  }
+  return `Yeni siparis (havale): ${payload.orderNumber}`;
+}
+
+function buildPlainText(payload: OrderNotifyPayload): string {
+  const title =
+    payload.event === "order_paid"
+      ? "Yeni odeme onaylandi"
+      : "Yeni siparis olustu (havale/EFT bekleniyor)";
+  const lines = payload.items.slice(0, 8).map((i) => `- ${i.name} x${i.quantity} (${toTry(i.totalPrice, payload.currency)})`);
+  return [
+    title,
+    "",
+    `Siparis No: ${payload.orderNumber}`,
+    `Siparis ID: ${payload.orderId}`,
+    `Musteri: ${payload.customerName}`,
+    `E-posta: ${payload.customerEmail}`,
+    `Telefon: ${payload.customerPhone}`,
+    `Toplam: ${toTry(payload.total, payload.currency)}`,
+    `Odeme Durumu: ${payload.paymentStatus}`,
+    `Odeme Yontemi: ${payload.paymentProvider}`,
+    "",
+    "Urunler:",
+    ...(lines.length > 0 ? lines : ["- (urun bilgisi yok)"]),
+    ...(payload.adminOrderUrl ? ["", `Admin: ${payload.adminOrderUrl}`] : []),
+  ].join("\n");
+}
+
+async function sendAdminEmail(payload: OrderNotifyPayload): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const to = getAdminEmailRecipients();
+  if (!apiKey || to.length === 0) return;
+
+  const from = process.env.ADMIN_NOTIFY_FROM_EMAIL?.trim() || "Zelula <no-reply@zeluladesign.com>";
+  const text = buildPlainText(payload);
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject: buildSubject(payload),
+      text,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`email_notify_failed:${res.status}:${body}`);
+  }
+}
+
+async function sendAdminWhatsApp(payload: OrderNotifyPayload): Promise<void> {
+  const accessToken = process.env.WHATSAPP_CLOUD_ACCESS_TOKEN?.trim();
+  const phoneNumberId = process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID?.trim();
+  const recipients = getAdminWhatsAppRecipients();
+  if (!accessToken || !phoneNumberId || recipients.length === 0) return;
+
+  const text = buildPlainText(payload).slice(0, 3900);
+  for (const to of recipients) {
+    const res = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { body: text },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`whatsapp_notify_failed:${res.status}:${body}`);
+    }
+  }
+}
+
+export async function notifyAdminOrderEvent(payload: OrderNotifyPayload): Promise<void> {
+  const results = await Promise.allSettled([
+    sendAdminEmail(payload),
+    sendAdminWhatsApp(payload),
+  ]);
+
+  for (const r of results) {
+    if (r.status === "rejected") {
+      console.warn("[notify] admin order notify failed", r.reason);
+    }
+  }
+}
