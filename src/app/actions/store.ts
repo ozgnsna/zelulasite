@@ -87,6 +87,11 @@ export async function updateCartItem(productId: string, quantity: number) {
   revalidatePath("/sepet");
 }
 
+export async function clearCart() {
+  await setCartItems([]);
+  revalidatePath("/sepet");
+}
+
 const checkoutSchema = z.object({
   customer_name: z.string().min(2, "Lütfen ad soyad bilgisi girin."),
   email: z.string().email("Geçerli bir e-posta adresi girin."),
