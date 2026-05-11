@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
 
 const microBase =
   "rounded-md border border-transparent bg-transparent px-1.5 py-0.5 font-medium leading-tight tracking-tight text-stone-600/90 underline decoration-stone-300/70 underline-offset-2 transition-colors hover:border-[#e7ded2]/80 hover:bg-[#fdfcfa] hover:text-amber-900/90 hover:decoration-amber-700/50 active:scale-[0.98]";
@@ -108,7 +109,7 @@ function applyTrendyolFillFromSite(overwrite: boolean) {
 
   const tBrand = inputVal(IDS.trendyolBrand).trim();
   if (tBrand === "") {
-    setInputValue(IDS.trendyolBrand, "Zelula");
+    setInputValue(IDS.trendyolBrand, ZELULA_TRENDYOL_BRAND_ID);
   }
 
   const tSale = inputVal(IDS.trendyolSale).trim();
@@ -128,7 +129,7 @@ function applyTrendyolFillFromSite(overwrite: boolean) {
 
   const tVat = inputVal(IDS.trendyolVat).trim();
   if (tVat === "") {
-    setInputValue(IDS.trendyolVat, "20");
+    setInputValue(IDS.trendyolVat, String(ZELULA_TRENDYOL_VAT_RATE));
   }
 
   if (productActive && overwrite) {

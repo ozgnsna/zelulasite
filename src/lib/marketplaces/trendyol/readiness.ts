@@ -1,3 +1,5 @@
+import { parseTrendyolPositiveIntId } from "@/lib/marketplaces/trendyol/int-ids";
+
 type ReadinessStatus = "ready" | "missing" | "disabled";
 
 export type TrendyolReadinessInput = {
@@ -12,8 +14,9 @@ export type TrendyolReadinessInput = {
   trendyol_quantity: number | null;
   stock_quantity: number | null;
   trendyol_vat_rate: number | null;
+  /** https ile başlayan ürün görseli sayısı (Trendyol v2 create zorunlu). */
+  trendyol_https_image_count?: number;
 };
-
 /** When category attribute schema is loaded from cache/API, enforce required attributes. */
 export type TrendyolCategoryReadinessInput = {
   resolved: boolean;
@@ -35,21 +38,17 @@ export function evaluateTrendyolReadiness(
   }
 
   const missingFields: string[] = [];
-  const barcode = p.trendyol_barcode?.trim() ?? "";
+  const barcode = p.trendyol_barcode?.trim() || p.sku?.trim() || "";
   const stockCode = p.trendyol_stock_code?.trim() || p.sku?.trim() || "";
-  const brand = p.trendyol_brand?.trim() ?? "";
-  const categoryId = p.trendyol_category_id?.trim() ?? "";
   const salePrice = Number(p.trendyol_sale_price ?? 0);
   const sharedQuantity = Number(p.stock_quantity ?? 0);
-  const vatRate = p.trendyol_vat_rate;
-
   if (!barcode) missingFields.push("barcode");
   if (!stockCode) missingFields.push("stock_code");
-  if (!brand) missingFields.push("brand");
-  if (!categoryId) missingFields.push("category_id");
+  if (parseTrendyolPositiveIntId(p.trendyol_category_id) == null) missingFields.push("category_id");
+  const imgCount = p.trendyol_https_image_count;
+  if (imgCount != null && imgCount < 1) missingFields.push("product_images");
   if (!(salePrice > 0)) missingFields.push("sale_price");
   if (!Number.isFinite(sharedQuantity) || sharedQuantity < 0) missingFields.push("quantity");
-  if (vatRate == null || Number.isNaN(Number(vatRate))) missingFields.push("vat_rate");
 
   if (category?.resolved && category.missingRequired.length > 0) {
     for (const m of category.missingRequired) {

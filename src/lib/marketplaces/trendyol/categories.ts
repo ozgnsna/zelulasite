@@ -18,15 +18,92 @@ export type CategoryAttributeDefinition = {
   required: boolean;
 };
 
+function rowNestedAttribute(row: Record<string, unknown>): Record<string, unknown> | null {
+  const a = row.attribute;
+  return a && typeof a === "object" ? (a as Record<string, unknown>) : null;
+}
+
+function rowAttributeId(row: Record<string, unknown>): number {
+  const direct = Number(row.attributeId ?? row.id ?? 0);
+  if (direct) return direct;
+  const nested = rowNestedAttribute(row);
+  if (!nested) return 0;
+  return Number(nested.id ?? nested.attributeId ?? 0);
+}
+
+function rowAttributeName(row: Record<string, unknown>, attributeId: number): string {
+  const nested = rowNestedAttribute(row);
+  const fromNested = nested ? String(nested.name ?? nested.attributeName ?? "").trim() : "";
+  if (fromNested) return fromNested;
+  return String(row.name ?? row.attributeName ?? `Özellik ${attributeId}`);
+}
+
+export type TrendyolCategoryAttributeValueOption = {
+  id: number;
+  name: string;
+};
+
+/** Kategori özelliği + Trendyol’dan gelen hazır değer listesi (boşsa serbest metin). */
+export type TrendyolCategoryAttributePickerRow = {
+  attributeId: number;
+  name: string;
+  required: boolean;
+  values: TrendyolCategoryAttributeValueOption[];
+};
+
+function extractValueOptionsFromRow(row: Record<string, unknown>): TrendyolCategoryAttributeValueOption[] {
+  const buckets: unknown[] = [
+    row.attributeValues,
+    row.categoryAttributeValues,
+    row.values,
+    row.attributeValueList,
+    row.attributeValueDtos,
+  ];
+  const nested = rowNestedAttribute(row);
+  if (nested) {
+    buckets.push(nested.attributeValues, nested.values);
+  }
+  const out: TrendyolCategoryAttributeValueOption[] = [];
+  const seen = new Set<number>();
+  for (const bucket of buckets) {
+    if (!Array.isArray(bucket)) continue;
+    for (const v of bucket) {
+      if (!v || typeof v !== "object") continue;
+      const o = v as Record<string, unknown>;
+      const id = Number(o.id ?? o.attributeValueId ?? o.valueId ?? 0);
+      const name = String(o.name ?? o.value ?? o.label ?? "").trim();
+      if (!id || !name || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ id, name });
+    }
+    if (out.length > 0) return out;
+  }
+  return out;
+}
+
+export function extractCategoryAttributesForPicker(payload: unknown): TrendyolCategoryAttributePickerRow[] {
+  const list = extractAttributesArray(payload);
+  const out: TrendyolCategoryAttributePickerRow[] = [];
+  for (const row of list) {
+    const attributeId = rowAttributeId(row);
+    if (!attributeId) continue;
+    const required = row.required === true || row.isRequired === true || row.mandatory === true;
+    const name = rowAttributeName(row, attributeId);
+    const values = extractValueOptionsFromRow(row);
+    out.push({ attributeId, name, required, values });
+  }
+  return out;
+}
+
 export function extractCategoryAttributeDefinitions(payload: unknown): CategoryAttributeDefinition[] {
   const list = extractAttributesArray(payload);
   const out: CategoryAttributeDefinition[] = [];
   for (const row of list) {
-    const attributeId = Number(row.attributeId ?? row.id ?? 0);
+    const attributeId = rowAttributeId(row);
     if (!attributeId) continue;
     const required =
       row.required === true || row.isRequired === true || row.mandatory === true;
-    const name = String(row.name ?? row.attributeName ?? `Özellik ${attributeId}`);
+    const name = rowAttributeName(row, attributeId);
     out.push({ attributeId, name, required });
   }
   return out;

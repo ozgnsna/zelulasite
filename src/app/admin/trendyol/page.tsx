@@ -18,10 +18,12 @@ import {
   resolveProductIdForTrendyolIdentifiers,
 } from "@/lib/marketplaces/trendyol/product-lookup";
 import { buildCategoryReadinessFromCache, isCategoryCacheFresh } from "@/lib/marketplaces/trendyol/categories";
+import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
 import { AdminSyncLogsSection } from "@/components/admin/dashboard/AdminSyncLogsSection";
 import { AdminTrendyolIntegrationCard } from "@/components/admin/dashboard/AdminTrendyolIntegrationCard";
 import { AdminTrendyolReadinessSection } from "@/components/admin/dashboard/AdminTrendyolReadinessSection";
+import { TrendyolBrandSearchPanel } from "@/components/admin/TrendyolBrandSearchPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -131,7 +133,7 @@ export default async function AdminTrendyolPage({
   const baseQueryParams = `from=${fromIso.slice(0, 10)}&to=${toIso.slice(0, 10)}`;
 
   const [productsRes, marketplaceIntegration, marketplaceLogs] = await Promise.all([
-    admin.from("products").select("*").order("created_at", { ascending: false }).limit(200),
+    admin.from("products").select("*, product_images(image_url)").order("created_at", { ascending: false }).limit(200),
     admin.from("marketplace_integrations").select("*").eq("marketplace", "trendyol").maybeSingle(),
     admin
       .from("marketplace_sync_logs")
@@ -195,6 +197,9 @@ export default async function AdminTrendyolPage({
         trendyol_quantity: Number(pr.trendyol_quantity ?? p.stock_quantity ?? 0),
         stock_quantity: Number(p.stock_quantity ?? 0),
         trendyol_vat_rate: Number(pr.trendyol_vat_rate ?? 0),
+        trendyol_https_image_count: countTrendyolHttpsProductImages(
+          pr.product_images as { image_url?: string | null }[] | null | undefined,
+        ),
       },
       categoryReadiness,
     );
@@ -242,6 +247,26 @@ export default async function AdminTrendyolPage({
           </AdminSyncLogsSection>
         }
       />
+
+      <section className="mb-8 rounded-2xl border border-[#e8dfd3] bg-white/90 p-4 shadow-sm">
+        <h2 className="text-sm font-medium text-stone-800">Marka ID bul (Trendyol API)</h2>
+        <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
+          Satıcı panelinde marka numarası yoktur. Aşağıdaki arama, kayıtlı API bilgilerinizle Trendyol{" "}
+          <span className="font-mono text-[10px]">brands/by-name</span> servisini çağırır; çıkan{" "}
+          <span className="font-medium text-stone-700">Marka ID</span> değerini ürün formundaki «Marka ID (Trendyol)»
+          alanına kopyalayın.
+        </p>
+        <div className="mt-3">
+          <TrendyolBrandSearchPanel targetInputId="trendyol-brand-id-copy-target" />
+          <input
+            id="trendyol-brand-id-copy-target"
+            type="text"
+            readOnly
+            placeholder="«Bu ID’yi yaz» ile buraya yazılır — kopyalayıp ürün sayfasına yapıştırın"
+            className="mt-2 w-full rounded-lg border border-dashed border-stone-300 bg-stone-50/80 px-3 py-2 font-mono text-xs text-stone-800"
+          />
+        </div>
+      </section>
 
       <AdminTrendyolReadinessSection
         baseQueryParams={baseQueryParams}

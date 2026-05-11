@@ -3,7 +3,9 @@ import {
   getActiveTrendyolIntegration,
   logMarketplaceSync,
   trendyolHasCredentials,
+  isTrendyolTransientHttpStatus,
   trendyolRequest,
+  TrendyolRequestError,
 } from "@/lib/marketplaces/trendyol/client";
 
 type InventoryProduct = {
@@ -71,13 +73,36 @@ export async function syncPriceInventoryForProducts(
     items: eligible.map(mapPriceInventoryItem),
   };
   const supplierId = integration.supplier_id || integration.seller_id;
-  try {
-    const response = await trendyolRequest<{ batchRequestId?: string }>({
+  const postPriceInventory = () =>
+    trendyolRequest<{ batchRequestId?: string }>({
       integration,
       method: "POST",
       path: `/suppliers/${supplierId}/products/price-and-inventory`,
       body: payload,
     });
+
+  const retryDelaysMs = [0, 2500, 5000];
+
+  try {
+    let response: { batchRequestId?: string } | undefined;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+      if (retryDelaysMs[attempt] > 0) {
+        await new Promise((r) => setTimeout(r, retryDelaysMs[attempt]));
+      }
+      try {
+        response = await postPriceInventory();
+        lastError = undefined;
+        break;
+      } catch (err) {
+        lastError = err;
+        const retryable = err instanceof TrendyolRequestError && isTrendyolTransientHttpStatus(err.meta.status);
+        if (!retryable || attempt === retryDelaysMs.length - 1) {
+          throw err;
+        }
+      }
+    }
+    if (!response) throw lastError ?? new Error("price-and-inventory: yanıt alınamadı");
     const now = new Date().toISOString();
     await Promise.all(
       eligible.map((p) =>
@@ -111,6 +136,8 @@ export async function syncPriceInventoryForProducts(
     return { ok: true as const, batchRequestId: response.batchRequestId ?? null, count: eligible.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Price/inventory sync failed";
+    const transient =
+      error instanceof TrendyolRequestError && isTrendyolTransientHttpStatus(error.meta.status);
     await logMarketplaceSync(admin, {
       integrationId: integration.id,
       entityType: "inventory",
@@ -119,6 +146,6 @@ export async function syncPriceInventoryForProducts(
       message,
       requestPayload: { reason, count: eligible.length },
     });
-    return { ok: false as const, message };
+    return { ok: false as const, message, transient };
   }
 }

@@ -80,6 +80,107 @@ function buildResponseMeta(endpoint: string, status: number, contentType: string
   };
 }
 
+function pathnameFromEndpoint(endpoint: string): string {
+  try {
+    return new URL(endpoint).pathname;
+  } catch {
+    return endpoint;
+  }
+}
+
+function stripHtmlToPlain(html: string, maxLen: number): string {
+  const plain = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return plain.slice(0, maxLen);
+}
+
+/** JSON veya HTML gövdeden kısa bir hata metni çıkarır (UI ve log için). */
+export function summarizeTrendyolResponseBody(
+  payload: unknown,
+  rawText: string,
+  responseType: TrendyolResponseType,
+): string {
+  if (payload != null && typeof payload === "object") {
+    const o = payload as Record<string, unknown>;
+    for (const k of ["message", "errorMessage", "error_message", "errorDescription", "title", "detail"]) {
+      const v = o[k];
+      if (typeof v === "string" && v.trim()) return v.trim().slice(0, 500);
+    }
+    if (Array.isArray(o.errors) && o.errors.length > 0) {
+      try {
+        const s = JSON.stringify(o.errors.slice(0, 5));
+        return s.length > 500 ? `${s.slice(0, 500)}…` : s;
+      } catch {
+        return String(o.errors[0]).slice(0, 500);
+      }
+    }
+    try {
+      const s = JSON.stringify(o);
+      return s.length > 400 ? `${s.slice(0, 400)}…` : s;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  if (responseType === "api_error" || rawText.trim().startsWith("<")) {
+    const plain = stripHtmlToPlain(rawText, 380);
+    if (plain) return plain;
+  }
+  return rawText.replace(/\s+/g, " ").trim().slice(0, 400);
+}
+
+/** Trendyol veya ara CDN’de sık görülen geçici kapasite / bakım benzeri kodlar. */
+export function isTrendyolTransientHttpStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 429 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    status === 520 ||
+    status === 522 ||
+    status === 556
+  );
+}
+
+function transientTrendyolHint(status: number, detail: string): string | null {
+  if (isTrendyolTransientHttpStatus(status)) {
+    return "Bu genelde Trendyol tarafında geçici bir yoğunluk veya bakım kaynaklıdır; birkaç dakika sonra tekrar deneyin.";
+  }
+  const d = detail.toLowerCase();
+  if (/service unavailable|temporarily unavailable|gateway timeout|bad gateway|try again later/.test(d)) {
+    return "Yanıt geçici hizmet dışı gibi görünüyor; kısa süre sonra tekrar deneyin.";
+  }
+  return null;
+}
+
+function buildTrendyolFailureMessage(
+  responseMeta: TrendyolResponseMeta,
+  parsed: unknown,
+  rawText: string,
+  httpOk: boolean,
+): string {
+  const path = pathnameFromEndpoint(responseMeta.endpoint);
+  const detail = summarizeTrendyolResponseBody(parsed, rawText, responseMeta.responseType);
+  const head =
+    responseMeta.responseType === "cloudflare_block"
+      ? "Trendyol erişim engeli (Cloudflare)"
+      : !httpOk
+        ? `Trendyol HTTP ${responseMeta.status}`
+        : "Trendyol yanıtı beklenmeyen biçimde (HTML veya bozuk içerik)";
+  const hint = transientTrendyolHint(responseMeta.status, detail);
+  const detailForMsg =
+    hint && /service unavailable/i.test(detail) ? detail.replace(/\bservice unavailable\b\.?/gi, "").replace(/\s+/g, " ").trim() : detail;
+  let msg = `${head} — ${path}. ${detailForMsg}`.replace(/\s+/g, " ").trim();
+  if (responseMeta.rayId) msg += ` Ray ID: ${responseMeta.rayId}`;
+  if (hint) msg = `${msg} ${hint}`;
+  return msg.slice(0, 900);
+}
+
 export function buildTrendyolCurlDebugCommand(input: {
   environment: TrendyolEnvironment;
   sellerId: string;
@@ -187,10 +288,8 @@ export async function trendyolRequest<T>({
     parsed = { raw: text };
   }
   if (!res.ok || responseMeta.responseType !== "ok") {
-    if (responseMeta.responseType === "cloudflare_block") {
-      throw new TrendyolRequestError("Trendyol request failed [cloudflare_block]", responseMeta, parsed);
-    }
-    throw new TrendyolRequestError("Trendyol request failed [api_error]", responseMeta, parsed);
+    const msg = buildTrendyolFailureMessage(responseMeta, parsed, text, res.ok);
+    throw new TrendyolRequestError(msg, responseMeta, parsed);
   }
   return parsed as T;
 }

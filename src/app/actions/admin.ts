@@ -11,6 +11,8 @@ import { normalizeEmailInput } from "@/lib/account/email-input";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { syncLoyaltyLedgersForOrder } from "@/lib/loyalty/sync-order-ledger";
+import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
+import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
 import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inventory";
 import {
   analyzeTrendyolProductPayloadIssues,
@@ -20,22 +22,32 @@ import {
   syncProductToTrendyol,
   testTrendyolProductsAccess,
   type TrendyolProductPayloadInput,
+  type TrendyolProductSyncOverrides,
 } from "@/lib/marketplaces/trendyol/products";
 import { fetchTrendyolOrdersForSync } from "@/lib/marketplaces/trendyol/orders";
 import {
   buildCategoryReadinessFromCache,
+  extractCategoryAttributesForPicker,
   fetchTrendyolCategoryAttributesCached,
+  type TrendyolCategoryAttributePickerRow,
 } from "@/lib/marketplaces/trendyol/categories";
 import {
   fetchTrendyolCategoryTreeCached,
   searchTrendyolCategoryLeaves,
   type TrendyolCategoryLeaf,
 } from "@/lib/marketplaces/trendyol/category-tree";
+import { fetchTrendyolBrandsByName, type TrendyolBrandHit } from "@/lib/marketplaces/trendyol/brands";
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
 
 function normalizeTrendyolUiError(message: string) {
   const raw = String(message ?? "");
   const lower = raw.toLowerCase();
+  if (
+    /\bhttp\s*556\b|\bhttp\s*503\b|\bhttp\s*502\b|\bhttp\s*504\b|\bhttp\s*429\b/i.test(raw) ||
+    /service unavailable/i.test(raw)
+  ) {
+    return "Trendyol fiyat/stok servisi geçici olarak yanıt vermedi (çoğunlukla Trendyol altyapı yoğunluğu). Birkaç dakika sonra tekrar deneyin; yineliyorsa Trendyol paneli veya destek ile doğrulayın.";
+  }
   const isCloudflareBlocked =
     lower.includes("cloudflare_block") ||
     (lower.includes("cloudflare") && (lower.includes("blocked") || lower.includes("ray id")));
@@ -229,10 +241,10 @@ export async function saveProduct(formData: FormData) {
     is_active: formData.get("is_active") === "on",
     trendyol_barcode: String(formData.get("trendyol_barcode") ?? "") || null,
     trendyol_stock_code: String(formData.get("trendyol_stock_code") ?? "") || null,
-    trendyol_brand: String(formData.get("trendyol_brand") ?? "") || null,
+    trendyol_brand: ZELULA_TRENDYOL_BRAND_ID,
     trendyol_category_id: String(formData.get("trendyol_category_id") ?? "") || null,
     trendyol_category_attributes: categoryAttributes,
-    trendyol_vat_rate: Number(formData.get("trendyol_vat_rate") ?? 20) || 20,
+    trendyol_vat_rate: ZELULA_TRENDYOL_VAT_RATE,
     trendyol_list_price: Number(formData.get("trendyol_list_price") ?? 0) || null,
     trendyol_sale_price: Number(formData.get("trendyol_sale_price") ?? 0) || null,
     trendyol_quantity: Number(formData.get("trendyol_quantity") ?? 0) || null,
@@ -260,9 +272,13 @@ export async function saveProduct(formData: FormData) {
   }
   revalidatePath("/admin");
   if (returnTo !== "/admin") revalidatePath(returnTo);
-  if (id && returnTo !== "/admin") {
+  if (!productId || returnTo === "/admin") return;
+
+  if (id) {
     redirect(withQueryParam(returnTo, "productSaved", "1"));
   }
+  revalidatePath(`/admin/products/${productId}/edit`);
+  redirect(withQueryParam(`/admin/products/${encodeURIComponent(productId)}/edit`, "productSaved", "1"));
 }
 
 export async function saveTrendyolIntegrationSettings(formData: FormData) {
@@ -295,6 +311,81 @@ export async function syncTrendyolPriceInventoryNow(formData: FormData) {
   const admin = createAdminClient();
   await syncPriceInventoryForProducts(admin, [productId], "manual_button");
   revalidatePath("/admin");
+}
+
+function buildTrendyolPushOverridesFromForm(formData: FormData): TrendyolProductSyncOverrides {
+  const o: TrendyolProductSyncOverrides = {};
+  o.trendyol_brand = ZELULA_TRENDYOL_BRAND_ID;
+  o.trendyol_vat_rate = ZELULA_TRENDYOL_VAT_RATE;
+  const cid = String(formData.get("trendyol_category_id") ?? "").trim();
+  if (cid) o.trendyol_category_id = cid;
+  const barcode = String(formData.get("trendyol_barcode") ?? "").trim();
+  if (barcode) o.trendyol_barcode = barcode;
+  const stockCode = String(formData.get("trendyol_stock_code") ?? "").trim();
+  if (stockCode) o.trendyol_stock_code = stockCode;
+  const attrsRaw = String(formData.get("trendyol_category_attributes") ?? "").trim();
+  if (attrsRaw) {
+    try {
+      o.trendyol_category_attributes = JSON.parse(attrsRaw);
+    } catch {
+      /* formda geçersiz JSON — yalnızca DB kullanılsın */
+    }
+  }
+  const listP = String(formData.get("trendyol_list_price") ?? "").trim();
+  if (listP !== "" && !Number.isNaN(Number(listP))) o.trendyol_list_price = Number(listP);
+  const saleP = String(formData.get("trendyol_sale_price") ?? "").trim();
+  if (saleP !== "" && !Number.isNaN(Number(saleP))) o.trendyol_sale_price = Number(saleP);
+  const tq = String(formData.get("trendyol_quantity") ?? "").trim();
+  if (tq !== "" && !Number.isNaN(Number(tq))) o.trendyol_quantity = Number(tq);
+  const dw = String(formData.get("trendyol_dimensional_weight") ?? "").trim();
+  if (dw !== "" && !Number.isNaN(Number(dw))) o.trendyol_dimensional_weight = Number(dw);
+  return o;
+}
+
+/** Ürün düzenleme: ürün batch + fiyat/stok batch. Formdaki Trendyol alanları (varsa) bu gönderim için DB’nin üzerine yazılır — kaydetmeden deneme mümkün. */
+export async function pushTrendyolProductAndInventoryFromForm(formData: FormData) {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  if (!productId) return;
+  const admin = createAdminClient();
+  const overrides = buildTrendyolPushOverridesFromForm(formData);
+  const pr = await syncProductToTrendyol(admin, productId, {
+    overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
+  });
+  const ir = await syncPriceInventoryForProducts(admin, [productId], "product_form_push");
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${productId}/edit`);
+
+  const base = `/admin/products/${encodeURIComponent(productId)}/edit`;
+  if (!pr.ok) {
+    redirect(withQueryParam(base, "trendyolPushError", pr.message || "Ürün Trendyol’a gönderilemedi."));
+  }
+  if (!ir.ok) {
+    const invTransient = "transient" in ir && ir.transient === true;
+    const productActuallySent = pr.ok && !("skipped" in pr && pr.skipped);
+    if (invTransient && productActuallySent) {
+      redirect(
+        withQueryParam(
+          base,
+          "trendyolPushInfo",
+          "Ürün adımı Trendyol’a iletildi; fiyat/stok uç noktası geçici olarak yanıt vermedi (HTTP 556 vb.). Birkaç dakika sonra tekrar «Trendyol’a gönder» deneyin — ikinci adım yeniden dener.",
+        ),
+      );
+    }
+    redirect(withQueryParam(base, "trendyolPushError", ir.message || "Fiyat/stok Trendyol’a iletilemedi."));
+  }
+  const productSkipped = Boolean(pr.ok && "skipped" in pr && pr.skipped);
+  const invSkipped = Boolean(ir.ok && "skipped" in ir && ir.skipped);
+  if (productSkipped || invSkipped) {
+    redirect(
+      withQueryParam(
+        base,
+        "trendyolPushInfo",
+        "İstek işlendi; ürün veya fiyat-stok adımı atlandı (sitede/Trendyol’da yayın kapalı olabilir veya entegrasyon eksik). Önce Kaydet, sonra tekrar deneyin veya admin loglarına bakın.",
+      ),
+    );
+  }
+  redirect(withQueryParam(base, "trendyolPushOk", "1"));
 }
 
 export async function syncTrendyolPriceInventoryBatch() {
@@ -390,7 +481,7 @@ export async function syncReadyTrendyolProductsAction() {
   const { data: products } = await admin
     .from("products")
     .select(
-      "id,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,sku,trendyol_brand,trendyol_category_id,trendyol_sale_price,price,trendyol_quantity,stock_quantity,trendyol_vat_rate,trendyol_category_attributes",
+      "id,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,sku,trendyol_brand,trendyol_category_id,trendyol_sale_price,price,trendyol_quantity,stock_quantity,trendyol_vat_rate,trendyol_category_attributes,product_images(image_url)",
     )
     .limit(1000);
   const catIds = [
@@ -438,6 +529,9 @@ export async function syncReadyTrendyolProductsAction() {
             trendyol_quantity: Number(p.trendyol_quantity ?? p.stock_quantity ?? 0),
             stock_quantity: Number(p.stock_quantity ?? 0),
             trendyol_vat_rate: Number(p.trendyol_vat_rate ?? 0),
+            trendyol_https_image_count: countTrendyolHttpsProductImages(
+              (p as { product_images?: { image_url?: string | null }[] | null }).product_images,
+            ),
           },
           categoryCtx,
         ).status === "ready"
@@ -507,12 +601,40 @@ export async function searchTrendyolCategoriesAction(query: string) {
   return { ok: true as const, results };
 }
 
+export async function searchTrendyolBrandsByNameAction(
+  name: string,
+): Promise<{ ok: true; brands: TrendyolBrandHit[] } | { ok: false; message: string; brands: TrendyolBrandHit[] }> {
+  const admin = createAdminClient();
+  const result = await fetchTrendyolBrandsByName(admin, name);
+  if (!result.ok) {
+    return { ok: false, message: normalizeTrendyolUiError(result.message), brands: [] };
+  }
+  return { ok: true, brands: result.brands };
+}
+
 /** Warm attribute cache after picking a category in the product form (no product sync). */
 export async function prefetchTrendyolCategoryAttributesForFormAction(categoryId: string) {
   const id = String(categoryId ?? "").trim();
   if (!id) return;
   const admin = createAdminClient();
   await fetchTrendyolCategoryAttributesCached(admin, id, { forceRefresh: false });
+}
+
+/** Ürün formu: kategori ID ile Trendyol özellik şemasını çekip personel için seçim listesi üretir. */
+export async function loadTrendyolCategoryAttributePickerRowsAction(categoryId: string): Promise<
+  | { ok: true; rows: TrendyolCategoryAttributePickerRow[] }
+  | { ok: false; message: string; rows: TrendyolCategoryAttributePickerRow[] }
+> {
+  const id = String(categoryId ?? "").trim();
+  if (!/^\d+$/.test(id)) {
+    return { ok: false, message: "Önce geçerli bir Trendyol kategori ID girin (yalnızca rakam).", rows: [] };
+  }
+  const admin = createAdminClient();
+  const res = await fetchTrendyolCategoryAttributesCached(admin, id, { forceRefresh: false });
+  if (!res.ok) {
+    return { ok: false, message: normalizeTrendyolUiError(res.message), rows: [] };
+  }
+  return { ok: true, rows: extractCategoryAttributesForPicker(res.payload) };
 }
 
 export async function saveCategory(formData: FormData) {
@@ -651,11 +773,20 @@ export async function uploadProductImage(formData: FormData) {
   }
 
   const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
+
+  const { data: existingRows } = await supabase
+    .from("product_images")
+    .select("sort_order,is_cover")
+    .eq("product_id", productId);
+  const existing = existingRows ?? [];
+  const maxSort = existing.reduce((m, r) => Math.max(m, Number(r.sort_order ?? 0)), 0);
+  const needsCover = existing.length === 0 || !existing.some((r) => r.is_cover);
+
   const { error: insertError } = await supabase.from("product_images").insert({
     product_id: productId,
     image_url: data.publicUrl,
-    is_cover: true,
-    sort_order: 0,
+    is_cover: needsCover,
+    sort_order: maxSort + 1,
   });
   if (insertError) {
     redirect(withQueryParam(returnTo, "imageUploadError", insertError.message || "Veritabanına kayıt eklenemedi."));

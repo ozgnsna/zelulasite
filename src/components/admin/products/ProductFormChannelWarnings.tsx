@@ -32,8 +32,9 @@ function missingFieldLabels(keys: string[]) {
     trendyol_barcode: "Trendyol barkod",
     trendyol_stock_code: "Trendyol stok kodu",
     product_sku: "SKU",
-    trendyol_category_id: "Trendyol kategori ID",
-    trendyol_brand: "Trendyol marka",
+    trendyol_category_id: "Trendyol kategori ID (sayı)",
+    trendyol_brand: "Trendyol marka ID (sayı)",
+    product_images: "https ürün görseli",
     trendyol_vat_rate: "Trendyol KDV",
     stock_quantity: "Ortak stok",
   };
@@ -42,9 +43,11 @@ function missingFieldLabels(keys: string[]) {
 
 function targetIdsForMissingKey(key: string): string[] {
   if (key === "stock_quantity") return ["product-stock_quantity", "product-stock"];
+  if (key === "trendyol_barcode") return ["trendyol_barcode", "product-sku"];
   if (key === "product_sku") return ["product-sku"];
   if (key === "trendyol_sale_price") return ["product-section-trendyol-prices", "trendyol_sale_price"];
   if (key === "trendyol_list_price") return ["product-section-trendyol-prices", "trendyol_list_price"];
+  if (key === "product_images") return ["product-section-images"];
   return [key];
 }
 
@@ -55,6 +58,33 @@ function focusById(id: string) {
     return true;
   }
   return false;
+}
+
+const TRENDYOL_PUSH_FIELD_IDS = [
+  "trendyol_brand",
+  "trendyol_category_id",
+  "trendyol_barcode",
+  "trendyol_stock_code",
+  "trendyol_category_attributes",
+  "trendyol_vat_rate",
+  "trendyol_list_price",
+  "trendyol_sale_price",
+  "trendyol_quantity",
+  "trendyol_dimensional_weight",
+] as const;
+
+/** «Trendyol'a gönder» küçük formu yalnızca product_id taşıyordu; canlı form değerlerini kopyala. */
+function copyLiveTrendyolFieldsIntoPushForm(mainFormId: string, pushFormId: string) {
+  const push = document.getElementById(pushFormId);
+  if (!(push instanceof HTMLFormElement)) return;
+  for (const id of TRENDYOL_PUSH_FIELD_IDS) {
+    const src = document.getElementById(id);
+    const dst = push.elements.namedItem(id);
+    if (!(dst instanceof HTMLInputElement) && !(dst instanceof HTMLTextAreaElement)) continue;
+    if (src instanceof HTMLInputElement || src instanceof HTMLTextAreaElement) {
+      dst.value = src.value;
+    }
+  }
 }
 
 function jumpToMissingField(key: string) {
@@ -95,14 +125,18 @@ function computeSnapshot(): Snapshot {
 
   const missing: string[] = [];
   if (!(trendyolSalePrice > 0)) missing.push("trendyol_sale_price");
-  if (!readVal("trendyol_barcode").trim()) missing.push("trendyol_barcode");
+  if (!readVal("trendyol_barcode").trim() && !readVal("product-sku").trim()) {
+    missing.push("trendyol_barcode");
+  }
   if (!readVal("trendyol_stock_code").trim() && !readVal("product-sku").trim()) {
     missing.push("trendyol_stock_code", "product_sku");
   }
-  if (!readVal("trendyol_category_id").trim()) missing.push("trendyol_category_id");
-  if (!readVal("trendyol_brand").trim()) missing.push("trendyol_brand");
-  if (!readVal("trendyol_vat_rate").trim()) missing.push("trendyol_vat_rate");
-  if (!(stock > 0)) missing.push("stock_quantity");
+  if (!/^\d+$/.test(readVal("trendyol_category_id").trim())) missing.push("trendyol_category_id");
+  const stockRaw = readVal("product-stock").trim();
+  const stockNum = Number(stockRaw);
+  if (stockRaw === "" || Number.isNaN(stockNum) || stockNum < 0) missing.push("stock_quantity");
+  const imgC = Number(readVal("trendyol-https-image-count"));
+  if (!Number.isFinite(imgC) || imgC < 1) missing.push("product_images");
 
   return {
     status: missing.length > 0 ? "missing" : "ready",
@@ -149,9 +183,18 @@ export function TrendyolStatusBadge({ formId }: { formId: string }) {
   return <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-medium", tone)}>{label}</span>;
 }
 
-export function TrendyolWarningsPanel({ formId }: { formId: string }) {
+export function TrendyolWarningsPanel({
+  formId,
+  trendyolPushFormId,
+}: {
+  formId: string;
+  /** Sunucu eylemine bağlı gizli form id (düzenleme sayfasında). */
+  trendyolPushFormId?: string;
+}) {
   const snap = useChannelSnapshot(formId);
   const readinessFail = snap.status === "missing";
+  const channelOff = snap.status === "disabled";
+  const canPush = snap.status === "ready" && Boolean(trendyolPushFormId);
   const isStockCritical = Number.isFinite(snap.stock) && snap.stock <= 2;
   const hasPriceWarning =
     snap.status !== "disabled" &&
@@ -186,19 +229,50 @@ export function TrendyolWarningsPanel({ formId }: { formId: string }) {
       {hasPriceWarning ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Trendyol fiyatı site fiyatından düşük</div>
       ) : null}
-      <button
-        type="button"
-        disabled={readinessFail}
-        title={readinessFail ? "Eksik alanları tamamla" : "Hazır"}
-        className={cn(
-          "w-full rounded-lg border px-3 py-2 text-sm font-medium transition",
-          readinessFail
-            ? "cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400"
-            : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
-        )}
-      >
-        Trendyol’a gönder
-      </button>
+      {channelOff && trendyolPushFormId ? (
+        <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-700">
+          <span className="font-semibold text-stone-800">Düğme devre dışı:</span> Üstteki «Trendyol kanalında aktif» anahtarı kapalı. Açıp{" "}
+          <strong>Değişiklikleri kaydet</strong>
+          dedikten sonra tekrar deneyin; gönderim açıkken formdaki Trendyol alanları kullanılır.
+        </div>
+      ) : null}
+      {trendyolPushFormId ? (
+        <>
+          <button
+            type="button"
+            disabled={!canPush}
+            title={
+              snap.status === "disabled"
+                ? "Önce Trendyol kanalını açın ve kaydedin"
+                : readinessFail
+                  ? "Eksik alanları tamamlayın"
+                  : "Formdaki Trendyol alanlarıyla gönder (kalıcı kayıt için sonra «Değişiklikleri kaydet»)"
+            }
+            onClick={() => {
+              if (!trendyolPushFormId) return;
+              copyLiveTrendyolFieldsIntoPushForm(formId, trendyolPushFormId);
+              const push = document.getElementById(trendyolPushFormId);
+              if (push instanceof HTMLFormElement) push.requestSubmit();
+            }}
+            className={cn(
+              "w-full rounded-lg border px-3 py-2 text-sm font-medium transition",
+              !canPush
+                ? "cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+            )}
+          >
+            Trendyol’a gönder
+          </button>
+          <p className="text-[10px] leading-relaxed text-stone-500">
+            Bu gönderim <strong>şu an formda yazan</strong> marka, kategori, özellik ve Trendyol fiyat alanlarını kullanır (kaydetmeden de deneyebilirsiniz). Kalıcı
+            olması için sonra «Değişiklikleri kaydet». Gri düğme = kanal kapalı veya eksik alan.
+          </p>
+        </>
+      ) : (
+        <p className="text-[11px] leading-relaxed text-stone-500">
+          Ürün kaydedildikten sonra buradan Trendyol’a gönderebilirsiniz.
+        </p>
+      )}
     </div>
   );
 }

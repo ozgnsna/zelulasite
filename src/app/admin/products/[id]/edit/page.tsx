@@ -1,11 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { deleteProductImage, saveProduct, uploadProductImage } from "@/app/actions/admin";
+import {
+  deleteProductImage,
+  pushTrendyolProductAndInventoryFromForm,
+  saveProduct,
+  uploadProductImage,
+} from "@/app/actions/admin";
 import { ProductForm } from "@/components/admin/products/ProductForm";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TRENDYOL_IMPORTED_REVIEW_NOTE } from "@/lib/marketplaces/trendyol/products";
 import { createClient } from "@/lib/supabase/server";
-import { buildCategoryReadinessFromCache, extractCategoryAttributeDefinitions } from "@/lib/marketplaces/trendyol/categories";
+import {
+  buildCategoryReadinessFromCache,
+  extractCategoryAttributeDefinitions,
+  extractCategoryAttributesForPicker,
+} from "@/lib/marketplaces/trendyol/categories";
+import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +31,9 @@ export default async function AdminEditProductPage({
     imageUploadOk?: string;
     imageDeleted?: string;
     productSaved?: string;
+    trendyolPushOk?: string;
+    trendyolPushError?: string;
+    trendyolPushInfo?: string;
   }>;
 }) {
   const { id } = await params;
@@ -30,6 +43,9 @@ export default async function AdminEditProductPage({
   const imageUploadOk = sp.imageUploadOk === "1";
   const imageDeleted = sp.imageDeleted === "1";
   const productSaved = sp.productSaved === "1";
+  const trendyolPushOk = sp.trendyolPushOk === "1";
+  const trendyolPushError = sp.trendyolPushError ?? "";
+  const trendyolPushInfo = sp.trendyolPushInfo ?? "";
 
   const supabase = await createClient();
   const {
@@ -70,6 +86,9 @@ export default async function AdminEditProductPage({
       : undefined,
     (product as Record<string, unknown>).trendyol_category_attributes,
   );
+  const trendyolHttpsImageCount = countTrendyolHttpsProductImages(
+    (product as { product_images?: { image_url?: string | null }[] | null }).product_images,
+  );
   const trendyolReadiness = evaluateTrendyolReadiness(
     {
       is_active: Boolean(product.is_active),
@@ -83,6 +102,7 @@ export default async function AdminEditProductPage({
       trendyol_quantity: Number((product as Record<string, unknown>).trendyol_quantity ?? product.stock_quantity ?? 0),
       stock_quantity: Number(product.stock_quantity ?? 0),
       trendyol_vat_rate: Number((product as Record<string, unknown>).trendyol_vat_rate ?? 0),
+      trendyol_https_image_count: trendyolHttpsImageCount,
     },
     categoryReadiness,
   );
@@ -90,6 +110,9 @@ export default async function AdminEditProductPage({
 
   const trendyolCategoryAttributeDefinitions = cacheRow?.payload
     ? extractCategoryAttributeDefinitions(cacheRow.payload)
+    : [];
+  const trendyolCategoryAttributePickerRows = cacheRow?.payload
+    ? extractCategoryAttributesForPicker(cacheRow.payload)
     : [];
   const importedNeedsReview =
     (!Boolean(product.is_active) &&
@@ -212,19 +235,39 @@ export default async function AdminEditProductPage({
           Değişiklikler başarıyla kaydedildi.
         </div>
       ) : null}
+      {trendyolPushOk ? (
+        <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
+          Trendyol’a gönderim kuyruğa alındı. Sonucu satıcı panelinde veya entegrasyon loglarında kontrol edin.
+        </div>
+      ) : null}
+      {trendyolPushInfo ? (
+        <div className="mb-4 rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+          <span className="font-medium">Trendyol gönderimi:</span>{" "}
+          <span className="break-words">{trendyolPushInfo}</span>
+        </div>
+      ) : null}
+      {trendyolPushError ? (
+        <div className="mb-4 rounded-xl border border-rose-200/90 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
+          <span className="font-medium">Trendyol gönderimi başarısız:</span>{" "}
+          <span className="break-words">{trendyolPushError}</span>
+        </div>
+      ) : null}
 
       <ProductForm
         mode="edit"
         initialProduct={{ ...(product as Record<string, unknown>), id }}
+        productUpdatedAt={String((product as { updated_at?: string }).updated_at ?? "") || null}
         importedNeedsReview={importedNeedsReview}
         categories={(categories ?? []).map((c) => ({ id: c.id, name: c.name }))}
         collections={(collections ?? []).map((c) => ({ id: c.id, name: c.name }))}
         trendyolReadiness={trendyolReadiness}
         trendyolCategoryAttributeDefinitions={trendyolCategoryAttributeDefinitions}
+        trendyolCategoryAttributePickerRows={trendyolCategoryAttributePickerRows}
         openTrendyolByDefault={openTrendyol}
         returnTo={`/admin/products/${id}/edit`}
         uploadProductImageAction={uploadProductImage}
         deleteProductImageAction={deleteProductImage}
+        pushTrendyolProductAndInventoryAction={pushTrendyolProductAndInventoryFromForm}
         saveProductAction={saveProduct}
       />
       </div>

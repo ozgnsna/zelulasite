@@ -6,6 +6,7 @@ import {
   trendyolHasCredentials,
   trendyolRequest,
 } from "@/lib/marketplaces/trendyol/client";
+import { parseTrendyolPositiveIntId } from "@/lib/marketplaces/trendyol/int-ids";
 
 /** DB row shape used to build the Trendyol v2/products POST body (single item in `items`). */
 export type TrendyolProductPayloadInput = {
@@ -18,6 +19,7 @@ export type TrendyolProductPayloadInput = {
   trendyol_active: boolean;
   trendyol_barcode: string | null;
   trendyol_stock_code: string | null;
+  /** Trendyol marka listesindeki sayısal marka ID (metin marka adı değil). */
   trendyol_brand: string | null;
   trendyol_category_id: string | null;
   trendyol_category_attributes: unknown;
@@ -26,22 +28,38 @@ export type TrendyolProductPayloadInput = {
   trendyol_sale_price: number | null;
   trendyol_quantity: number | null;
   trendyol_dimensional_weight: number | null;
+  /** Ürün görselleri — Trendyol v2 create için en az bir https URL gerekir. */
+  product_images?: { image_url?: string | null }[] | null;
 };
 
 type TrendyolProductRow = TrendyolProductPayloadInput;
+
+function buildTrendyolImageItems(p: TrendyolProductRow): { url: string }[] {
+  const rows = Array.isArray(p.product_images) ? p.product_images : [];
+  const urls = rows
+    .map((r) => String((r as { image_url?: string | null })?.image_url ?? "").trim())
+    .filter((u) => /^https:\/\//i.test(u))
+    .slice(0, 8);
+  return urls.map((url) => ({ url }));
+}
+
 export const TRENDYOL_IMPORTED_REVIEW_NOTE = "Trendyol'dan içe aktarılan ürün.";
 
-function buildProductPayload(p: TrendyolProductRow) {
+/** Trendyol v2 create gövdesi (önizleme: eksik ID’ler 0, görseller boş olabilir — analyze yakalar). */
+function buildProductPayloadItem(p: TrendyolProductRow): Record<string, unknown> {
   const barcode = p.trendyol_barcode?.trim() || p.sku;
   const stockCode = p.trendyol_stock_code?.trim() || p.sku;
   const salePrice = Number(p.trendyol_sale_price ?? 0);
   const listPrice = Number(p.trendyol_list_price ?? p.trendyol_sale_price ?? 0);
+  const brandId = parseTrendyolPositiveIntId(p.trendyol_brand) ?? 0;
+  const categoryId = parseTrendyolPositiveIntId(p.trendyol_category_id) ?? 0;
+  const images = buildTrendyolImageItems(p);
   return {
     barcode,
     title: p.name,
     productMainId: stockCode,
-    brand: p.trendyol_brand?.trim() || "Zelula",
-    categoryId: Number(p.trendyol_category_id ?? 0),
+    brandId,
+    categoryId,
     quantity: p.stock_quantity,
     stockCode,
     dimensionalWeight: Number(p.trendyol_dimensional_weight ?? 1),
@@ -50,13 +68,14 @@ function buildProductPayload(p: TrendyolProductRow) {
     listPrice,
     salePrice,
     vatRate: Number(p.trendyol_vat_rate ?? 20),
+    images,
     attributes: Array.isArray(p.trendyol_category_attributes) ? p.trendyol_category_attributes : [],
   };
 }
 
 /** Same mapping as `syncProductToTrendyol` — no HTTP, no DB writes. */
 export function buildTrendyolProductPayload(product: TrendyolProductPayloadInput) {
-  return { items: [buildProductPayload(product)] };
+  return { items: [buildProductPayloadItem(product as TrendyolProductRow)] };
 }
 
 export type TrendyolPayloadPreviewIssue = {
@@ -92,15 +111,32 @@ export function analyzeTrendyolProductPayloadIssues(
   if (!nonEmptyString(item.productMainId)) {
     issues.push({ path: "items[0].productMainId", message: "productMainId boş.", level: "error" });
   }
-  if (!nonEmptyString(item.brand)) {
-    issues.push({ path: "items[0].brand", message: "Marka (brand) boş.", level: "error" });
+  const row = item as Record<string, unknown>;
+  const brandId = Number(row.brandId);
+  if (!Number.isFinite(brandId) || brandId <= 0) {
+    issues.push({
+      path: "items[0].brandId",
+      message:
+        "Trendyol marka ID (tam sayı) zorunludur. Marka alanına marka adı değil, Trendyol marka listesindeki sayısal ID’yi yazın.",
+      level: "error",
+    });
   }
 
-  const categoryId = Number(item.categoryId);
+  const categoryId = Number(row.categoryId);
   if (!Number.isFinite(categoryId) || categoryId <= 0) {
     issues.push({
       path: "items[0].categoryId",
-      message: "Kategori ID geçersiz veya eksik (0 olmamalı).",
+      message: "Trendyol kategori ID geçersiz veya eksik (0 olmamalı).",
+      level: "error",
+    });
+  }
+
+  const imgs = row.images;
+  if (!Array.isArray(imgs) || imgs.length === 0) {
+    issues.push({
+      path: "items[0].images",
+      message:
+        "Trendyol ürün oluşturma en az bir https görsel URL’si ister. Görselleri yükleyin (Supabase public https URL).",
       level: "error",
     });
   }
@@ -182,20 +218,31 @@ export function analyzeTrendyolProductPayloadIssues(
   return issues;
 }
 
-export async function syncProductToTrendyol(admin: SupabaseClient, productId: string) {
+/** Kayıtlı ürün satırının üzerine yazılır (ör. gönderim öncesi formdan gelen canlı değerler). */
+export type TrendyolProductSyncOverrides = Partial<TrendyolProductPayloadInput>;
+
+export async function syncProductToTrendyol(
+  admin: SupabaseClient,
+  productId: string,
+  opts?: { overrides?: TrendyolProductSyncOverrides },
+) {
   const [integration, productRes] = await Promise.all([
     getActiveTrendyolIntegration(admin),
     admin
       .from("products")
       .select(
-        "id,name,sku,stock_quantity,price,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,trendyol_brand,trendyol_category_id,trendyol_category_attributes,trendyol_vat_rate,trendyol_list_price,trendyol_sale_price,trendyol_quantity,trendyol_dimensional_weight",
+        "id,name,sku,stock_quantity,price,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,trendyol_brand,trendyol_category_id,trendyol_category_attributes,trendyol_vat_rate,trendyol_list_price,trendyol_sale_price,trendyol_quantity,trendyol_dimensional_weight,product_images(image_url)",
       )
       .eq("id", productId)
       .maybeSingle(),
   ]);
 
-  const product = productRes.data as TrendyolProductRow | null;
+  let product = productRes.data as TrendyolProductRow | null;
   if (!product) return { ok: false as const, message: "Ürün bulunamadı." };
+  const ov = opts?.overrides;
+  if (ov && Object.keys(ov).length > 0) {
+    product = { ...product, ...ov } as TrendyolProductRow;
+  }
 
   if (!product.is_active || !product.trendyol_active) {
     await logMarketplaceSync(admin, {
@@ -225,6 +272,38 @@ export async function syncProductToTrendyol(admin: SupabaseClient, productId: st
   if (!sellerId) {
     return { ok: false as const, message: "Trendyol seller_id eksik." };
   }
+
+  const brandRaw = String(product.trendyol_brand ?? "").trim();
+  const brandId = parseTrendyolPositiveIntId(product.trendyol_brand);
+  const categoryId = parseTrendyolPositiveIntId(product.trendyol_category_id);
+  const imageItems = buildTrendyolImageItems(product);
+  if (!brandId) {
+    const looksLikeBrandName = brandRaw.length > 0 && !/^\d+$/.test(brandRaw);
+    const legacy = looksLikeBrandName
+      ? `Şu an alanda marka adı gibi metin var («${brandRaw.slice(0, 48)}${brandRaw.length > 48 ? "…" : ""}»). Eski içe aktarma sürümü marka adını kaydediyordu — alanı sayısal ID ile değiştirin veya ürünü Trendyol’dan yeniden içe aktarın. `
+      : "";
+    const hint =
+      "Ürün formunda «Marka ID (Trendyol)» alanına yalnızca rakamlardan oluşan ID yazın; «Marka ara» ile bulup «Bu ID’yi yaz» kullanabilirsiniz.";
+    return {
+      ok: false as const,
+      message: `${legacy}Trendyol marka ID eksik veya geçersiz. ${hint} (API: getBrands / brands/by-name.)`,
+    };
+  }
+  if (!categoryId) {
+    return {
+      ok: false as const,
+      message:
+        "Trendyol kategori ID geçersiz veya boş. Kategori ID alanına yalnızca sayı girin (ör. 3500).",
+    };
+  }
+  if (imageItems.length === 0) {
+    return {
+      ok: false as const,
+      message:
+        "Trendyol ürün oluşturma için en az bir https ürün görseli gerekir. Görseller bölümünden yükleyin, kaydedin, sonra tekrar gönderin.",
+    };
+  }
+
   const payload = buildTrendyolProductPayload(product);
 
   try {
@@ -396,11 +475,31 @@ function slugifyForImport(value: string) {
     .slice(0, 72);
 }
 
-function resolveTrendyolBrand(rawBrand: unknown) {
-  if (rawBrand && typeof rawBrand === "object" && "name" in (rawBrand as Record<string, unknown>)) {
-    return asTrimmedString((rawBrand as Record<string, unknown>).name);
+/**
+ * Trendyol ürün listesindeki `brand`: genelde `{ id, name }`. Veritabanında yalnızca sayısal marka ID saklanır
+ * (createProduct v2 `brandId`). Eski içe aktarmalar yalnızca ad yazdığı için gönderim başarısız oluyordu.
+ */
+function resolveTrendyolBrandIdForImport(rawBrand: unknown): string | null {
+  if (rawBrand && typeof rawBrand === "object") {
+    const o = rawBrand as Record<string, unknown>;
+    const id = o.id;
+    if (typeof id === "number" && Number.isFinite(id) && Math.trunc(id) > 0) {
+      return String(Math.trunc(id));
+    }
+    if (typeof id === "string") {
+      const t = id.trim();
+      if (/^\d+$/.test(t)) {
+        const n = Number(t);
+        if (Number.isFinite(n) && n > 0) return String(Math.trunc(n));
+      }
+    }
   }
-  return asTrimmedString(rawBrand);
+  const s = asTrimmedString(rawBrand);
+  if (/^\d+$/.test(s)) {
+    const n = Number(s);
+    if (Number.isFinite(n) && n > 0) return String(Math.trunc(n));
+  }
+  return null;
 }
 
 function normalizeRemoteImages(images: unknown): string[] {
@@ -614,7 +713,7 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
         const barcode = extractRemoteBarcode(item);
         if (!name || !sku || !barcode) continue;
 
-        const trendyolBrand = resolveTrendyolBrand(item.brand) || "Zelula";
+        const trendyolBrandId = resolveTrendyolBrandIdForImport(item.brand);
         const price = extractRemoteSalePrice(item);
         const compareAtPrice = extractRemoteListPrice(item);
         const stockQuantity = Math.max(0, Math.trunc(extractRemoteQuantity(item)));
@@ -629,7 +728,7 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
               name,
               sku,
               trendyol_barcode: barcode,
-              trendyol_brand: trendyolBrand,
+              trendyol_brand: trendyolBrandId,
               price,
               compare_at_price: compareAtPrice > 0 ? compareAtPrice : null,
               stock_quantity: stockQuantity,
@@ -671,7 +770,7 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
             is_active: false,
             trendyol_active: false,
             trendyol_barcode: barcode,
-            trendyol_brand: trendyolBrand,
+            trendyol_brand: trendyolBrandId,
             trendyol_stock_code: sku,
           })
           .select("id")

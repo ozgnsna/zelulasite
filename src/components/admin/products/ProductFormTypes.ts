@@ -1,3 +1,8 @@
+import type {
+  CategoryAttributeDefinition,
+  TrendyolCategoryAttributePickerRow,
+} from "@/lib/marketplaces/trendyol/categories";
+
 export type ProductFormInitialProduct = {
   id?: string;
   name?: string | null;
@@ -32,9 +37,8 @@ export type ProductFormInitialProduct = {
 export type ProductFormCategoryOption = { id: string; name: string };
 export type ProductFormCollectionOption = { id: string; name: string };
 
-import type { CategoryAttributeDefinition } from "@/lib/marketplaces/trendyol/categories";
-
 export type ProductFormCategoryAttributeDefinition = CategoryAttributeDefinition;
+export type { TrendyolCategoryAttributePickerRow };
 
 export type ProductFormTrendyolReadiness = {
   status: "ready" | "missing" | "disabled";
@@ -44,15 +48,21 @@ export type ProductFormTrendyolReadiness = {
 export type ProductFormProps = {
   mode: "create" | "edit";
   initialProduct?: ProductFormInitialProduct | null;
+  /** ISO; ürün düzenle sayfasında son kayıt göstergesi için */
+  productUpdatedAt?: string | null;
   importedNeedsReview?: boolean;
   categories: ProductFormCategoryOption[];
   collections: ProductFormCollectionOption[];
   trendyolReadiness?: ProductFormTrendyolReadiness | null;
   /** When set (e.g. edit page), sticky summary can validate category JSON against required attributes. */
   trendyolCategoryAttributeDefinitions?: ProductFormCategoryAttributeDefinition[];
+  /** Sunucudan gelen kategori özellik şeması — personel JSON yazmadan seçim listesi. */
+  trendyolCategoryAttributePickerRows?: TrendyolCategoryAttributePickerRow[];
   openTrendyolByDefault?: boolean;
   returnTo: string;
   uploadProductImageAction?: (formData: FormData) => Promise<void>;
   deleteProductImageAction?: (formData: FormData) => Promise<void>;
+  /** Edit sayfasında: kayıtlı ürünü Trendyol ürün + fiyat/stok API’lerine iter. */
+  pushTrendyolProductAndInventoryAction?: (formData: FormData) => Promise<void>;
   saveProductAction: (formData: FormData) => Promise<void>;
 };

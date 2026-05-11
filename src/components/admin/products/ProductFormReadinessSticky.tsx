@@ -154,6 +154,9 @@ function computeSnapshot(
   const preview = fieldVal(PREVIEW_URL_ID).trim();
   const imageOk = initialImageCount > 0 || /^https?:\/\//i.test(preview);
 
+  const httpsImgCountRaw = fieldVal("trendyol-https-image-count").trim();
+  const httpsImgCount = Number(httpsImgCountRaw);
+
   const tyInput = {
     is_active: fieldChecked("product-is-active"),
     trendyol_active: fieldChecked("trendyol_active"),
@@ -166,6 +169,7 @@ function computeSnapshot(
     trendyol_quantity: fieldVal("trendyol_quantity").trim() === "" ? null : Number(fieldVal("trendyol_quantity")),
     stock_quantity: Number(fieldVal("product-stock")),
     trendyol_vat_rate: fieldVal("trendyol_vat_rate").trim() === "" ? null : Number(fieldVal("trendyol_vat_rate")),
+    trendyol_https_image_count: Number.isFinite(httpsImgCount) ? httpsImgCount : 0,
   };
 
   const cat = buildLiveCategoryReadiness(categoryDefinitions);
