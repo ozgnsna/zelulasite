@@ -11,9 +11,9 @@ export type PaymentInitPayload = {
   successUrl: string;
   failUrl: string;
   callbackUrl: string;
-  /** PayTR zorunlu: istemci IP (X-Forwarded-For ilk adresi vb.) */
+  /** İsteğe bağlı: istemci IP (X-Forwarded-For ilk adresi vb.) */
   clientIp?: string | null;
-  /** PayTR user_address (teslimat özeti, max ~400 karakter) */
+  /** İsteğe bağlı: teslimat özeti (max ~400 karakter) */
   shippingAddressLine?: string | null;
 };
 

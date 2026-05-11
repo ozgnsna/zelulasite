@@ -12,6 +12,8 @@ import Link from "next/link";
 
 const EMPTY_SAVED_ADDRESSES: SavedAddress[] = [];
 
+const CHECKOUT_CLIENT_HANDOFF_DEBUG = process.env.NEXT_PUBLIC_CHECKOUT_DEBUG === "1";
+
 export function CheckoutForm({
   disabled,
   items,
@@ -68,6 +70,8 @@ export function CheckoutForm({
   const [acceptKvkkConsent, setAcceptKvkkConsent] = useState(false);
   const [successHint, setSuccessHint] = useState<string | null>(null);
   const [successFallback, setSuccessFallback] = useState<CheckoutSuccessFallback | null>(null);
+  /** `NEXT_PUBLIC_CHECKOUT_DEBUG=1` iken sunucunun döndürdüğü `r.url` (yalnızca geçerli yönlendirme öncesi). */
+  const [checkoutHandoffUrlDebug, setCheckoutHandoffUrlDebug] = useState<string | null>(null);
   const [promoDraft, setPromoDraft] = useState("");
   const [promoError, setPromoError] = useState<string | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{
@@ -170,10 +174,47 @@ export function CheckoutForm({
             return;
           }
           setLegalAcceptWarning(null);
+          setCheckoutHandoffUrlDebug(null);
           trackBeginCheckout(items);
           start(async () => {
             const r = await createCheckout(fd);
+            const pmField = String(fd.get("payment_method") ?? "").trim();
+            const isCardPayment = pmField === "card";
+            if (CHECKOUT_CLIENT_HANDOFF_DEBUG) {
+              console.info("[checkout] createCheckout response", {
+                ok: Boolean(r?.ok),
+                url: r && "url" in r ? r.url : undefined,
+                fallbackUrl: r && "fallbackUrl" in r ? r.fallbackUrl : undefined,
+                paymentMethodField: pmField || "(missing)",
+                responsePaymentMethod: r && "paymentMethod" in r ? r.paymentMethod : undefined,
+                orderId: r && "orderId" in r ? r.orderId : undefined,
+                orderNumber: r && "orderNumber" in r ? r.orderNumber : undefined,
+                error: r && "error" in r ? r.error : undefined,
+                note: "Navigasyon yalnızca r.url ile yapılır; fallbackUrl yalnızca yedek Link href içindir.",
+              });
+            }
             if (r?.ok && r.url) {
+              const urlStr = String(r.url).trim();
+              if (isCardPayment) {
+                console.info("[checkout] card checkout r.url:", urlStr);
+              }
+              const allowMockHandoff =
+                process.env.NODE_ENV !== "production" && urlStr.includes("/odeme/qnb-mock");
+              if (isCardPayment && !urlStr.includes("/odeme/qnb-baslat/") && !allowMockHandoff) {
+                console.error("[checkout] blocked card navigation: expected /odeme/qnb-baslat/", {
+                  rUrl: urlStr,
+                  orderId: "orderId" in r ? r.orderId : undefined,
+                });
+                setSuccessHint(null);
+                setSuccessFallback(null);
+                setCheckoutHandoffUrlDebug(CHECKOUT_CLIENT_HANDOFF_DEBUG ? urlStr : null);
+                setError("Ödeme sayfası başlatılamadı. Lütfen tekrar deneyin.");
+                formRootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
+              }
+              if ("payFlowDebugSnapshot" in r && r.payFlowDebugSnapshot && typeof r.payFlowDebugSnapshot === "object") {
+                console.info("[payments] Checkout client handoff.", r.payFlowDebugSnapshot);
+              }
               const orderNumber = typeof r.orderNumber === "string" && r.orderNumber.trim() ? r.orderNumber : "—";
               const fallbackHref =
                 (typeof r.fallbackUrl === "string" && r.fallbackUrl.trim()) ||
@@ -188,7 +229,11 @@ export function CheckoutForm({
                 email: formEmail || resolvedAccountEmail || "—",
               });
               setSuccessHint("Siparişiniz alındı, yönlendiriliyorsunuz...");
-              window.location.href = r.url;
+              if (CHECKOUT_CLIENT_HANDOFF_DEBUG) {
+                setCheckoutHandoffUrlDebug(urlStr);
+                console.info("[checkout] window.location.href assign", { target: urlStr });
+              }
+              window.location.href = urlStr;
             } else {
               setError(r?.error ?? "İşlem başlatılamadı.");
               formRootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -944,6 +989,15 @@ export function CheckoutForm({
             <p className="rounded-lg border border-[#e8dfd3] bg-[#faf8f5] px-3 py-2 text-sm font-light text-stone-800" role="alert">
               {error}
             </p>
+          ) : null}
+          {CHECKOUT_CLIENT_HANDOFF_DEBUG && checkoutHandoffUrlDebug ? (
+            <div
+              className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950 break-all"
+              role="status"
+            >
+              <p className="font-semibold text-amber-900">Checkout debug (NEXT_PUBLIC_CHECKOUT_DEBUG=1)</p>
+              <p className="mt-1 font-mono leading-relaxed">{checkoutHandoffUrlDebug}</p>
+            </div>
           ) : null}
           {successHint ? (
             <p className="rounded-lg border border-[#e8dfd3] bg-[#faf8f5] px-3 py-2 text-sm font-light text-stone-800">

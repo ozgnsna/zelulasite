@@ -853,7 +853,7 @@ export async function retryPaymentInit(formData: FormData) {
 
   await supabase.from("payment_logs").insert({
     order_id: id,
-    provider: order.payment_provider ?? "paytr",
+    provider: order.payment_provider ?? "qnb_finansbank",
     event_type: "manual_retry_init",
     status: "queued",
     request_payload: { action: "retry_payment_init" },
@@ -900,7 +900,7 @@ export async function reconcileOrderStatus(formData: FormData) {
 
   await supabase.from("payment_logs").insert({
     order_id: id,
-    provider: order.payment_provider ?? "paytr",
+    provider: order.payment_provider ?? "qnb_finansbank",
     event_type: "manual_reconcile",
     status: hasSuccess ? "resolved_paid" : "checked_no_success",
     response_payload: { checked_logs: logs?.length ?? 0, hasSuccess },

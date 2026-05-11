@@ -8,7 +8,8 @@ import { getCartItems, setCartItems } from "@/lib/cart";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { initializePayment } from "@/lib/payments/provider";
-import { logPayment } from "@/lib/payments/logger";
+import { getQnbFlowDebugMeta, getQnbPaymentConfig } from "@/lib/payments/qnb-finansbank";
+import { isCheckoutHandoffDebugEnabled, isPaymentFlowDebugEnabled, logPayment } from "@/lib/payments/logger";
 import { computeInstagramFollowerDiscount } from "@/lib/promo-instagram";
 import { getUserLoyaltyBalance } from "@/lib/loyalty/balance";
 import { pickCheckoutReferrer, ZELULA_REFERRAL_COOKIE } from "@/lib/referral/server";
@@ -257,7 +258,7 @@ export async function createCheckout(formData: FormData) {
     currency: "TRY",
     payment_status: "pending",
     order_status: "pending",
-    payment_provider: isBankTransfer ? "bank_transfer" : (process.env.PAYMENT_PROVIDER ?? "paytr"),
+    payment_provider: isBankTransfer ? "bank_transfer" : "qnb_finansbank",
     shipping_address_json: {
       address_line: parsed.data.address_line,
       city: parsed.data.city,
@@ -291,6 +292,7 @@ export async function createCheckout(formData: FormData) {
     total: Number(total.toFixed(2)),
     payment_status: "pending",
     order_status: "pending",
+    payment_provider: isBankTransfer ? "bank_transfer" : "qnb_finansbank",
   };
 
   let { data: order, error } = await admin
@@ -462,6 +464,9 @@ export async function createCheckout(formData: FormData) {
     .join(" — ")
     .slice(0, 400);
 
+  const cardOkUrl = `${siteUrl}/api/payments/qnb-return`;
+  const cardFailUrl = cardOkUrl;
+
   const payment = await initializePayment({
     orderId: order.id,
     orderNumber: order.order_number,
@@ -472,9 +477,9 @@ export async function createCheckout(formData: FormData) {
       email: parsed.data.email,
       phone: parsed.data.phone,
     },
-    successUrl: `${siteUrl}/odeme/basarili?oid=${order.id}`,
-    failUrl: `${siteUrl}/odeme/basarisiz?oid=${order.id}&msg=generic`,
-    callbackUrl: `${siteUrl}/api/payments/callback`,
+    successUrl: cardOkUrl,
+    failUrl: cardFailUrl,
+    callbackUrl: `${siteUrl}/api/payments/qnb-return`,
     clientIp,
     shippingAddressLine,
   });
@@ -485,7 +490,7 @@ export async function createCheckout(formData: FormData) {
 
   await admin.from("payment_logs").insert({
     order_id: order.id,
-    provider: process.env.PAYMENT_PROVIDER ?? "paytr",
+    provider: "qnb_finansbank",
     event_type: "init",
     status: payment.ok ? "initialized" : "failed",
     request_payload: checkoutLogPayload,
@@ -517,5 +522,56 @@ export async function createCheckout(formData: FormData) {
     }
     return { ok: false, error: "Ödeme adımı başlatılamadı. Lütfen tekrar deneyin veya destekle iletişime geçin." };
   }
-  return { ok: true, url: payment.redirectUrl };
+
+  const redirectTrimmed = payment.redirectUrl.trim();
+  const cardHandoffOk =
+    redirectTrimmed.includes("/odeme/qnb-baslat/") || redirectTrimmed.includes("/odeme/qnb-mock");
+  if (!cardHandoffOk) {
+    logPayment("error", "Checkout: kart için redirectUrl beklenen rota değil (bypass / yanlış yapılandırma).", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      redirectUrl: redirectTrimmed,
+      initRaw: payment.raw,
+      ...getQnbFlowDebugMeta(),
+      ...getQnbPaymentConfig(),
+    });
+    return {
+      ok: false,
+      error:
+        "Ödeme yönlendirmesi beklenmeyen bir adrese işaret ediyor. Barındırma ortamındaki ödeme yapılandırmasını kontrol edin veya destek ile iletişime geçin.",
+    };
+  }
+
+  if (isCheckoutHandoffDebugEnabled()) {
+    logPayment("info", "Checkout handoff (kart, sunucu).", {
+      paymentMethod: parsed.data.payment_method,
+      paymentProvider: "qnb_finansbank",
+      orderId: order.id,
+      orderNumber: order.order_number,
+      redirectUrl: redirectTrimmed,
+      initRaw: payment.raw,
+      ...getQnbFlowDebugMeta(),
+    });
+  }
+  if (isPaymentFlowDebugEnabled()) {
+    logPayment("info", "Checkout → ödeme yönlendirmesi.", {
+      paymentProvider: "qnb_finansbank",
+      orderId: order.id,
+      orderNumber: order.order_number,
+      ...getQnbFlowDebugMeta(),
+      redirectUrl: redirectTrimmed,
+      initRaw: payment.raw,
+    });
+  }
+  return {
+    ok: true,
+    url: redirectTrimmed,
+    orderId: order.id,
+    orderNumber: order.order_number,
+    fallbackUrl: `/odeme/qnb-baslat/${order.id}`,
+    paymentMethod: "card" as const,
+    ...(isPaymentFlowDebugEnabled()
+      ? { payFlowDebugSnapshot: { ...getQnbFlowDebugMeta(), redirectUrl: redirectTrimmed } }
+      : {}),
+  };
 }

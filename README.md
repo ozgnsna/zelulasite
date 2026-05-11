@@ -12,10 +12,10 @@ Premium Türk takı markası için hazırlanmış, mobil-first ve conversion oda
   - kategori/kolleksiyon yönetimi
   - sipariş durum güncelleme
   - Supabase Storage görsel yükleme
-- Ödeme sağlayıcı soyutlama:
+- Ödeme (QNB Finansbank vPOS / 3D Host):
   - `src/lib/payments/types.ts`
   - `src/lib/payments/provider.ts`
-  - `src/lib/payments/paytr.ts`
+  - `src/lib/payments/qnb-finansbank.ts`
 - SEO:
   - metadata
   - temiz URL
@@ -51,15 +51,9 @@ Premium Türk takı markası için hazırlanmış, mobil-first ve conversion oda
 
 ## Notlar
 
-- PayTR entegrasyonu provider abstraction ile hazırlanmıştır:
-  - `src/lib/payments/provider.ts`
-  - `src/lib/payments/paytr.ts`
-  - `src/lib/payments/paytr-signature.ts`
-- Callback endpoint: `/api/payments/callback`
-- Callback’te zorunlu alan + imza doğrulaması yapılır, geçersiz callback reddedilir.
-- Callback işleme idempotenttir (`payment_logs.callback_hash` unique index).
-- Aynı başarılı callback tekrar gelirse sipariş tekrar işlenmez.
-- Test/mimari modu için `.env.local` içinde `PAYTR_USE_MOCK="true"` bırakın; gerçek anahtar olmadan akış çalışır.
+- Kart ödemesi: QNB vPOS; varsayılan **3DPay** (kart `/odeme/qnb-baslat/[id]` üzerinde, sonra bankaya POST). İstenirse `QNB_SECURE_TYPE=3DHost` (kart tamamen bankada). Dönüş: `POST /api/payments/qnb-return`.
+- Dönüş işleme idempotenttir (`payment_logs.callback_hash` unique index).
+- Yerelde QNB anahtarı olmadan denemek için `.env.local` içinde `QNB_USE_MOCK="true"` kullanılabilir.
 - Supabase Security Advisor notu: Free planda `Leaked Password Protection` açılamaz. Pro plan ve üzeri pakete geçildiğinde `Authentication > Attack Protection > Prevent use of leaked passwords` etkinleştirilmelidir.
 
 ## Reconciliation için kritik kolonlar

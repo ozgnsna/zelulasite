@@ -9,6 +9,17 @@ import { getSupportPhoneDisplay } from "@/lib/support-contact";
 
 type Props = { searchParams: Promise<{ oid?: string; pm?: string }> };
 
+export const dynamic = "force-dynamic";
+
+/** Geçici: canlıda yeni dağıtımın gerçekten bu dosyayı sunduğunu doğrulamak için. Doğrulama sonrası kaldırın. */
+function DebugBuildStripe() {
+  return (
+    <div className="mb-4 w-full border-2 border-yellow-400 bg-black py-2.5 text-center text-xs font-bold uppercase tracking-[0.2em] text-yellow-300">
+      DEBUG BUILD ACTIVE
+    </div>
+  );
+}
+
 export default async function PaymentSuccessPage({ searchParams }: Props) {
   const sp = await searchParams;
   const orderId = sp.oid;
@@ -17,6 +28,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
   if (!orderId) {
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
+        <DebugBuildStripe />
         <h1 className="font-serif text-2xl text-stone-900">Oturum bulunamadı</h1>
         <p className="mt-3 text-stone-600">Geçerli bir ödeme kaydı bulunamadı.</p>
         <Link href="/sepet" className="mt-8 inline-block text-sm font-medium text-stone-700 hover:underline">
@@ -28,17 +40,24 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
 
   try {
     const admin = createAdminClient();
-    const { data: order } = await admin
-      .from("orders")
-      .select("id,order_number,payment_status,order_status,payment_provider,total,currency,customer_name,email,user_id")
-      .eq("id", orderId)
-      .maybeSingle();
-    const { data: items } = await admin
-      .from("order_items")
-      .select(
-        "quantity,total_price,unit_price,product_id,product:products(name,slug,category:categories(name),collection:collections(name))",
-      )
-      .eq("order_id", orderId);
+    const oidParam = orderId.trim();
+    const orderSelect =
+      "id,order_number,payment_status,order_status,payment_provider,total,currency,customer_name,email,user_id" as const;
+
+    let { data: order } = await admin.from("orders").select(orderSelect).eq("id", oidParam).maybeSingle();
+    if (!order && /^ZLL\d+$/i.test(oidParam)) {
+      const byNo = await admin.from("orders").select(orderSelect).eq("order_number", oidParam).maybeSingle();
+      order = byNo.data ?? null;
+    }
+
+    const { data: items } = order
+      ? await admin
+          .from("order_items")
+          .select(
+            "quantity,total_price,unit_price,product_id,product:products(name,slug,category:categories(name),collection:collections(name))",
+          )
+          .eq("order_id", order.id)
+      : { data: null };
 
     const firstItem = (items ?? [])[0];
     const firstProductSlug = firstItem?.product?.[0]?.slug ?? null;
@@ -55,8 +74,40 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
     const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
     const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
 
+    const prematureCardOrder =
+      order &&
+      !isBankTransferFlow &&
+      order.payment_status === "pending" &&
+      order.payment_provider === "qnb_finansbank"
+        ? order
+        : null;
+
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
+      <DebugBuildStripe />
+      {prematureCardOrder ? (
+        <div className="mb-6 rounded-xl border-2 border-rose-500 bg-rose-50 px-4 py-3 text-left text-sm text-rose-950 shadow-sm">
+          <p className="font-semibold text-rose-900">Bu sayfa ödeme tamamlanmadan açıldı</p>
+          <p className="mt-2 space-y-1 font-mono text-[11px] leading-relaxed text-rose-900/95">
+            <span className="block">oid (URL): {oidParam}</span>
+            <span className="block">order id: {prematureCardOrder.id}</span>
+            <span className="block">order_number: {prematureCardOrder.order_number}</span>
+            <span className="block">payment_provider: {prematureCardOrder.payment_provider ?? "—"}</span>
+            <span className="block">payment_status: {prematureCardOrder.payment_status ?? "—"}</span>
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-rose-900">
+            Kart ile ödeme için önce{" "}
+            <Link
+              href={`/odeme/qnb-baslat/${prematureCardOrder.id}`}
+              className="font-semibold underline underline-offset-2"
+            >
+              güvenli ödeme adımına
+            </Link>{" "}
+            gitmeniz gerekir. Bu adres normalde yalnızca bankanın <code className="rounded bg-white/80 px-1">qnb-return</code>{" "}
+            yönlendirmesiyle açılır; doğrudan açıldıysa tarayıcı eklentisi, eski sekme veya dış bir bağlantı olabilir.
+          </p>
+        </div>
+      ) : null}
       {order?.payment_status === "paid" ? (
         <PurchaseTracker
           transactionId={order.order_number}
@@ -148,6 +199,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
   } catch {
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
+        <DebugBuildStripe />
         <h1 className="font-serif text-2xl text-stone-900">Geçici bir sorun oluştu</h1>
         <p className="mt-3 text-sm text-stone-600">
           Sipariş referansı: <span className="font-mono">{orderId}</span>
