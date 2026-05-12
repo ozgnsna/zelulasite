@@ -127,68 +127,50 @@ export default async function AdminEditProductPage({
 
   return (
     <main className="min-h-dvh bg-[#eceae6]">
-      <div className="mx-auto max-w-4xl px-4 py-7 sm:px-6 lg:px-8">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-[#e9e1d6]/70 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(28,25,23,0.04)] sm:px-5">
-        <div className="min-w-0">
-          <h1 className="font-serif text-3xl">Ürün Düzenle</h1>
-          <p className="mt-1 truncate text-xs font-medium text-stone-500/90">{product.name}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/admin"
-            className="inline-flex h-8 items-center justify-center rounded-xl border border-[#e8dfd3] bg-[#fdfcfa] px-3 text-[11px] font-medium text-stone-600 transition hover:border-[#ddd1c1] hover:bg-white hover:text-stone-700"
-          >
-            Geri dön
-          </Link>
-          <Link
-            href="/admin/products"
-            className="inline-flex h-8 items-center justify-center rounded-xl border border-[#e8dfd3] bg-[#fdfcfa] px-3 text-[11px] font-medium text-stone-600 transition hover:border-[#ddd1c1] hover:bg-white hover:text-stone-700"
-          >
-            Ürün listesine dön
-          </Link>
-          <Link
-            href={`/urunler/${product.slug}`}
-            className="inline-flex h-8 items-center justify-center rounded-xl bg-stone-900 px-3 text-[11px] font-medium text-white shadow-sm transition duration-150 hover:bg-stone-800 hover:shadow-md"
-          >
-            Önizle
-          </Link>
-        </div>
-      </div>
-
-      <section className="mb-4 rounded-2xl border border-[#e9e1d6]/70 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(28,25,23,0.04)] sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight text-stone-900">{product.name}</p>
-            <p className="mt-0.5 text-[11px] text-stone-500">SKU: {product.sku || "—"}</p>
+      <div className="mx-auto max-w-4xl px-4 py-5 sm:px-6 lg:px-8">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b border-stone-200/60 pb-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[15px] font-semibold tracking-tight text-stone-900">Ürün düzenle</h1>
+            <p className="mt-0.5 truncate text-[12px] font-medium text-stone-800">{product.name}</p>
+            <p className="mt-0.5 text-[10px] text-stone-500">SKU: {product.sku || "—"}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+              {isCategoryMissing ? (
+                <span className="rounded border border-orange-200/80 bg-orange-50 px-1 py-px text-[9px] font-medium text-orange-900">Kategori eksik</span>
+              ) : null}
+              {isStockCritical ? (
+                <span className="rounded border border-rose-200/80 bg-rose-50 px-1 py-px text-[9px] font-medium text-rose-800">Stok kritik</span>
+              ) : null}
+              {isTrendyolActive ? (
+                <span className="rounded border border-emerald-200/80 bg-emerald-50 px-1 py-px text-[9px] font-medium text-emerald-800">Trendyol açık</span>
+              ) : null}
+              {isSiteActive ? (
+                <span className="rounded border border-sky-200/80 bg-sky-50 px-1 py-px text-[9px] font-medium text-sky-800">Vitrinde</span>
+              ) : (
+                <span className="rounded border border-stone-200 bg-stone-100 px-1 py-px text-[9px] font-medium text-stone-700">Vitrin kapalı</span>
+              )}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1 whitespace-nowrap">
-            {isCategoryMissing ? (
-              <span className="rounded-full border border-orange-300/80 bg-orange-100/65 px-1.5 py-px text-[10px] font-medium text-orange-900">
-                Kategori eksik
-              </span>
-            ) : null}
-            {isStockCritical ? (
-              <span className="rounded-full border border-rose-300/80 bg-rose-100/65 px-1.5 py-px text-[10px] font-medium text-rose-800">
-                Stok kritik
-              </span>
-            ) : null}
-            {isTrendyolActive ? (
-              <span className="rounded-full border border-emerald-200/90 bg-emerald-50/90 px-1.5 py-px text-[10px] font-medium text-emerald-800">
-                Trendyol açık
-              </span>
-            ) : null}
-            {isSiteActive ? (
-              <span className="rounded-full border border-sky-200/90 bg-sky-50/90 px-1.5 py-px text-[10px] font-medium text-sky-800">
-                Sitede yayında
-              </span>
-            ) : (
-              <span className="rounded-full border border-stone-300/90 bg-stone-100/80 px-1.5 py-px text-[10px] font-medium text-stone-700">
-                Sitede kapalı
-              </span>
-            )}
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            <Link
+              href="/admin/products"
+              className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-800 hover:bg-stone-50"
+            >
+              Liste
+            </Link>
+            <Link
+              href="/admin"
+              className="rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1.5 text-[11px] font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Panel
+            </Link>
+            <Link
+              href={`/urunler/${product.slug}`}
+              className="rounded-lg bg-stone-900 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-stone-800"
+            >
+              Önizle
+            </Link>
           </div>
         </div>
-      </section>
 
       {productJsonError ? (
         <div className="mb-4 rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">

@@ -121,11 +121,12 @@ export type PriorityBlockEntry = {
   labels: ProblemLabel[];
 };
 
-/** En yüksek aciliyet: pazaryeri + stok + satış sinyalleri; en fazla 5 benzersiz ürün. */
+/** En yüksek aciliyet: pazaryeri + stok + satış sinyalleri; varsayılan en fazla 5 benzersiz ürün. */
 export function buildPriorityTopFive(
   products: ProductListOptRow[],
   salesByProduct: Map<string, number>,
   viewsByProduct?: Map<string, number>,
+  maxEntries: number = 5,
 ): PriorityBlockEntry[] {
   const scored = products.map((p) => {
     const stock = Number(p.stock_quantity ?? 0);
@@ -157,7 +158,7 @@ export function buildPriorityTopFive(
   return scored
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
+    .slice(0, Math.max(1, Math.min(50, maxEntries)));
 }
 
 export type PriceBenchmark = {

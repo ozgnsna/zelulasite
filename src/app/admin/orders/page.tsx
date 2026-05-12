@@ -1,24 +1,44 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { orderStatusLabel } from "@/lib/account/order-status";
+import {
+  AdminOrdersListShell,
+  type AdminOrderListRow,
+} from "@/components/admin/orders/AdminOrdersListShell";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-function shortenOrderNumberDisplay(orderNumber: string): string {
-  const s = String(orderNumber ?? "").trim();
-  if (s.length <= 18) return s;
-  return `${s.slice(0, 10)}…${s.slice(-4)}`;
+/** Europe/Istanbul takvim günü (hosting UTC iken “bugün” sapmasını önler) */
+function istanbulDayUtcRange(): { start: Date; end: Date } {
+  const ymd = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+  return {
+    start: new Date(`${ymd}T00:00:00+03:00`),
+    end: new Date(`${ymd}T23:59:59.999+03:00`),
+  };
 }
+
+const FILTER_IDS = new Set([
+  "all",
+  "today",
+  "ship_ready",
+  "payment_pending",
+  "processing",
+  "done",
+]);
 
 export default async function AdminOrdersListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ queue?: string }>;
+  searchParams: Promise<{ queue?: string; filter?: string }>;
 }) {
   const sp = await searchParams;
   const queue = String(sp.queue ?? "").trim();
+  const filterRaw = String(sp.filter ?? "").trim();
+  if (queue === "ship" && !filterRaw) {
+    redirect("/admin/orders?filter=ship_ready");
+  }
+
+  const activeFilter = FILTER_IDS.has(filterRaw) ? filterRaw : "all";
 
   const supabase = await createClient();
   const {
@@ -35,91 +55,39 @@ export default async function AdminOrdersListPage({
   const admin = createAdminClient();
   let req = admin
     .from("orders")
-    .select("id,order_number,total,customer_name,created_at,order_status,payment_status")
+    .select(
+      "id,order_number,total,customer_name,created_at,order_status,payment_status,shipping_status,shipping_provider,shipping_tracking_number",
+    )
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(200);
 
-  if (queue === "ship") {
+  if (activeFilter === "today") {
+    const { start, end } = istanbulDayUtcRange();
+    req = req.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+  } else if (activeFilter === "ship_ready") {
     req = req.eq("payment_status", "paid").in("order_status", ["pending", "confirmed", "processing"]);
+  } else if (activeFilter === "payment_pending") {
+    req = req.eq("payment_status", "pending");
+  } else if (activeFilter === "processing") {
+    req = req.eq("order_status", "processing");
+  } else if (activeFilter === "done") {
+    req = req.in("order_status", ["shipped", "hand_delivered"]);
   }
 
   const { data: rows } = await req;
-  const orders = rows ?? [];
+  const orders = (rows ?? []) as AdminOrderListRow[];
 
   return (
-    <div className="min-h-dvh bg-[#eceae6]">
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">Operasyon</p>
-            <h1 className="mt-1 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">Siparişler</h1>
-            <p className="mt-1 max-w-xl text-sm text-stone-600">
-              {queue === "ship"
-                ? "Ödemesi tamamlanmış, kargoya / hazırlığa bekleyen siparişler."
-                : "Son siparişler. Detaydan etiket, kargo ve durum güncellemesi yapılır."}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/admin/orders"
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                queue !== "ship" ? "bg-stone-900 text-white shadow-sm" : "border border-stone-200 bg-white text-stone-800 hover:bg-stone-50"
-              }`}
-            >
-              Tümü
-            </Link>
-            <Link
-              href="/admin/orders?queue=ship"
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                queue === "ship" ? "bg-stone-900 text-white shadow-sm" : "border border-stone-200 bg-white text-stone-800 hover:bg-stone-50"
-              }`}
-            >
-              Kargoya hazır
-            </Link>
-          </div>
-        </div>
+    <main className="mx-auto min-w-0 max-w-6xl px-3 py-4 sm:px-5 sm:py-5">
+      <header className="mb-3 border-b border-stone-200/70 pb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Operasyon</p>
+        <h1 className="mt-0.5 font-serif text-xl font-light tracking-tight text-stone-900 sm:text-2xl">Siparişler</h1>
+        <p className="mt-0.5 max-w-2xl text-[12px] leading-snug text-stone-600">
+          Hızlı filtreler, yoğun liste ve toplu işlemler — detay sayfasından etiket ve kargo güncellenir.
+        </p>
+      </header>
 
-        <ul className="mt-8 space-y-2">
-          {orders.length === 0 ? (
-            <li className="rounded-2xl border border-dashed border-stone-300/80 bg-white/60 px-6 py-14 text-center text-sm text-stone-600">
-              Bu görünümde sipariş yok.
-            </li>
-          ) : (
-            orders.map((o) => {
-              const badge = orderStatusLabel(o);
-              const total = Number(o.total ?? 0);
-              return (
-                <li
-                  key={o.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-stone-200/60 bg-white/90 p-4 shadow-sm transition hover:border-stone-300/80 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs text-stone-500">{shortenOrderNumberDisplay(String(o.order_number ?? ""))}</p>
-                    <p className="mt-0.5 truncate font-medium text-stone-900">{o.customer_name}</p>
-                    <p className="mt-1 text-xs text-stone-500">
-                      {new Date(o.created_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-800 ring-1 ring-stone-200/80">
-                      {badge}
-                    </span>
-                    <span className="text-lg font-semibold tabular-nums text-stone-900">
-                      {total.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                    </span>
-                    <Link
-                      href={`/admin/orders/${o.id}`}
-                      className="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800"
-                    >
-                      Aç
-                    </Link>
-                  </div>
-                </li>
-              );
-            })
-          )}
-        </ul>
-      </main>
-    </div>
+      <AdminOrdersListShell orders={orders} activeFilter={activeFilter} />
+    </main>
   );
 }

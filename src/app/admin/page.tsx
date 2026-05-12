@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { orderStatusLabel } from "@/lib/account/order-status";
+import { DashboardRecentOrdersPanel } from "@/components/admin/DashboardRecentOrdersPanel";
 import {
   fetchTrendyolOrdersAction,
   importTrendyolProductsAction,
@@ -32,17 +32,6 @@ function TryPriceSplit({ n, className }: { n: number; className?: string }) {
       <span>{main}</span>
       <span className="text-[0.62em] font-medium text-stone-500">,{decimals}</span>
       <span className="ml-0.5 text-[0.55em] font-semibold text-stone-400">₺</span>
-    </span>
-  );
-}
-
-function OrderListTryPrice({ n }: { n: number }) {
-  const { main, decimals } = splitTryParts(n);
-  return (
-    <span className="inline-flex items-baseline gap-0.5 tabular-nums">
-      <span className="text-sm font-semibold text-stone-500">₺</span>
-      <span className="text-lg font-extrabold tracking-tight text-stone-950">{main}</span>
-      <span className="text-xs font-semibold text-stone-400">,{decimals}</span>
     </span>
   );
 }
@@ -105,63 +94,6 @@ function shortenOrderNumberDisplay(orderNumber: string): string {
   return `${s.slice(0, 10)}…${s.slice(-4)}`;
 }
 
-function adminOrderListBadge(o: { payment_status: string; order_status: string }): { label: string; pill: string } {
-  const label = orderStatusLabel(o);
-  if (o.order_status === "cancelled") {
-    return {
-      label,
-      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-rose-50 text-rose-900 ring-rose-600/25",
-    };
-  }
-  if (o.payment_status === "failed") {
-    return {
-      label,
-      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-rose-50 text-rose-900 ring-rose-600/25",
-    };
-  }
-  if (o.order_status === "shipped") {
-    return {
-      label,
-      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-sky-50 text-sky-950 ring-sky-700/30",
-    };
-  }
-  if (o.order_status === "processing") {
-    return {
-      label,
-      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-amber-50 text-amber-950 ring-amber-700/30",
-    };
-  }
-  if (o.payment_status === "paid") {
-    return {
-      label,
-      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-emerald-50 text-emerald-950 ring-emerald-800/25",
-    };
-  }
-  return {
-    label,
-    pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset bg-stone-100 text-stone-800 ring-stone-500/20",
-  };
-}
-
-function paymentStatusBadge(paymentStatus: string): { label: string; pill: string } {
-  if (paymentStatus === "paid") {
-    return {
-      label: "Ödeme alındı",
-      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-700/20",
-    };
-  }
-  if (paymentStatus === "failed") {
-    return {
-      label: "Ödeme başarısız",
-      pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-rose-100 text-rose-900 ring-1 ring-inset ring-rose-700/25",
-    };
-  }
-  return {
-    label: "Ödeme bekliyor",
-    pill: "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-stone-200/90 text-stone-800 ring-1 ring-inset ring-stone-500/20",
-  };
-}
-
 function formatOrderRelativeTimeTr(iso: string): string {
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return "—";
@@ -174,15 +106,6 @@ function formatOrderRelativeTimeTr(iso: string): string {
   const days = Math.floor(hours / 24);
   if (days < 8) return `${days} gün önce`;
   return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
-}
-
-/** Canlı şerit için kısa süre gösterimi (örn. "42 sn önce"). */
-function formatLiveOrderStripAge(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "—";
-  const sec = Math.floor(Math.max(0, Date.now() - t) / 1000);
-  if (sec < 120) return `${Math.max(1, sec)} sn önce`;
-  return formatOrderRelativeTimeTr(iso);
 }
 
 export default async function AdminPage({
@@ -521,6 +444,20 @@ export default async function AdminPage({
             </div>
           </div>
 
+          <DashboardRecentOrdersPanel
+            orders={recentOrdersList.map((o) => ({
+              id: String(o.id),
+              total: Number(o.total ?? 0),
+              payment_status: String(o.payment_status ?? ""),
+              order_status: String(o.order_status ?? ""),
+              order_number: String(o.order_number ?? ""),
+              customer_name: String(o.customer_name ?? ""),
+              created_at: String(o.created_at ?? ""),
+            }))}
+            dayStartIso={dayStart.toISOString()}
+            dayEndIso={dayEnd.toISOString()}
+          />
+
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
@@ -535,23 +472,23 @@ export default async function AdminPage({
                   Tümü
                 </Link>
               </div>
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-3 space-y-1">
                 {pendingShipQueue.length === 0 ? (
-                  <li className="rounded-xl border border-dashed border-stone-200 bg-stone-50/80 px-3 py-6 text-center text-sm text-stone-500">
+                  <li className="rounded-lg border border-dashed border-stone-200 bg-stone-50/80 px-2.5 py-4 text-center text-xs text-stone-500">
                     Bekleyen yok.
                   </li>
                 ) : (
                   pendingShipQueue.map((o) => (
-                    <li key={o.id} className="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-stone-50/50 px-3 py-2.5">
+                    <li key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-stone-100/90 bg-stone-50/40 px-2.5 py-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-stone-900">{o.customer_name}</p>
-                        <p className="font-mono text-[11px] text-stone-500">{shortenOrderNumberDisplay(String(o.order_number ?? ""))}</p>
+                        <p className="truncate text-xs font-semibold text-stone-900">{o.customer_name}</p>
+                        <p className="font-mono text-[10px] text-stone-500">{shortenOrderNumberDisplay(String(o.order_number ?? ""))}</p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="text-sm font-semibold tabular-nums text-stone-800">
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <span className="text-xs font-semibold tabular-nums text-stone-800">
                           {Number(o.total ?? 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                         </span>
-                        <Link href={`/admin/orders/${o.id}`} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-stone-800 ring-1 ring-stone-200 hover:bg-stone-50">
+                        <Link href={`/admin/orders/${o.id}`} className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold text-stone-800 ring-1 ring-stone-200/90 hover:bg-stone-50">
                           Aç
                         </Link>
                       </div>
@@ -652,116 +589,6 @@ export default async function AdminPage({
           <p className="text-center text-[11px] font-medium text-stone-500">
             Son kontrol: <span className="font-semibold text-stone-700">{dashboardCheckedAtTr}</span> · İstanbul
           </p>
-
-          <section className="rounded-2xl border border-emerald-200/55 bg-gradient-to-b from-white via-white to-emerald-50/35 p-4 shadow-[0_6px_28px_-12px_rgba(16,80,60,0.12)] ring-1 ring-emerald-900/[0.06]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="flex items-center gap-2 text-base font-semibold text-stone-950">
-                  <span className="relative flex h-2.5 w-2.5 shrink-0">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
-                  </span>
-                  Son siparişler
-                </h2>
-                <p className="mt-0.5 text-[11px] font-medium text-stone-600">
-                  Canlı kuyruk · son 50 · {dashboardCheckedAtTr}
-                </p>
-              </div>
-              <Link
-                href="/admin/products"
-                className="shrink-0 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50"
-              >
-                Katalog
-              </Link>
-            </div>
-            {recentOrdersList.length > 0 ? (
-              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-emerald-200/60 bg-emerald-950/[0.04] px-3 py-2 text-[12px] leading-snug text-stone-800">
-                <span className="font-bold text-emerald-800">Yeni sipariş</span>
-                <span className="text-stone-400" aria-hidden>
-                  ·
-                </span>
-                <span className="max-w-[min(200px,40vw)] truncate font-semibold text-stone-900">
-                  {recentOrdersList[0].customer_name}
-                </span>
-                <span className="text-stone-400" aria-hidden>
-                  ·
-                </span>
-                <span className="font-bold tabular-nums text-stone-900">{toTry(Number(recentOrdersList[0].total ?? 0))}</span>
-                <span className="text-stone-400" aria-hidden>
-                  ·
-                </span>
-                <span className="text-[11px] font-semibold tabular-nums text-stone-600">
-                  {formatLiveOrderStripAge(String(recentOrdersList[0].created_at ?? ""))}
-                </span>
-                <Link
-                  href={`/admin/orders/${recentOrdersList[0].id}`}
-                  className="ml-auto text-[11px] font-bold text-emerald-800 underline-offset-2 hover:underline"
-                >
-                  Aç →
-                </Link>
-              </div>
-            ) : null}
-            <ul className="mt-3 space-y-2.5">
-              {recentOrdersList.length === 0 ? (
-                <li className="rounded-xl border border-dashed border-stone-300 bg-stone-50/80 px-4 py-5 text-sm text-stone-700">
-                  <p className="font-medium text-stone-900">Henüz sipariş yok</p>
-                  <p className="mt-2 text-sm leading-relaxed text-stone-700">
-                    İlk sipariş için görselleri iyileştirin, fiyatı netleştirin ve ürünleri Trendyol&apos;a göndererek erişimi
-                    büyütün.
-                  </p>
-                </li>
-              ) : (
-                recentOrdersList.map((o, index) => {
-                  const badge = adminOrderListBadge(o);
-                  const paymentBadge = paymentStatusBadge(String(o.payment_status ?? ""));
-                  const isNewest = index === 0;
-                  return (
-                    <li
-                      key={o.id}
-                      className={`group grid grid-cols-1 gap-3 rounded-xl border px-4 py-3 transition-all duration-200 hover:-translate-y-px hover:shadow-[0_10px_24px_-12px_rgba(28,25,23,0.18)] md:grid-cols-[minmax(0,1fr)_auto] ${
-                        isNewest
-                          ? "border-emerald-300/80 bg-gradient-to-r from-emerald-50/70 via-white to-stone-50/50 ring-2 ring-emerald-500/20 hover:border-emerald-400/90 hover:ring-emerald-500/25"
-                          : "border-stone-200/80 bg-stone-50/35 hover:border-stone-300/80 hover:bg-stone-50 hover:ring-1 hover:ring-stone-300/35"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-mono text-xs font-medium tracking-wide text-stone-700" title={o.order_number}>
-                            {shortenOrderNumberDisplay(o.order_number)}
-                          </p>
-                          {isNewest ? (
-                            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                              En yeni
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-1 text-sm font-semibold text-stone-950">{o.customer_name}</p>
-                        <p className="mt-1 text-[11px] font-medium tabular-nums text-stone-500">
-                          {formatOrderRelativeTimeTr(o.created_at)}
-                        </p>
-                        <p className="mt-1.5 text-[11px] text-stone-500 opacity-0 transition-opacity group-hover:opacity-100">
-                          {paymentBadge.label} · {badge.label}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2 md:flex-nowrap">
-                        <span className={paymentBadge.pill}>{paymentBadge.label}</span>
-                        <span className={badge.pill}>{badge.label}</span>
-                        <div className="min-w-[84px] text-right">
-                          <OrderListTryPrice n={Number(o.total ?? 0)} />
-                        </div>
-                        <Link
-                          href={`/admin/orders/${o.id}`}
-                          className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-400 hover:bg-stone-100 hover:text-stone-950 active:scale-[0.99]"
-                        >
-                          Detay
-                        </Link>
-                      </div>
-                    </li>
-                  );
-                })
-              )}
-            </ul>
-          </section>
 
           <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
             <Link
