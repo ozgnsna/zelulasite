@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DashboardRecentOrdersPanel } from "@/components/admin/DashboardRecentOrdersPanel";
@@ -230,6 +231,10 @@ export default async function AdminPage({
   const addToCartToday = dashboardAnalytics.addToCarts;
   const viewItemToday = dashboardAnalytics.productViews;
   const purchaseToday = dashboardAnalytics.purchases;
+  const topViewedMaxViews =
+    dashboardAnalytics.topViewedProducts.length > 0
+      ? Math.max(...dashboardAnalytics.topViewedProducts.map((r) => r.views))
+      : 1;
 
   const lowStockCount = products.filter((p) => Boolean(p.is_active) && Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= 3).length;
   const missingMarketplaceCount = products.filter((p) => {
@@ -913,44 +918,83 @@ export default async function AdminPage({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-stone-200/75 bg-white p-5 shadow-[0_3px_16px_-8px_rgba(28,25,23,0.06)]">
-            <h2 className="text-base font-semibold text-stone-950">Analytics özeti (bugün)</h2>
-            <p className="mt-1 text-[11px] font-medium text-stone-500">Vitrin davranışı · operasyon kartlarının altında</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Metric title="Visitors today" value={dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")} />
-              <Metric title="Product views" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
-              <Metric title="Add to carts" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
-              <Metric title="Checkout starts" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
-              <Metric title="Purchases" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
+          <section
+            aria-label="Analytics özeti"
+            className="rounded-xl border border-stone-200/45 bg-stone-50/35 p-2.5 shadow-sm ring-1 ring-stone-900/[0.02] sm:p-3"
+          >
+            <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+              <div>
+                <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">Analytics · bugün</h2>
+                <p className="text-[10px] leading-tight text-stone-500">Vitrin olayları · ikincil özet</p>
+              </div>
+            </div>
+
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
+              <Metric compact title="Ziyaretçi" value={dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")} />
+              <Metric compact title="Görüntüleme" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
+              <Metric compact title="Sepete ekleme" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
+              <Metric compact title="Checkout" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
+              <Metric compact title="Satın alma" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
               <Metric
-                title="Conversion rate"
+                compact
+                title="Dönüşüm"
                 value={`${dashboardAnalytics.conversionRate.toLocaleString("tr-TR", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}%`}
               />
             </div>
-            <div className="mt-4 rounded-xl border border-stone-200/70 bg-stone-50/50 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">
-                Funnel: View product → Add to cart → Checkout → Purchase
-              </p>
-              <p className="mt-1 text-sm text-stone-700">
-                {dashboardAnalytics.funnel.view_item.toLocaleString("tr-TR")} →{" "}
-                {dashboardAnalytics.funnel.add_to_cart.toLocaleString("tr-TR")} →{" "}
-                {dashboardAnalytics.funnel.begin_checkout.toLocaleString("tr-TR")} →{" "}
-                {dashboardAnalytics.funnel.purchase.toLocaleString("tr-TR")}
-              </p>
+
+            <div className="mt-2 rounded-lg border border-stone-200/40 bg-white/60 p-2">
+              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-400">Dönüşüm hunisi</p>
+              <div className="flex min-w-0 items-stretch gap-0.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:gap-0 sm:overflow-visible sm:pb-0">
+                {(
+                  [
+                    { label: "Görüntüleme", value: dashboardAnalytics.funnel.view_item },
+                    { label: "Sepet", value: dashboardAnalytics.funnel.add_to_cart },
+                    { label: "Checkout", value: dashboardAnalytics.funnel.begin_checkout },
+                    { label: "Satın alma", value: dashboardAnalytics.funnel.purchase },
+                  ] as const
+                ).map((step, i) => (
+                  <Fragment key={step.label}>
+                    {i > 0 ? (
+                      <span className="flex shrink-0 items-center justify-center px-0.5 text-stone-300 sm:px-0" aria-hidden>
+                        <ChevronRight className="size-3.5 sm:size-3" strokeWidth={2} />
+                      </span>
+                    ) : null}
+                    <div className="flex min-w-[4.75rem] flex-1 flex-col justify-center rounded-md border border-stone-200/55 bg-white px-1.5 py-1 text-center shadow-[0_1px_0_0_rgba(28,25,23,0.03)] sm:min-w-0">
+                      <span className="text-[8px] font-semibold uppercase leading-tight tracking-wide text-stone-500">
+                        {step.label}
+                      </span>
+                      <span className="mt-0.5 text-[13px] font-bold tabular-nums leading-none text-stone-900">
+                        {step.value.toLocaleString("tr-TR")}
+                      </span>
+                    </div>
+                  </Fragment>
+                ))}
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Top viewed products</p>
+
+            <div className="mt-2">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-400">En çok görüntülenen</p>
               {dashboardAnalytics.topViewedProducts.length === 0 ? (
-                <p className="mt-2 text-sm text-stone-500">Henüz görüntülenme verisi yok.</p>
+                <p className="mt-1 text-[11px] text-stone-500">Henüz veri yok.</p>
               ) : (
-                <ul className="mt-2 space-y-1.5">
+                <ul className="mt-1 divide-y divide-stone-200/50 rounded-md border border-stone-200/40 bg-white/70">
                   {dashboardAnalytics.topViewedProducts.map((row) => (
-                    <li key={row.productId} className="flex items-center justify-between rounded-lg border border-stone-200/70 bg-white px-3 py-2">
-                      <span className="truncate text-sm text-stone-800">{row.productName}</span>
-                      <span className="text-sm font-semibold tabular-nums text-stone-900">{row.views.toLocaleString("tr-TR")}</span>
+                    <li key={row.productId} className="flex items-center gap-2 px-2 py-1 sm:py-1">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] font-medium leading-tight text-stone-800">{row.productName}</p>
+                        <div className="mt-0.5 h-0.5 w-full max-w-[8rem] overflow-hidden rounded-full bg-stone-200/90">
+                          <div
+                            className="h-full rounded-full bg-stone-400/90"
+                            style={{ width: `${Math.round((row.views / topViewedMaxViews) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-stone-900/[0.06] px-1.5 py-px text-[10px] font-bold tabular-nums text-stone-800">
+                        {row.views.toLocaleString("tr-TR")}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -974,6 +1018,7 @@ function Metric({
   className,
   valueClassName,
   emphasis,
+  compact,
 }: {
   title: string;
   value?: string;
@@ -983,7 +1028,24 @@ function Metric({
   className?: string;
   valueClassName?: string;
   emphasis?: boolean;
+  /** Analytics / snapshot KPI: kısa kart, küçük etiket, sıkı boşluk */
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <article
+        className={`rounded-md border border-stone-200/50 bg-white px-2 py-1.5 shadow-[0_1px_0_0_rgba(28,25,23,0.04)] ${className ?? ""}`}
+      >
+        <p className="text-[8.5px] font-semibold uppercase leading-tight tracking-[0.1em] text-stone-500">{title}</p>
+        <div
+          className={`mt-0.5 text-xl font-semibold tabular-nums leading-none tracking-tight text-stone-950 ${valueClassName ?? ""}`}
+        >
+          {valueNode ?? value}
+        </div>
+      </article>
+    );
+  }
+
   const shell = emphasis
     ? "rounded-2xl border border-stone-200/80 bg-[linear-gradient(165deg,#fffdfb_0%,#f7f4ef_100%)] p-5 shadow-[0_4px_20px_-8px_rgba(28,25,23,0.06)] ring-1 ring-stone-900/[0.04]"
     : "rounded-2xl border border-stone-200/70 bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] p-4 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)]";
