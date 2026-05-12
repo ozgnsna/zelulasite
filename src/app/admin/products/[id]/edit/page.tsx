@@ -126,8 +126,8 @@ export default async function AdminEditProductPage({
   const isSiteActive = Boolean(product.is_active);
 
   return (
-    <main className="min-h-screen bg-[#f7f4ef]">
-      <div className="container-premium py-7">
+    <main className="min-h-dvh bg-[#eceae6]">
+      <div className="mx-auto max-w-4xl px-4 py-7 sm:px-6 lg:px-8">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-[#e9e1d6]/70 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(28,25,23,0.04)] sm:px-5">
         <div className="min-w-0">
           <h1 className="font-serif text-3xl">Ürün Düzenle</h1>

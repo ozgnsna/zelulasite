@@ -45,6 +45,7 @@ function sortImages(images: Img[]): Img[] {
 }
 
 export function ProductImageManager({
+  title = "Görseller",
   images,
   productId,
   returnTo,
@@ -52,6 +53,7 @@ export function ProductImageManager({
   uploadProductImageAction,
   deleteProductImageAction,
 }: {
+  title?: string;
   images: Img[];
   productId?: string;
   returnTo?: string;
@@ -88,14 +90,16 @@ export function ProductImageManager({
   return (
     <section
       id="product-section-images"
-      className="scroll-mt-20 rounded-xl border border-stone-200/70 bg-white p-4 shadow-sm sm:p-5"
+      className="scroll-mt-24 rounded-2xl border border-stone-200/50 bg-white/95 p-4 shadow-[0_2px_12px_-4px_rgba(28,25,23,0.06)] sm:p-5"
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold tracking-tight text-stone-900">Medya</h2>
-          <p className="mt-0.5 text-[10px] text-stone-500">Kapak görseli listede önce gösterilir.</p>
+          <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
+          <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
+            İlk sıradaki görsel kapaktır. Sürükleyip bırakın veya dosya seçin.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {useExternalUploadForm ? (
             <>
               <input type="hidden" name="product_id" form={uploadFormId} value={productId ?? ""} />
@@ -117,18 +121,18 @@ export function ProductImageManager({
             type="button"
             disabled={!uploadEnabled}
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg border border-stone-200/90 bg-stone-50 px-3 py-1.5 text-[11px] font-medium text-stone-700 transition hover:bg-white hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] rounded-lg border border-stone-300/90 bg-stone-900 px-3.5 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 sm:py-1.5"
             title={uploadEnabled ? "Dosya seç" : "Önce ürünü kaydedin"}
           >
-            Yükle
+            Dosya seç
           </button>
         </div>
       </div>
 
       <div
         className={cn(
-          "grid gap-3 lg:grid-cols-[1fr_7.5rem] lg:gap-4",
-          dragOver && "ring-2 ring-stone-300/80 ring-offset-2 rounded-lg",
+          "flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_auto] lg:items-start lg:gap-5",
+          dragOver && "ring-2 ring-[#c9a06e]/40 ring-offset-2 rounded-xl",
         )}
         onDragOver={(e) => {
           if (!uploadEnabled) return;
@@ -146,20 +150,20 @@ export function ProductImageManager({
       >
         <div
           className={cn(
-            "relative flex min-h-[200px] max-h-[min(40vh,420px)] flex-col overflow-hidden rounded-lg border border-stone-200/80 bg-gradient-to-b from-stone-50 to-stone-100/80",
-            noImageExists && "min-h-[180px]",
+            "relative flex min-h-[180px] max-h-[min(38vh,360px)] flex-col overflow-hidden rounded-xl border border-stone-200/80 bg-gradient-to-b from-stone-50/90 to-stone-100/70",
+            noImageExists && "min-h-[160px]",
           )}
         >
           {selectedPreview ? (
             selectedPreviewIsVideo ? (
               <video src={selectedPreview} controls playsInline className="h-full w-full object-contain" preload="metadata" />
             ) : (
-              <div className="relative min-h-[200px] flex-1">
+              <div className="relative min-h-[180px] flex-1">
                 <Image
                   src={selectedPreview}
                   alt="Önizleme"
                   fill
-                  sizes="(max-width:1024px) 100vw, 640px"
+                  sizes="(max-width:1024px) 100vw, 560px"
                   className="object-contain p-2"
                   priority={false}
                 />
@@ -181,64 +185,79 @@ export function ProductImageManager({
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5 lg:max-h-[min(40vh,420px)] lg:overflow-y-auto">
-          {sortedImages.map((img, idx) => (
-            <div key={img.id} className={cn("group relative", idx === 0 && "lg:mb-1")}>
+        <div className="flex w-full min-w-0 flex-col gap-1.5 lg:w-[11.5rem] lg:shrink-0">
+          <p className="hidden text-[9px] font-semibold uppercase tracking-wide text-stone-400 lg:block">Küçük önizleme</p>
+          {sortedImages.length > 0 ? (
+            <p className="pl-0.5 text-[9px] text-stone-400 lg:hidden">Kaydırarak tüm görselleri görün</p>
+          ) : null}
+          <div
+            className={cn(
+              "flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain pb-1.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] snap-x snap-mandatory lg:grid lg:max-h-none lg:grid-cols-2 lg:gap-2 lg:overflow-visible lg:pb-0 lg:snap-none",
+              "[&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300/80",
+            )}
+          >
+            {sortedImages.map((img, idx) => {
+              const isCoverSlot = idx === 0;
+              return (
+                <div key={img.id} className="group relative w-[4.25rem] shrink-0 snap-start sm:w-[4.5rem] lg:w-full lg:shrink">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUrl(img.image_url)}
+                    className={cn(
+                      "relative block h-14 w-full overflow-hidden rounded-lg border bg-white transition sm:h-16",
+                      selectedPreview === img.image_url || (!selectedUrl && idx === 0)
+                        ? "border-stone-800/40 ring-2 ring-stone-900/15"
+                        : "border-stone-200/90 hover:border-stone-400",
+                    )}
+                    title={isLikelyVideoUrl(img.image_url) ? "Video" : "Seç"}
+                  >
+                    {isLikelyVideoUrl(img.image_url) ? (
+                      <>
+                        <video src={img.image_url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                        <span className="absolute bottom-0.5 right-0.5 rounded bg-black/55 px-1 py-px text-[7px] font-medium text-white">
+                          ▶
+                        </span>
+                      </>
+                    ) : (
+                      <Image src={img.image_url} alt="" fill sizes="72px" className="object-cover" />
+                    )}
+                    {isCoverSlot || img.is_cover ? (
+                      <span className="absolute left-0.5 top-0.5 rounded bg-stone-900/90 px-1 py-px text-[7px] font-bold uppercase tracking-wide text-white">
+                        Kapak
+                      </span>
+                    ) : null}
+                  </button>
+                  {canDelete ? (
+                    <button
+                      type="submit"
+                      form={`zelula-delete-image-${img.id}`}
+                      className="absolute -right-0.5 -top-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-rose-700 shadow-md ring-1 ring-rose-200/90 opacity-90 transition hover:bg-rose-50 active:scale-95 lg:h-6 lg:w-6 lg:text-[10px] lg:opacity-0 lg:group-hover:opacity-100"
+                      title="Sil"
+                      aria-label="Görseli sil"
+                      onClick={(e) => {
+                        if (!window.confirm("Bu görseli silmek istiyor musunuz?")) {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+            {sortedImages.length === 0 ? null : (
               <button
                 type="button"
-                onClick={() => setSelectedUrl(img.image_url)}
-                className={cn(
-                  "relative aspect-square w-full overflow-hidden rounded-md border bg-white transition",
-                  selectedPreview === img.image_url || (!selectedUrl && idx === 0)
-                    ? "border-stone-900/25 ring-1 ring-stone-900/15"
-                    : "border-stone-200/90 hover:border-stone-300",
-                  idx === 0 && "ring-1 ring-stone-900/10",
-                )}
-                title={isLikelyVideoUrl(img.image_url) ? "Video" : "Seç"}
+                disabled={!uploadEnabled}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex h-14 w-[4.25rem] shrink-0 snap-start items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50/80 text-lg font-light text-stone-400 transition hover:border-stone-400 hover:bg-white hover:text-stone-600 disabled:opacity-40 sm:h-16 sm:w-[4.5rem] lg:h-16 lg:w-full"
+                title="Dosya ekle"
               >
-                {isLikelyVideoUrl(img.image_url) ? (
-                  <>
-                    <video src={img.image_url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                    <span className="absolute bottom-0.5 right-0.5 rounded bg-black/55 px-1 py-px text-[8px] font-medium text-white">
-                      Video
-                    </span>
-                  </>
-                ) : (
-                  <Image src={img.image_url} alt="" fill sizes="96px" className="object-cover" />
-                )}
-                {img.is_cover ? (
-                  <span className="absolute left-0.5 top-0.5 rounded bg-stone-900/88 px-1 py-px text-[8px] font-semibold uppercase tracking-wide text-white">
-                    Kapak
-                  </span>
-                ) : null}
+                +
               </button>
-              {canDelete ? (
-                <button
-                  type="submit"
-                  form={`zelula-delete-image-${img.id}`}
-                  className="absolute bottom-0.5 right-0.5 rounded bg-stone-900/80 px-1 py-px text-[8px] font-medium text-white opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-stone-950"
-                  title="Sil"
-                  onClick={(e) => {
-                    if (!window.confirm("Bu görseli silmek istiyor musunuz?")) {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  Sil
-                </button>
-              ) : null}
-            </div>
-          ))}
-          {sortedImages.length === 0 ? null : (
-            <button
-              type="button"
-              disabled={!uploadEnabled}
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-1 flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-stone-300 bg-stone-50/80 text-[10px] font-medium text-stone-500 transition hover:border-stone-400 hover:bg-white disabled:opacity-40"
-            >
-              +
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
       {noImageExists ? (

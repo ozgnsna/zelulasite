@@ -1,6 +1,6 @@
 /** Visual tokens for admin product form (no logic / field names). */
 export const adminField =
-  "w-full rounded-xl border border-[#e7ded2] bg-[#fdfcfa] px-3.5 py-2.5 text-sm text-stone-800 shadow-[0_1px_1px_rgba(28,25,23,0.04)] outline-none transition-[border-color,box-shadow,background-color] placeholder:text-stone-400/90 hover:border-[#dfd3c4] focus:border-[#c9a06e] focus:bg-white focus:shadow-[0_0_0_3px_rgba(201,160,110,0.2)]";
+  "min-h-[44px] w-full rounded-xl border border-[#e7ded2] bg-[#fdfcfa] px-3.5 py-2.5 text-sm text-stone-800 shadow-[0_1px_1px_rgba(28,25,23,0.04)] outline-none transition-[border-color,box-shadow,background-color] placeholder:text-stone-400/90 hover:border-[#dfd3c4] focus:border-[#c9a06e] focus:bg-white focus:shadow-[0_0_0_3px_rgba(201,160,110,0.2)]";
 
 export const adminLabel =
   "mb-1.5 block text-[11px] font-medium uppercase tracking-[0.06em] text-stone-500/80";

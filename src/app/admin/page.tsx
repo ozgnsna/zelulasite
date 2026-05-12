@@ -5,31 +5,14 @@ import { orderStatusLabel } from "@/lib/account/order-status";
 import {
   fetchTrendyolOrdersAction,
   importTrendyolProductsAction,
-  saveCategory,
-  saveCollection,
-  signOutAdmin,
   testTrendyolConnectionAction,
 } from "@/app/actions/admin";
+import { AdminOperationsDock } from "@/components/admin/AdminOperationsDock";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { buildDashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
 
 export const dynamic = "force-dynamic";
-
-type AdminTab = "analytics" | "products" | "trendyol" | "settings";
-
-function tabLabel(tab: AdminTab) {
-  if (tab === "analytics") return "Analiz";
-  if (tab === "products") return "Ürünler";
-  if (tab === "trendyol") return "Trendyol";
-  return "Ayarlar";
-}
-
-function tabHref(tab: AdminTab) {
-  if (tab === "products") return "/admin/products";
-  if (tab === "trendyol") return "/admin/trendyol";
-  return `/admin?tab=${tab}`;
-}
 
 function toTry(n: number) {
   return `${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
@@ -228,11 +211,10 @@ export default async function AdminPage({
   }>;
 }) {
   const sp = await searchParams;
-  const tab = (sp.tab ?? "analytics") as AdminTab;
-  const currentTab: AdminTab = ["analytics", "products", "trendyol", "settings"].includes(tab) ? tab : "analytics";
-  if (currentTab === "trendyol") {
-    redirect("/admin/trendyol");
-  }
+  const tab = String(sp.tab ?? "").trim().toLowerCase();
+  if (tab === "settings") redirect("/admin/settings");
+  if (tab === "products") redirect("/admin/products");
+  if (tab === "trendyol") redirect("/admin/trendyol");
 
   const supabase = await createClient();
   const {
@@ -250,7 +232,7 @@ export default async function AdminPage({
   const { start: dayStart, end: dayEnd } = istanbulDayUtcRange();
   const { start: yStart, end: yEnd } = istanbulYesterdayUtcRange();
 
-  const [todayOrdersRes, todayAnalyticsRes, productsRes, todayOrderItemsRes, recentOrdersListRes, yesterdayOrdersRes, categoriesRes, collectionsRes] =
+  const [todayOrdersRes, todayAnalyticsRes, productsRes, todayOrderItemsRes, recentOrdersListRes, yesterdayOrdersRes, pendingShipCountRes, pendingShipListRes] =
     await Promise.all([
     admin
       .from("orders")
@@ -290,8 +272,18 @@ export default async function AdminPage({
       .lte("created_at", yEnd.toISOString())
       .order("created_at", { ascending: false })
       .limit(50),
-    admin.from("categories").select("id,name,slug,image_url").order("name", { ascending: true }).limit(100),
-    admin.from("collections").select("id,name,slug,description,image_url").order("name", { ascending: true }).limit(100),
+    admin
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("payment_status", "paid")
+      .in("order_status", ["pending", "confirmed", "processing"]),
+    admin
+      .from("orders")
+      .select("id,order_number,total,customer_name,created_at,order_status")
+      .eq("payment_status", "paid")
+      .in("order_status", ["pending", "confirmed", "processing"])
+      .order("created_at", { ascending: true })
+      .limit(8),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
@@ -300,8 +292,8 @@ export default async function AdminPage({
   const products = productsRes.data ?? [];
   const todayOrderItems = todayOrderItemsRes.data ?? [];
   const yesterdayOrders = yesterdayOrdersRes.data ?? [];
-  const categories = categoriesRes.data ?? [];
-  const collections = collectionsRes.data ?? [];
+  const pendingShipmentCount = pendingShipCountRes.count ?? 0;
+  const pendingShipQueue = pendingShipListRes.data ?? [];
 
   const ordersToday = todayOrders.length;
   const revenueToday = todayOrders
@@ -344,6 +336,11 @@ export default async function AdminPage({
     salesByProduct.set(pid, row);
   }
   const topSellingProduct = [...salesByProduct.values()].sort((a, b) => b.qty - a.qty)[0] ?? null;
+  const trendyolIssueCount = notListedOnMarketplaceCount + missingMarketplaceCount;
+  const bestSellersToday = [...salesByProduct.entries()]
+    .map(([productId, row]) => ({ productId, name: row.name, qty: row.qty }))
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, 5);
   const hasPaidOrderInRecent = recentOrdersList.some(
     (o) => o.payment_status === "paid" && String(o.order_status ?? "") !== "cancelled",
   );
@@ -417,42 +414,13 @@ export default async function AdminPage({
   });
 
   return (
-    <main className="container-premium bg-[#faf6ef]/65 py-10">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-3xl tracking-tight text-stone-950">Kontrol paneli</h1>
-          <p className="mt-1.5 text-sm font-medium text-stone-700">Bugünkü satış ve pazaryeri aksiyonları tek ekranda.</p>
+    <>
+      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-24 lg:pt-8">
+        <div className="mb-8">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">Operasyon</p>
+          <h1 className="mt-1 font-serif text-3xl font-light tracking-tight text-stone-950">Kontrol paneli</h1>
+          <p className="mt-1 text-sm text-stone-600">Bugün müdahale gerektiren işler ve satış özeti.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/admin/products"
-            className="rounded-xl border border-stone-300/90 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm hover:border-stone-400 hover:bg-stone-50"
-          >
-            Ürünler
-          </Link>
-          <form action={signOutAdmin}>
-            <button className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">
-              Çıkış Yap
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <nav className="mb-8 flex flex-wrap gap-2">
-        {(["analytics", "products", "trendyol", "settings"] as AdminTab[]).map((t) => (
-          <Link
-            key={t}
-            href={tabHref(t)}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-              currentTab === t
-                ? "border-[#c6a15b]/70 bg-[#faf4ea] text-stone-950 shadow-[0_6px_16px_rgba(198,161,91,0.2)] ring-1 ring-[#c6a15b]/20"
-                : "border-stone-200 bg-white text-stone-800 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-950"
-            }`}
-          >
-            {tabLabel(t)}
-          </Link>
-        ))}
-      </nav>
 
       {importError ? (
         <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
@@ -508,41 +476,141 @@ export default async function AdminPage({
         </div>
       ) : null}
 
-      {currentTab === "analytics" ? (
-        <section className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric
-              emphasis
-              title="Bugünkü siparişler"
-              value={ordersToday.toLocaleString("tr-TR")}
-              trend={kpiCountDeltaTr(ordersToday, ordersYesterday)}
-              helper={
-                ordersToday === 0 ? (
-                  <>Sonraki adım: ürün oluştur → fiyat &amp; stok → Trendyol&apos;da yayınla. İlk siparişe en kısa rota.</>
+      <section id="analytics" className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Bugün · Sipariş</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+                {ordersToday.toLocaleString("tr-TR")}
+              </p>
+              <p className="mt-1 text-[11px] leading-snug text-stone-600">{kpiCountDeltaTr(ordersToday, ordersYesterday)}</p>
+            </div>
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Kargoya hazır</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+                {pendingShipmentCount.toLocaleString("tr-TR")}
+              </p>
+              <Link href="/admin/orders?queue=ship" className="mt-2 inline-block text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+                Kuyruğu aç →
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Trendyol uyarı</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+                {trendyolIssueCount.toLocaleString("tr-TR")}
+              </p>
+              <Link href="/admin/trendyol" className="mt-2 inline-block text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+                Entegrasyon →
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Düşük stok</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+                {lowStockCount.toLocaleString("tr-TR")}
+              </p>
+              <Link href="/admin/products?stock=low" className="mt-2 inline-block text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+                Katalog →
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm sm:col-span-2 xl:col-span-1">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Ciro (bugün)</p>
+              <div className="mt-1">
+                <TryPriceSplit n={revenueToday} className="text-2xl font-semibold tracking-tight text-stone-900" />
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-stone-600">{kpiRevenueDeltaTr(revenueToday, revenueYesterday)}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-stone-900">Kargoya hazır siparişler</h2>
+                  <p className="mt-0.5 text-xs text-stone-500">Ödendi · paketleme / kargo bekliyor</p>
+                </div>
+                <Link
+                  href="/admin/orders?queue=ship"
+                  className="shrink-0 rounded-full bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800"
+                >
+                  Tümü
+                </Link>
+              </div>
+              <ul className="mt-4 space-y-2">
+                {pendingShipQueue.length === 0 ? (
+                  <li className="rounded-xl border border-dashed border-stone-200 bg-stone-50/80 px-3 py-6 text-center text-sm text-stone-500">
+                    Bekleyen yok.
+                  </li>
                 ) : (
-                  <>Siparişleri onayla / paketle; kargo bilgisini güncel tut. Son liste hemen aşağıda.</>
-                )
-              }
-            />
-            <Metric
-              emphasis
-              title="Bugünkü ciro"
-              valueNode={
-                <TryPriceSplit
-                  n={revenueToday}
-                  className="text-3xl font-semibold tracking-tight text-stone-800 sm:text-[2rem]"
-                />
-              }
-              trend={kpiRevenueDeltaTr(revenueToday, revenueYesterday)}
-              className="border-stone-200/80 bg-[linear-gradient(165deg,#fafaf9_0%,#f4f1ec_100%)] shadow-[0_5px_22px_-10px_rgba(28,25,23,0.06)] ring-1 ring-stone-900/[0.035]"
-              helper={
-                revenueToday === 0 ? (
-                  <>Dönüşüm: fiyat, ücretsiz kargo eşiği ve vitrin görsellerini netleştir; pazaryeri listesini tamamla.</>
-                ) : (
-                  <>Ciroyu koru: stok yenile, iade sürecini hızlandır, tamamlayıcı ürün ekle.</>
-                )
-              }
-            />
+                  pendingShipQueue.map((o) => (
+                    <li key={o.id} className="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-stone-50/50 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-stone-900">{o.customer_name}</p>
+                        <p className="font-mono text-[11px] text-stone-500">{shortenOrderNumberDisplay(String(o.order_number ?? ""))}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="text-sm font-semibold tabular-nums text-stone-800">
+                          {Number(o.total ?? 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                        </span>
+                        <Link href={`/admin/orders/${o.id}`} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-stone-800 ring-1 ring-stone-200 hover:bg-stone-50">
+                          Aç
+                        </Link>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-stone-900">Trendyol & stok uyarıları</h2>
+                  <p className="mt-0.5 text-xs text-stone-500">Pazaryeri ve kritik stok (son 200 ürün dilimi)</p>
+                </div>
+                <Link href="/admin/products" className="text-xs font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+                  Katalog
+                </Link>
+              </div>
+              <ul className="mt-4 space-y-2 text-sm text-stone-700">
+                <li className="flex justify-between gap-2 rounded-xl bg-amber-50/80 px-3 py-2 ring-1 ring-amber-200/60">
+                  <span>Eksik / yayında değil</span>
+                  <span className="font-semibold tabular-nums text-stone-900">{notListedOnMarketplaceCount}</span>
+                </li>
+                <li className="flex justify-between gap-2 rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200/60">
+                  <span>Alan eksik (aktif TY)</span>
+                  <span className="font-semibold tabular-nums text-stone-900">{missingMarketplaceCount}</span>
+                </li>
+                <li className="flex justify-between gap-2 rounded-xl bg-rose-50/70 px-3 py-2 ring-1 ring-rose-200/50">
+                  <span>Kritik stok (1–3)</span>
+                  <span className="font-semibold tabular-nums text-stone-900">{lowStockCount}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {bestSellersToday.length > 0 ? (
+            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-stone-900">Bugün çok satanlar</h2>
+                <Link href="/admin/products" className="text-xs font-semibold text-stone-600 underline-offset-2 hover:underline">
+                  Katalogda aç
+                </Link>
+              </div>
+              <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                {bestSellersToday.map((row, i) => (
+                  <li
+                    key={row.productId}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-stone-100 bg-stone-50/60 px-3 py-2.5 text-sm"
+                  >
+                    <span className="font-mono text-xs text-stone-400">{i + 1}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-stone-900">{row.name}</span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-stone-600">{row.qty} ad.</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <Metric
               emphasis
               title="Aktif ürünler"
@@ -1063,118 +1131,10 @@ export default async function AdminPage({
             </div>
           </section>
         </section>
-      ) : null}
 
-      {currentTab === "products" ? (
-        <section className="rounded-2xl border border-stone-200 bg-white p-5">
-          <h2 className="text-base font-medium text-stone-900">Ürünler</h2>
-          <p className="mt-1 text-sm text-stone-500">Ürün yönetimi için aşağıdaki sayfayı kullan.</p>
-          <Link href="/admin/products" className="mt-4 inline-flex rounded-lg border border-stone-300 px-3 py-2 text-sm hover:bg-stone-50">
-            Ürün listesi
-          </Link>
-        </section>
-      ) : null}
-
-      {currentTab === "settings" ? (
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="text-base font-medium text-stone-900">Ayarlar</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              Panel yönetimi ve entegrasyon işlemlerini buradan hızlıca yönetebilirsin.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <article className="rounded-2xl border border-[#e8dfd3] bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] p-4">
-              <p className="text-[11px] uppercase tracking-[0.12em] text-stone-500">Entegrasyon</p>
-              <p className="mt-2 text-sm text-stone-700">
-                Trendyol bağlantı ayarlarını, test ve senkron ekranını aç.
-              </p>
-              <Link
-                href="/admin/trendyol"
-                className="mt-3 inline-flex rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-50"
-              >
-                Trendyol ayarlarını aç
-              </Link>
-            </article>
-
-            <article className="rounded-2xl border border-[#e8dfd3] bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] p-4">
-              <p className="text-[11px] uppercase tracking-[0.12em] text-stone-500">Katalog</p>
-              <p className="mt-2 text-sm text-stone-700">
-                Ürün, stok ve içerik yönetimi için ürün listesine geç.
-              </p>
-              <Link
-                href="/admin/products"
-                className="mt-3 inline-flex rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-50"
-              >
-                Ürün yönetimini aç
-              </Link>
-            </article>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h3 className="text-sm font-semibold text-stone-900">Kategori görselleri (Ana sayfa)</h3>
-              <p className="mt-1 text-xs text-stone-500">Slug eşleşen kartlarda bu görseller kullanılır.</p>
-              <div className="mt-4 space-y-3">
-                {categories.map((c) => (
-                  <form key={`cat-${c.id}`} action={saveCategory} className="rounded-xl border border-stone-200/80 bg-stone-50/40 p-3">
-                    <input type="hidden" name="id" value={c.id} />
-                    <input type="hidden" name="name" value={c.name} />
-                    <input type="hidden" name="slug" value={c.slug} />
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-stone-900">{c.name}</p>
-                      <span className="rounded-full bg-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-700">{c.slug}</span>
-                    </div>
-                    <input
-                      name="image_url"
-                      defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
-                      placeholder="https://... kategori görsel URL"
-                      className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-800"
-                    />
-                    <div className="mt-2 flex justify-end">
-                      <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
-                        Kaydet
-                      </button>
-                    </div>
-                  </form>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h3 className="text-sm font-semibold text-stone-900">Koleksiyon görselleri (Ana sayfa)</h3>
-              <p className="mt-1 text-xs text-stone-500">Koleksiyon kartları bu URL alanını kullanır.</p>
-              <div className="mt-4 space-y-3">
-                {collections.map((c) => (
-                  <form key={`col-${c.id}`} action={saveCollection} className="rounded-xl border border-stone-200/80 bg-stone-50/40 p-3">
-                    <input type="hidden" name="id" value={c.id} />
-                    <input type="hidden" name="name" value={c.name} />
-                    <input type="hidden" name="slug" value={c.slug} />
-                    <input type="hidden" name="description" value={String((c as { description?: string | null }).description ?? "")} />
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-stone-900">{c.name}</p>
-                      <span className="rounded-full bg-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-700">{c.slug}</span>
-                    </div>
-                    <input
-                      name="image_url"
-                      defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
-                      placeholder="https://... koleksiyon görsel URL"
-                      className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-800"
-                    />
-                    <div className="mt-2 flex justify-end">
-                      <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
-                        Kaydet
-                      </button>
-                    </div>
-                  </form>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
     </main>
+      <AdminOperationsDock pendingShipmentCount={pendingShipmentCount} />
+    </>
   );
 }
 

@@ -185,8 +185,8 @@ export default async function AdminOrderDetailPage({
   ) : null;
 
   return (
-    <main className="min-h-screen bg-[color:var(--background)] py-8 sm:py-10">
-      <div className="container-premium">
+    <main className="min-h-dvh bg-[#eceae6] py-8 sm:py-10">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <AdminOrderDetailView
           order={order}
           lines={lines}

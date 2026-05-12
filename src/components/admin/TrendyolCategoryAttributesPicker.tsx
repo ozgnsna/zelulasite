@@ -106,7 +106,7 @@ const fieldShell =
 const fieldShellRequired = "border-amber-200/70 bg-amber-50/15 ring-1 ring-amber-100/80";
 
 const inputBase =
-  "mt-1.5 w-full rounded-lg border border-stone-200/80 bg-white px-2.5 py-2 text-[12px] text-stone-800 shadow-inner shadow-stone-900/[0.02] outline-none transition placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-300/35";
+  "mt-1.5 min-h-[44px] w-full rounded-lg border border-stone-200/80 bg-white px-2.5 py-2.5 text-[12px] text-stone-800 shadow-inner shadow-stone-900/[0.02] outline-none transition placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-300/35";
 
 function SearchableValueSelect({
   row,
@@ -154,7 +154,7 @@ function SearchableValueSelect({
         aria-haspopup="listbox"
         className={cn(
           inputBase,
-          "flex w-full cursor-pointer items-center justify-between gap-2 text-left font-normal",
+          "flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-2 text-left font-normal",
           !selectVal && "text-stone-400",
         )}
         onClick={() => setOpen((v) => !v)}
@@ -301,7 +301,7 @@ function AttributeField({
 }
 
 function AttributeGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-2.5">{children}</div>;
+  return <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-x-4 md:gap-y-3">{children}</div>;
 }
 
 function SectionTitle({ title, hint }: { title: string; hint?: string }) {
@@ -486,21 +486,26 @@ export function TrendyolCategoryAttributesPicker({
       </div>
 
       {missingRequired.length > 0 ? (
-        <div className="sticky top-2 z-20 mt-3 rounded-lg border border-amber-200/55 bg-amber-50/40 px-3 py-2 shadow-sm backdrop-blur-[2px]">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-950/80">Eksik Trendyol bilgileri</p>
-          <ul className="mt-1.5 flex flex-wrap gap-1.5">
+        <div className="mt-2 rounded-lg border border-amber-200/55 bg-amber-50/40 px-2 py-1.5">
+          <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-amber-950/85">
+            <span aria-hidden>●</span>
+            <span>
+              Eksik zorunlu ({missingRequired.length})
+            </span>
+          </div>
+          <div className="mt-1 flex flex-nowrap gap-1 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
             {missingRequired.map((r) => (
-              <li key={r.attributeId}>
-                <button
-                  type="button"
-                  className="rounded-full border border-amber-200/70 bg-white/90 px-2 py-0.5 text-left text-[10px] font-medium text-amber-950/90 transition hover:bg-amber-50/90"
-                  onClick={() => scrollToField(r.attributeId)}
-                >
-                  {r.name}
-                </button>
-              </li>
+              <button
+                key={r.attributeId}
+                type="button"
+                className="max-w-[min(12rem,70vw)] shrink-0 truncate rounded-md border border-amber-200/70 bg-white/95 px-2 py-1 text-left text-[10px] font-medium text-amber-950/90 transition hover:bg-amber-50/90"
+                title={r.name}
+                onClick={() => scrollToField(r.attributeId)}
+              >
+                {r.name}
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
       ) : null}
 
@@ -517,43 +522,39 @@ export function TrendyolCategoryAttributesPicker({
           {requiredRows.length === 0 ? <p className="text-[10px] text-stone-400">Bu kategoride zorunlu özellik yok.</p> : null}
         </section>
 
-        {optionalRows.length > 0 ? (
+        {optionalRows.length > 0 || technicalRows.length > 0 ? (
           <details className="group rounded-lg border border-stone-200/50 bg-white/50 open:bg-white/80 open:shadow-sm">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50/80 [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2.5 py-2.5 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50/80 sm:min-h-0 sm:py-2 [&::-webkit-details-marker]:hidden">
               <span>
                 İsteğe bağlı özellikler
-                <span className="ml-1.5 font-normal text-stone-400 tabular-nums">({optionalRows.length})</span>
+                <span className="ml-1.5 font-normal text-stone-400 tabular-nums">
+                  ({optionalRows.length + technicalRows.length})
+                </span>
               </span>
               <span className="text-[10px] text-stone-400 group-open:rotate-180 motion-safe:transition">▼</span>
             </summary>
-            <div className="border-t border-stone-100/90 p-2.5 pt-3 sm:p-3">
-              <AttributeGrid>
-                {optionalRows.map((r) => (
-                  <AttributeField key={r.attributeId} r={r} cur={sel.get(r.attributeId) ?? { mode: "none" }} setEntry={setEntry} />
-                ))}
-              </AttributeGrid>
-            </div>
-          </details>
-        ) : null}
-
-        {technicalRows.length > 0 ? (
-          <details className="group rounded-lg border border-stone-200/50 bg-white/50 open:bg-white/80 open:shadow-sm">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50/80 [&::-webkit-details-marker]:hidden">
-              <span>
-                Teknik detaylar
-                <span className="ml-1.5 font-normal text-stone-400 tabular-nums">({technicalRows.length})</span>
-              </span>
-              <span className="text-[10px] text-stone-400 group-open:rotate-180 motion-safe:transition">▼</span>
-            </summary>
-            <div className="border-t border-stone-100/90 p-2.5 pt-3 sm:p-3">
-              <p className="mb-2 text-[10px] leading-relaxed text-stone-500">
-                İsim kalıbına göre gruplanır; API aynıdır. Gerekirse açıp doldurun.
-              </p>
-              <AttributeGrid>
-                {technicalRows.map((r) => (
-                  <AttributeField key={r.attributeId} r={r} cur={sel.get(r.attributeId) ?? { mode: "none" }} setEntry={setEntry} />
-                ))}
-              </AttributeGrid>
+            <div className="space-y-4 border-t border-stone-100/90 p-2.5 pt-3 sm:p-3">
+              {optionalRows.length > 0 ? (
+                <div>
+                  <SectionTitle title="Ürün bilgisi" hint="Zorunlu değil" />
+                  <AttributeGrid>
+                    {optionalRows.map((r) => (
+                      <AttributeField key={r.attributeId} r={r} cur={sel.get(r.attributeId) ?? { mode: "none" }} setEntry={setEntry} />
+                    ))}
+                  </AttributeGrid>
+                </div>
+              ) : null}
+              {technicalRows.length > 0 ? (
+                <div>
+                  <SectionTitle title="Teknik detaylar" hint="İsim kalıbına göre" />
+                  <p className="mb-2 text-[10px] leading-relaxed text-stone-500">Gerekirse açıp doldurun; API aynıdır.</p>
+                  <AttributeGrid>
+                    {technicalRows.map((r) => (
+                      <AttributeField key={r.attributeId} r={r} cur={sel.get(r.attributeId) ?? { mode: "none" }} setEntry={setEntry} />
+                    ))}
+                  </AttributeGrid>
+                </div>
+              ) : null}
             </div>
           </details>
         ) : null}

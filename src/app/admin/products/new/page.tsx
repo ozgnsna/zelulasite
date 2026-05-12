@@ -32,7 +32,8 @@ export default async function AdminNewProductPage({
   ]);
 
   return (
-    <main className="container-premium py-10">
+    <main className="min-h-dvh bg-[#eceae6]">
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-serif text-3xl">Yeni Ürün Ekle</h1>
@@ -43,7 +44,7 @@ export default async function AdminNewProductPage({
             Ürün listesi
           </Link>
           <Link href="/admin" className={adminSecondaryButton}>
-            Ana admin
+            Dashboard
           </Link>
         </div>
       </div>
@@ -68,6 +69,7 @@ export default async function AdminNewProductPage({
         uploadProductImageAction={uploadProductImage}
         saveProductAction={saveProduct}
       />
+    </div>
     </main>
   );
 }

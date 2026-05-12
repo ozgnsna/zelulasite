@@ -268,9 +268,9 @@ export default async function AdminProductsPage({
   );
 
   return (
-    <main className="min-h-screen bg-[#faf6ef]">
+    <main className="min-h-dvh bg-[#eceae6]">
       <AdminProductsScrollPersistence />
-      <div className="container-premium py-6">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {deletedCount > 0 ? (
           <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
             {deletedCount} ürün silindi.
@@ -310,10 +310,37 @@ export default async function AdminProductsPage({
                 : "Ürün silme sırasında hata oluştu. İlişkili kayıtlar olabilir."}
           </p>
         ) : null}
+        <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-stone-200/50 bg-white/90 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-500">Katalog</p>
+            <h1 className="mt-1 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">Ürün yönetimi</h1>
+            <p className="mt-1 text-sm text-stone-600">Stok, fiyat ve Trendyol — liste üzerinden hızlı aksiyon.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/products/new"
+              className="rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-stone-800"
+            >
+              Yeni ürün
+            </Link>
+            <Link
+              href="/admin/trendyol"
+              className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-50"
+            >
+              Trendyol
+            </Link>
+            <Link
+              href="/admin/orders?queue=ship"
+              className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-50"
+            >
+              Siparişler
+            </Link>
+          </div>
+        </div>
         <div className="mb-4 rounded-2xl border border-stone-200/55 bg-white/90 p-4 shadow-[0_2px_12px_-4px_rgba(28,25,23,0.06)]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h1 className="font-serif text-3xl text-stone-950">Satış odaklı ürünler</h1>
+              <h2 className="font-serif text-2xl text-stone-950 sm:text-3xl">Satış odaklı liste</h2>
               <p className="mt-1 text-sm text-stone-600">
                 Stok, pazaryeri ve satış sinyalleriyle önceliklendirilmiş liste — vitrin ve Trendyol&apos;da büyümek için.
               </p>
@@ -322,10 +349,10 @@ export default async function AdminProductsPage({
               href="/admin"
               className="rounded-lg border border-stone-300/90 bg-stone-100/70 px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100"
             >
-            Ana admin sayfası
-          </Link>
+              Kontrol paneli
+            </Link>
+          </div>
         </div>
-      </div>
 
         <section className="mb-4 rounded-2xl border border-rose-200/55 bg-gradient-to-br from-rose-50/90 via-amber-50/50 to-orange-50/35 p-4 shadow-[0_6px_24px_-8px_rgba(225,29,72,0.12)]">
           <div className="flex flex-wrap items-start justify-between gap-2">

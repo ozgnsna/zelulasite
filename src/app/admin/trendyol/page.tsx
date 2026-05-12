@@ -6,7 +6,6 @@ import {
   importTrendyolApprovedProductsAction,
   refreshTrendyolCategoryAttributesAction,
   saveTrendyolIntegrationSettings,
-  signOutAdmin,
   syncReadyTrendyolProductsAction,
   syncTrendyolPriceInventoryBatch,
 } from "@/app/actions/admin";
@@ -217,19 +216,15 @@ export default async function AdminTrendyolPage({
   const disabledCount = trendyolRowsRaw.filter((r) => r.readiness.status === "disabled").length;
 
   return (
-    <main className="container-premium py-10">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-serif text-3xl text-stone-900">Trendyol Yönetimi</h1>
-        <div className="flex items-center gap-2">
-          <Link href="/admin?tab=analytics" className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">
-            Dashboard&apos;a dön
-          </Link>
-          <form action={signOutAdmin}>
-            <button className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">
-              Çıkış Yap
-            </button>
-          </form>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-500">Pazaryeri</p>
+          <h1 className="mt-1 font-serif text-3xl font-light text-stone-900">Trendyol</h1>
         </div>
+        <Link href="/admin" className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-800 shadow-sm hover:bg-stone-50">
+          Kontrol paneli
+        </Link>
       </div>
 
       <AdminTrendyolIntegrationCard
