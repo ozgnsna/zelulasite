@@ -61,6 +61,23 @@ export function getQnbGatewayUrl(secureType: QnbSecureType = getQnbSecureType())
   return secureType === "3DPay" ? `${host}/Default.aspx` : `${host}/3DHost.aspx`;
 }
 
+/**
+ * Banka arayüz incelemesi: QNB ortam değişkenleri yokken `/odeme/qnb-baslat` üzerinde demo kart ekranı gösterilir.
+ * Gerçek ödeme yok; `BANK_REVIEW_MODE=false` ve tam QNB env ile mevcut 3DPay/3DHost akışı kullanılır.
+ *
+ * Vercel / panellerde değer bazen `"true"` veya BOM ile gelir; normalize edilir.
+ */
+export function isBankReviewMode(): boolean {
+  const raw = process.env.BANK_REVIEW_MODE;
+  if (raw == null || raw === "") return false;
+  let v = raw.replace(/^\uFEFF+/, "").trim();
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    v = v.slice(1, -1).trim();
+  }
+  const n = v.toLowerCase();
+  return n === "true" || n === "1" || n === "yes" || n === "on";
+}
+
 export function getQnbCredentials():
   | {
       ok: true;
@@ -235,16 +252,59 @@ export async function initializeQnbPayment(payload: PaymentInitPayload): Promise
     };
   }
   const cred = getQnbCredentials();
-  if (!cred.ok) {
-    logPayment("error", "QNB config missing during init.");
-    return { ok: false, error: "QNB ortam değişkenleri eksik.", errorCode: "CONFIG_MISSING" };
-  }
   let origin: string;
   try {
     origin = new URL(payload.successUrl).origin;
   } catch {
     return { ok: false, error: "Geçersiz site URL’si.", errorCode: "INIT_FAILED" };
   }
+
+  const bankReview = isBankReviewMode();
+  const missingKeys = getMissingQnbCredentialEnvNames();
+  const modeAfterCred = !cred.ok ? (bankReview ? "bank_review_demo" : "config_missing") : "qnb_baslat";
+  let diagRedirect: string | null = null;
+  let diagErrorCode: string | undefined;
+  if (!cred.ok && bankReview) {
+    diagRedirect = `${origin}/odeme/qnb-baslat/${payload.orderId}`;
+  } else if (!cred.ok) {
+    diagErrorCode = "CONFIG_MISSING";
+  } else {
+    diagRedirect = `${origin}/odeme/qnb-baslat/${payload.orderId}`;
+  }
+  /** Geçici teşhis (Vercel function log): BANK_REVIEW_MODE okunuyor mu. */
+  logPayment("info", "qnb-checkout-init-diag", {
+    BANK_REVIEW_MODE_value: process.env.BANK_REVIEW_MODE ?? null,
+    isBankReviewMode_result: bankReview,
+    missingQnbKeys: missingKeys,
+    selectedPaymentMode: modeAfterCred,
+    returnedRedirectUrl: diagRedirect,
+    returnedErrorCode: diagErrorCode ?? null,
+    credentialsOk: cred.ok,
+    orderId: payload.orderId,
+  });
+
+  if (!cred.ok) {
+    if (bankReview) {
+      const redirectUrl = `${origin}/odeme/qnb-baslat/${payload.orderId}`;
+      const brMeta = { mode: "bank_review_demo" as const, bankReviewMode: true, ...getQnbFlowDebugMeta() };
+      if (isPaymentFlowDebugEnabled()) {
+        logPayment("info", "QNB init (bank review → qnb-baslat demo, gerçek ödeme yok).", {
+          ...brMeta,
+          orderId: payload.orderId,
+          redirectUrl,
+        });
+      }
+      return {
+        ok: true,
+        redirectUrl,
+        reference: `qnb_bank_review_${payload.orderId}`,
+        raw: brMeta,
+      };
+    }
+    logPayment("error", "QNB config missing during init.");
+    return { ok: false, error: "QNB ortam değişkenleri eksik.", errorCode: "CONFIG_MISSING" };
+  }
+
   const redirectUrl = `${origin}/odeme/qnb-baslat/${payload.orderId}`;
   const liveMeta = { mode: "qnb_baslat" as const, ...getQnbFlowDebugMeta() };
   if (isPaymentFlowDebugEnabled()) {

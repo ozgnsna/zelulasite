@@ -8,7 +8,12 @@ import { getCartItems, setCartItems } from "@/lib/cart";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { initializePayment } from "@/lib/payments/provider";
-import { getQnbFlowDebugMeta, getQnbPaymentConfig } from "@/lib/payments/qnb-finansbank";
+import {
+  getMissingQnbCredentialEnvNames,
+  getQnbFlowDebugMeta,
+  getQnbPaymentConfig,
+  isBankReviewMode,
+} from "@/lib/payments/qnb-finansbank";
 import { isCheckoutHandoffDebugEnabled, isPaymentFlowDebugEnabled, logPayment } from "@/lib/payments/logger";
 import { computeInstagramFollowerDiscount } from "@/lib/promo-instagram";
 import { getUserLoyaltyBalance } from "@/lib/loyalty/balance";
@@ -504,13 +509,73 @@ export async function createCheckout(formData: FormData) {
   });
 
   if (!payment.ok || !payment.redirectUrl) {
+    const payErr = (payment.error ?? "").trim();
+    const bankReview = isBankReviewMode();
+    const siteBase = siteUrl.replace(/\/+$/, "");
+
+    logPayment("info", "createCheckout payment init diag", {
+      BANK_REVIEW_MODE_value: process.env.BANK_REVIEW_MODE ?? null,
+      isBankReviewMode_result: bankReview,
+      missingQnbKeys: getMissingQnbCredentialEnvNames(),
+      selectedPaymentMode: parsed.data.payment_method,
+      paymentOk: payment.ok,
+      paymentErrorCode: payment.errorCode,
+      hasRedirectUrl: Boolean(payment.redirectUrl),
+      orderId: order.id,
+    });
+
+    if (payment.errorCode === "CONFIG_MISSING" && bankReview && siteBase && order.id) {
+      const redirectTrimmed = `${siteBase}/odeme/qnb-baslat/${order.id}`;
+      logPayment("info", "createCheckout: bank review recovery (CONFIG_MISSING → qnb-baslat).", {
+        returnedRedirectUrl: redirectTrimmed,
+        orderId: order.id,
+      });
+      if (isCheckoutHandoffDebugEnabled()) {
+        logPayment("info", "Checkout handoff (kart, sunucu, bank review recovery).", {
+          paymentMethod: parsed.data.payment_method,
+          paymentProvider: "qnb_finansbank",
+          orderId: order.id,
+          orderNumber: order.order_number,
+          redirectUrl: redirectTrimmed,
+          initRaw: payment.raw,
+          ...getQnbFlowDebugMeta(),
+        });
+      }
+      if (isPaymentFlowDebugEnabled()) {
+        logPayment("info", "Checkout → ödeme yönlendirmesi (bank review recovery).", {
+          paymentProvider: "qnb_finansbank",
+          orderId: order.id,
+          orderNumber: order.order_number,
+          ...getQnbFlowDebugMeta(),
+          redirectUrl: redirectTrimmed,
+          initRaw: payment.raw,
+        });
+      }
+      return {
+        ok: true,
+        url: redirectTrimmed,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        fallbackUrl: `/odeme/qnb-baslat/${order.id}`,
+        paymentMethod: "card" as const,
+        ...(isPaymentFlowDebugEnabled()
+          ? {
+              payFlowDebugSnapshot: {
+                ...getQnbFlowDebugMeta(),
+                redirectUrl: redirectTrimmed,
+                bankReviewRecovery: true,
+              },
+            }
+          : {}),
+      };
+    }
+
     logPayment("warn", "Payment initialization returned failure.", {
       orderId: order.id,
       error: payment.error,
       errorCode: payment.errorCode,
       raw: payment.raw,
     });
-    const payErr = (payment.error ?? "").trim();
     if (payment.errorCode === "CONFIG_MISSING" && payErr) {
       return { ok: false, error: payErr };
     }

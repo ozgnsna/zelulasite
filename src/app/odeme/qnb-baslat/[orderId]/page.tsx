@@ -1,12 +1,16 @@
 import { randomBytes } from "node:crypto";
 import { notFound } from "next/navigation";
+import { BankReviewDemoCardPage } from "@/components/payments/BankReviewDemoCardPage";
 import { Qnb3DPayForm } from "@/components/payments/Qnb3DPayForm";
 import { QnbGatewayAutoPost } from "@/components/payments/QnbGatewayAutoPost";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildQnbCheckoutFormFields,
+  getMissingQnbCredentialEnvNames,
+  getQnbCredentials,
   getQnbFlowDebugMeta,
   getQnbPaymentConfig,
+  isBankReviewMode,
 } from "@/lib/payments/qnb-finansbank";
 import {
   serializeQnbHiddenFieldsJson,
@@ -59,7 +63,7 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
     const admin = createAdminClient();
     const { data: order } = await admin
       .from("orders")
-      .select("id,total,payment_status,payment_provider,customer_name,email,phone")
+      .select("id,order_number,total,currency,payment_status,payment_provider,customer_name,email,phone")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -81,6 +85,29 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
           incidentId={incidentId}
           showTechnical={flowDebug}
         />
+      );
+    }
+
+    const cred = getQnbCredentials();
+    if (isBankReviewMode() && !cred.ok) {
+      logPayment("info", "qnb-baslat: bank review demo (QNB env eksik, gerçek ödeme yok).", {
+        orderId: String(order.id),
+        bankReviewMode: true,
+      });
+      const showCheckoutDebug = process.env.NEXT_PUBLIC_CHECKOUT_DEBUG === "1";
+      return (
+        <main className="min-h-[50vh] bg-[#f9f6f2]">
+          <BankReviewDemoCardPage
+            orderId={String(order.id)}
+            orderNumber={String(order.order_number ?? "")}
+            orderTotal={Number(order.total ?? 0)}
+            currency={String(order.currency ?? "TRY")}
+            customerName={String(order.customer_name ?? "")}
+            customerEmail={String(order.email ?? "")}
+            showDebugBadge={showCheckoutDebug}
+            missingQnbKeys={getMissingQnbCredentialEnvNames()}
+          />
+        </main>
       );
     }
 
