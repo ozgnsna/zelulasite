@@ -79,10 +79,10 @@ export default async function AdminOrdersListPage({
 
   return (
     <main className="mx-auto min-w-0 max-w-6xl px-3 py-3 sm:px-5 sm:py-4">
-      <header className="mb-2 border-b border-stone-200/70 pb-1.5">
+      <header className="mb-1.5 border-b border-stone-200/70 pb-1 sm:mb-2 sm:pb-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Operasyon</p>
-        <h1 className="mt-0.5 font-serif text-xl font-light tracking-tight text-stone-900 sm:text-2xl">Siparişler</h1>
-        <p className="mt-0.5 max-w-2xl text-[12px] leading-snug text-stone-600">
+        <h1 className="mt-0.5 font-serif text-lg font-light tracking-tight text-stone-900 sm:text-2xl">Siparişler</h1>
+        <p className="mt-0.5 max-w-2xl text-[11px] leading-snug text-stone-600 sm:text-[12px]">
           Hızlı filtreler, yoğun liste ve toplu işlemler — detay sayfasından etiket ve kargo güncellenir.
         </p>
       </header>
