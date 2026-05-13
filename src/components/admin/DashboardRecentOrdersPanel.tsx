@@ -65,7 +65,7 @@ function operationsChip(o: DashboardOrderRow): { label: string; className: strin
   if (ord === "cancelled") {
     return {
       label: "İptal",
-      className: "border-stone-200/90 bg-stone-100/90 text-stone-600 ring-stone-400/15",
+      className: "border-rose-200/70 bg-rose-50/80 text-rose-800/90 ring-rose-400/12",
     };
   }
   if (pay === "failed") {
@@ -77,35 +77,35 @@ function operationsChip(o: DashboardOrderRow): { label: string; className: strin
   if (pay !== "paid") {
     return {
       label: "Beklemede",
-      className: "border-stone-200/90 bg-stone-50 text-stone-700 ring-stone-500/15",
+      className: "border-amber-200/80 bg-amber-50/85 text-amber-900/85 ring-amber-300/15",
     };
   }
   if (ord === "shipped" || ord === "hand_delivered") {
     return {
       label: "Ödendi",
-      className: "border-emerald-200/70 bg-emerald-50/90 text-emerald-950 ring-emerald-600/12",
+      className: "border-emerald-300/70 bg-emerald-50/90 text-emerald-900 ring-emerald-600/10",
     };
   }
   if (ord === "processing") {
     return {
       label: "Hazırlanıyor",
-      className: "border-amber-200/75 bg-amber-50/95 text-amber-950 ring-amber-600/12",
+      className: "border-slate-400/45 bg-slate-100/90 text-slate-800 ring-slate-500/12",
     };
   }
   if (ord === "pending" || ord === "confirmed") {
     return {
       label: "Kargoya hazır",
-      className: "border-sky-200/75 bg-sky-50/95 text-sky-950 ring-sky-600/12",
+      className: "border-emerald-600/35 bg-emerald-100/95 text-emerald-950 ring-emerald-700/18",
     };
   }
   return {
     label: "Kargoya hazır",
-    className: "border-sky-200/75 bg-sky-50/95 text-sky-950 ring-sky-600/12",
+    className: "border-emerald-600/35 bg-emerald-100/95 text-emerald-950 ring-emerald-700/18",
   };
 }
 
 const chipBase =
-  "inline-flex max-w-full shrink-0 items-center truncate rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset";
+  "inline-flex max-w-full shrink-0 items-center truncate rounded-full border px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wide ring-1 ring-inset";
 
 const FILTERS: { id: FilterId; label: string }[] = [
   { id: "all", label: "Tümü" },
@@ -138,8 +138,8 @@ export function DashboardRecentOrdersPanel({
   }, [orders, filter, dayStartMs, dayEndMs]);
 
   return (
-    <section className="rounded-2xl border border-stone-200/70 bg-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.06)] sm:p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-stone-100/90 pb-3">
+    <section className="rounded-2xl border border-stone-200/70 bg-white p-3 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.06)] sm:p-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-stone-100/90 pb-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-semibold tracking-tight text-stone-900">Son siparişler</h2>
@@ -156,27 +156,27 @@ export function DashboardRecentOrdersPanel({
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Link
             href="/admin/orders?queue=ship"
-            className="rounded-lg border border-stone-800/15 bg-stone-900 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
+            className="rounded-lg border border-stone-800/15 bg-stone-900 px-2 py-1 text-[10px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
           >
             Kargo kuyruğu
           </Link>
           <Link
             href="/admin/products/new"
-            className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 transition hover:bg-stone-50"
+            className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-700 transition hover:bg-stone-50"
           >
             Ürün ekle
           </Link>
         </div>
       </div>
 
-      <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
         {FILTERS.map((f) => (
           <button
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
             className={cn(
-              "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
+              "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition",
               filter === f.id
                 ? "border-stone-800 bg-stone-900 text-white shadow-sm"
                 : "border-stone-200/90 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50",
@@ -187,7 +187,7 @@ export function DashboardRecentOrdersPanel({
         ))}
       </div>
 
-      <div className="mt-2 hidden rounded-md bg-stone-50/80 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500 sm:grid sm:grid-cols-[minmax(0,1fr)_6.5rem_auto_5.5rem_3.25rem] sm:gap-2">
+      <div className="mt-1.5 hidden rounded-md bg-stone-50/80 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-stone-500 sm:grid sm:grid-cols-[minmax(0,1fr)_6.5rem_auto_5.5rem_3.25rem] sm:gap-2">
         <span>Müşteri</span>
         <span className="font-mono normal-case">No</span>
         <span>Durum</span>
@@ -217,7 +217,7 @@ export function DashboardRecentOrdersPanel({
                   isLead && "rounded-md border-l-[3px] border-l-[#b0a08c]/70 bg-stone-50/40 pl-2 sm:rounded-none sm:border-l-[3px] sm:border-l-[#b0a08c]/70 sm:bg-stone-50/25 sm:pl-2",
                 )}
               >
-                <div className="flex flex-col gap-1.5 py-2.5 sm:hidden">
+                <div className="flex flex-col gap-1 py-2 sm:hidden">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-semibold leading-tight text-stone-900">{o.customer_name || "—"}</p>
@@ -235,7 +235,7 @@ export function DashboardRecentOrdersPanel({
                       <span className="text-[13px] font-semibold tabular-nums text-stone-900">{formatTryCompact(o.total)}</span>
                       <Link
                         href={`/admin/orders/${o.id}`}
-                        className="inline-flex min-h-[40px] min-w-[3rem] items-center justify-center rounded-md border border-stone-200/90 bg-white px-3 text-[11px] font-semibold text-stone-800 transition hover:border-stone-300 hover:bg-stone-50"
+                        className="inline-flex min-h-[36px] min-w-[2.75rem] items-center justify-center rounded-md border border-stone-200/90 bg-white px-2.5 text-[10px] font-semibold text-stone-800 transition hover:border-stone-300 hover:bg-stone-50"
                       >
                         Aç
                       </Link>
@@ -243,7 +243,7 @@ export function DashboardRecentOrdersPanel({
                   </div>
                 </div>
 
-                <div className="hidden py-2 sm:grid sm:grid-cols-[minmax(0,1fr)_6.5rem_auto_5.5rem_3.25rem] sm:items-center sm:gap-2">
+                <div className="hidden py-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_6.5rem_auto_5.5rem_3.25rem] sm:items-center sm:gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-[12px] font-semibold leading-tight text-stone-900">{o.customer_name || "—"}</p>
                   </div>
@@ -260,7 +260,7 @@ export function DashboardRecentOrdersPanel({
                   <div className="flex justify-center">
                     <Link
                       href={`/admin/orders/${o.id}`}
-                      className="inline-flex items-center justify-center rounded-md border border-stone-200/90 bg-white px-2.5 py-1 text-[11px] font-semibold text-stone-800 transition hover:border-stone-300 hover:bg-stone-50"
+                      className="inline-flex items-center justify-center rounded-md border border-stone-200/90 bg-white px-2 py-0.5 text-[10px] font-semibold text-stone-800 transition hover:border-stone-300 hover:bg-stone-50"
                     >
                       Aç
                     </Link>
@@ -272,7 +272,7 @@ export function DashboardRecentOrdersPanel({
         )}
       </ul>
 
-      <div className="mt-2 flex justify-end border-t border-stone-100/90 pt-2">
+      <div className="mt-1.5 flex justify-end border-t border-stone-100/90 pt-1.5">
         <Link href="/admin/orders" className="text-[11px] font-semibold text-[#6b5b45] underline-offset-2 hover:underline">
           Tüm siparişler →
         </Link>

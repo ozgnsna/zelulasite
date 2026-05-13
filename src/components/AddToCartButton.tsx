@@ -109,10 +109,11 @@ export function AddToCartButton({
         >
           {primaryText}
         </button>
-        {secondaryLabel && stock >= 1 ? (
+        {secondaryLabel ? (
           <button
             type="button"
             disabled={disabled || pending || pendingSecondary || stock < 1}
+            title={stock < 1 ? "Bu ürün stokta olmadığı için sepete eklenemez." : undefined}
             onClick={() => {
               startSecondary(async () => {
                 await addToCart(productId);

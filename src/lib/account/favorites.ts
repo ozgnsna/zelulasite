@@ -39,7 +39,8 @@ export async function listFavoriteProductsForUser(
     .from("products")
     .select("*, category:categories(*), collection:collections(*), product_images(*)")
     .in("id", ids)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .gt("stock_quantity", 0);
   if (error || !products?.length) return [];
   const byId = new Map((products as Product[]).map((p) => [p.id, p]));
   return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));

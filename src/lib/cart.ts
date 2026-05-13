@@ -37,7 +37,8 @@ export async function getDetailedCart() {
       .from("products")
       .select("*, product_images(*)")
       .in("id", ids)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .gt("stock_quantity", 0);
     const byId = new Map((data ?? []).map((p) => [p.id, p as Product]));
     const lines = items
       .map((item) => {

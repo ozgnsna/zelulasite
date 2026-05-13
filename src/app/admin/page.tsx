@@ -343,8 +343,8 @@ export default async function AdminPage({
 
   return (
     <>
-      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-24 lg:pt-8">
-        <div className="mb-8">
+      <main className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-24 lg:pt-7">
+        <div className="mb-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">Operasyon</p>
           <h1 className="mt-1 font-serif text-3xl font-light tracking-tight text-stone-950">Kontrol paneli</h1>
           <p className="mt-1 text-sm text-stone-600">Bugün müdahale gerektiren işler ve satış özeti.</p>
@@ -404,48 +404,48 @@ export default async function AdminPage({
         </div>
       ) : null}
 
-      <section id="analytics" className="space-y-6">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+      <section id="analytics" className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Bugün · Sipariş</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+              <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
                 {ordersToday.toLocaleString("tr-TR")}
               </p>
-              <p className="mt-1 text-[11px] leading-snug text-stone-600">{kpiCountDeltaTr(ordersToday, ordersYesterday)}</p>
+              <p className="mt-0.5 text-[10px] leading-snug text-stone-600">{kpiCountDeltaTr(ordersToday, ordersYesterday)}</p>
             </div>
-            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Kargoya hazır</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+              <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
                 {pendingShipmentCount.toLocaleString("tr-TR")}
               </p>
-              <Link href="/admin/orders?queue=ship" className="mt-2 inline-block text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+              <Link href="/admin/orders?queue=ship" className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
                 Kuyruğu aç →
               </Link>
             </div>
-            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Trendyol uyarı</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+              <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
                 {trendyolIssueCount.toLocaleString("tr-TR")}
               </p>
-              <Link href="/admin/trendyol" className="mt-2 inline-block text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+              <Link href="/admin/trendyol" className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
                 Entegrasyon →
               </Link>
             </div>
-            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm">
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Düşük stok</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-stone-950">
+              <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
                 {lowStockCount.toLocaleString("tr-TR")}
               </p>
-              <Link href="/admin/products?stock=low" className="mt-2 inline-block text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+              <Link href="/admin/products?stock=low" className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
                 Katalog →
               </Link>
             </div>
-            <div className="rounded-2xl border border-stone-200/50 bg-white/90 p-4 shadow-sm sm:col-span-2 xl:col-span-1">
+            <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm sm:col-span-2 xl:col-span-1">
               <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Ciro (bugün)</p>
-              <div className="mt-1">
-                <TryPriceSplit n={revenueToday} className="text-2xl font-semibold tracking-tight text-stone-900" />
+              <div className="mt-0.5">
+                <TryPriceSplit n={revenueToday} className="text-xl font-semibold tracking-tight text-stone-900" />
               </div>
-              <p className="mt-1 text-[11px] leading-snug text-stone-600">{kpiRevenueDeltaTr(revenueToday, revenueYesterday)}</p>
+              <p className="mt-0.5 text-[10px] leading-snug text-stone-600">{kpiRevenueDeltaTr(revenueToday, revenueYesterday)}</p>
             </div>
           </div>
 
@@ -463,28 +463,28 @@ export default async function AdminPage({
             dayEndIso={dayEnd.toISOString()}
           />
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-stone-900">Kargoya hazır siparişler</h2>
-                  <p className="mt-0.5 text-xs text-stone-500">Ödendi · paketleme / kargo bekliyor</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">Ödendi · paketleme / kargo bekliyor</p>
                 </div>
                 <Link
                   href="/admin/orders?queue=ship"
-                  className="shrink-0 rounded-full bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800"
+                  className="shrink-0 rounded-full bg-stone-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-stone-800"
                 >
                   Tümü
                 </Link>
               </div>
-              <ul className="mt-3 space-y-1">
+              <ul className="mt-2 space-y-0.5">
                 {pendingShipQueue.length === 0 ? (
-                  <li className="rounded-lg border border-dashed border-stone-200 bg-stone-50/80 px-2.5 py-4 text-center text-xs text-stone-500">
+                  <li className="rounded-lg border border-dashed border-stone-200 bg-stone-50/80 px-2.5 py-3 text-center text-[11px] text-stone-500">
                     Bekleyen yok.
                   </li>
                 ) : (
                   pendingShipQueue.map((o) => (
-                    <li key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-stone-100/90 bg-stone-50/40 px-2.5 py-2">
+                    <li key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-stone-100/90 bg-stone-50/40 px-2 py-1.5">
                       <div className="min-w-0">
                         <p className="truncate text-xs font-semibold text-stone-900">{o.customer_name}</p>
                         <p className="font-mono text-[10px] text-stone-500">{shortenOrderNumberDisplay(String(o.order_number ?? ""))}</p>
@@ -502,26 +502,26 @@ export default async function AdminPage({
                 )}
               </ul>
             </div>
-            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
+            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-stone-900">Trendyol & stok uyarıları</h2>
-                  <p className="mt-0.5 text-xs text-stone-500">Pazaryeri ve kritik stok (son 200 ürün dilimi)</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">Pazaryeri ve kritik stok (son 200 ürün dilimi)</p>
                 </div>
-                <Link href="/admin/products" className="text-xs font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+                <Link href="/admin/products" className="text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
                   Katalog
                 </Link>
               </div>
-              <ul className="mt-4 space-y-2 text-sm text-stone-700">
-                <li className="flex justify-between gap-2 rounded-xl bg-amber-50/80 px-3 py-2 ring-1 ring-amber-200/60">
+              <ul className="mt-2 space-y-1 text-[13px] text-stone-700">
+                <li className="flex justify-between gap-2 rounded-lg bg-amber-50/80 px-2.5 py-1.5 ring-1 ring-amber-200/60">
                   <span>Eksik / yayında değil</span>
                   <span className="font-semibold tabular-nums text-stone-900">{notListedOnMarketplaceCount}</span>
                 </li>
-                <li className="flex justify-between gap-2 rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200/60">
+                <li className="flex justify-between gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 ring-1 ring-stone-200/60">
                   <span>Alan eksik (aktif TY)</span>
                   <span className="font-semibold tabular-nums text-stone-900">{missingMarketplaceCount}</span>
                 </li>
-                <li className="flex justify-between gap-2 rounded-xl bg-rose-50/70 px-3 py-2 ring-1 ring-rose-200/50">
+                <li className="flex justify-between gap-2 rounded-lg bg-rose-50/70 px-2.5 py-1.5 ring-1 ring-rose-200/50">
                   <span>Kritik stok (1–3)</span>
                   <span className="font-semibold tabular-nums text-stone-900">{lowStockCount}</span>
                 </li>
@@ -530,18 +530,18 @@ export default async function AdminPage({
           </div>
 
           {bestSellersToday.length > 0 ? (
-            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-sm">
+            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold text-stone-900">Bugün çok satanlar</h2>
-                <Link href="/admin/products" className="text-xs font-semibold text-stone-600 underline-offset-2 hover:underline">
+                <Link href="/admin/products" className="text-[11px] font-semibold text-stone-600 underline-offset-2 hover:underline">
                   Katalogda aç
                 </Link>
               </div>
-              <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <ol className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-5">
                 {bestSellersToday.map((row, i) => (
                   <li
                     key={row.productId}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-stone-100 bg-stone-50/60 px-3 py-2.5 text-sm"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-stone-100 bg-stone-50/60 px-2.5 py-2 text-[13px]"
                   >
                     <span className="font-mono text-xs text-stone-400">{i + 1}</span>
                     <span className="min-w-0 flex-1 truncate font-medium text-stone-900">{row.name}</span>
@@ -552,7 +552,7 @@ export default async function AdminPage({
             </div>
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Metric
               emphasis
               title="Aktif ürünler"
@@ -595,7 +595,7 @@ export default async function AdminPage({
             Son kontrol: <span className="font-semibold text-stone-700">{dashboardCheckedAtTr}</span> · İstanbul
           </p>
 
-          <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+          <div className="grid gap-3 lg:grid-cols-2 lg:items-stretch">
             <Link
               href="/admin/products/new"
               className="group flex h-full min-h-0 flex-col justify-between rounded-2xl border border-stone-200/85 bg-gradient-to-br from-[#faf9f6] via-[#f3f0ea] to-[#e8e4dc] p-5 shadow-[0_5px_24px_-12px_rgba(28,25,23,0.07)] transition-all hover:border-stone-300/95 hover:shadow-[0_8px_28px_-12px_rgba(28,25,23,0.09)]"
@@ -919,22 +919,22 @@ export default async function AdminPage({
           </section>
 
           <section
-            aria-label="Analytics özeti"
-            className="rounded-xl border border-stone-200/45 bg-stone-50/35 p-2.5 shadow-sm ring-1 ring-stone-900/[0.02] sm:p-3"
+            aria-label="Analitik özeti"
+            className="rounded-xl border border-stone-200/45 bg-stone-50/35 p-2 shadow-sm ring-1 ring-stone-900/[0.02] sm:p-2.5"
           >
             <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
               <div>
-                <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">Analytics · bugün</h2>
-                <p className="text-[10px] leading-tight text-stone-500">Vitrin olayları · ikincil özet</p>
+                <h2 className="text-[11px] font-semibold tracking-tight text-stone-700">Analitik özeti</h2>
+                <p className="text-[10px] leading-tight text-stone-500">Bugün · vitrin olayları</p>
               </div>
             </div>
 
             <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
               <Metric compact title="Ziyaretçi" value={dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")} />
-              <Metric compact title="Görüntüleme" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
-              <Metric compact title="Sepete ekleme" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
-              <Metric compact title="Checkout" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
-              <Metric compact title="Satın alma" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
+              <Metric compact title="Ürün Görüntüleme" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
+              <Metric compact title="Sepete Ekleme" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
+              <Metric compact title="Ödeme Adımı" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
+              <Metric compact title="Satın Alma" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
               <Metric
                 compact
                 title="Dönüşüm"
@@ -945,28 +945,28 @@ export default async function AdminPage({
               />
             </div>
 
-            <div className="mt-2 rounded-lg border border-stone-200/40 bg-white/60 p-2">
-              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-400">Dönüşüm hunisi</p>
+            <div className="mt-1.5 rounded-lg border border-stone-200/40 bg-white/60 p-1.5">
+              <p className="mb-1 text-[9px] font-semibold tracking-tight text-stone-400">Dönüşüm hunisi</p>
               <div className="flex min-w-0 items-stretch gap-0.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:gap-0 sm:overflow-visible sm:pb-0">
                 {(
                   [
-                    { label: "Görüntüleme", value: dashboardAnalytics.funnel.view_item },
-                    { label: "Sepet", value: dashboardAnalytics.funnel.add_to_cart },
-                    { label: "Checkout", value: dashboardAnalytics.funnel.begin_checkout },
-                    { label: "Satın alma", value: dashboardAnalytics.funnel.purchase },
+                    { key: "view", label: "Ürün Görüntüleme", value: dashboardAnalytics.funnel.view_item },
+                    { key: "cart", label: "Sepete Ekleme", value: dashboardAnalytics.funnel.add_to_cart },
+                    { key: "pay", label: "Ödeme Adımı", value: dashboardAnalytics.funnel.begin_checkout },
+                    { key: "buy", label: "Satın Alma", value: dashboardAnalytics.funnel.purchase },
                   ] as const
                 ).map((step, i) => (
-                  <Fragment key={step.label}>
+                  <Fragment key={step.key}>
                     {i > 0 ? (
                       <span className="flex shrink-0 items-center justify-center px-0.5 text-stone-300 sm:px-0" aria-hidden>
                         <ChevronRight className="size-3.5 sm:size-3" strokeWidth={2} />
                       </span>
                     ) : null}
-                    <div className="flex min-w-[4.75rem] flex-1 flex-col justify-center rounded-md border border-stone-200/55 bg-white px-1.5 py-1 text-center shadow-[0_1px_0_0_rgba(28,25,23,0.03)] sm:min-w-0">
-                      <span className="text-[8px] font-semibold uppercase leading-tight tracking-wide text-stone-500">
+                    <div className="flex min-w-[5.25rem] flex-1 flex-col justify-center rounded-md border border-stone-200/55 bg-white px-1.5 py-0.5 text-center shadow-[0_1px_0_0_rgba(28,25,23,0.03)] sm:min-w-0">
+                      <span className="text-[7.5px] font-semibold leading-[1.15] tracking-tight text-stone-500">
                         {step.label}
                       </span>
-                      <span className="mt-0.5 text-[13px] font-bold tabular-nums leading-none text-stone-900">
+                      <span className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-stone-900">
                         {step.value.toLocaleString("tr-TR")}
                       </span>
                     </div>
@@ -976,9 +976,9 @@ export default async function AdminPage({
             </div>
 
             <div className="mt-2">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-400">En çok görüntülenen</p>
+              <p className="text-[9px] font-semibold tracking-tight text-stone-400">En çok görüntülenen ürünler</p>
               {dashboardAnalytics.topViewedProducts.length === 0 ? (
-                <p className="mt-1 text-[11px] text-stone-500">Henüz veri yok.</p>
+                <p className="mt-1 text-[11px] text-stone-500">Henüz görüntülenme yok.</p>
               ) : (
                 <ul className="mt-1 divide-y divide-stone-200/50 rounded-md border border-stone-200/40 bg-white/70">
                   {dashboardAnalytics.topViewedProducts.map((row) => (
@@ -1028,17 +1028,17 @@ function Metric({
   className?: string;
   valueClassName?: string;
   emphasis?: boolean;
-  /** Analytics / snapshot KPI: kısa kart, küçük etiket, sıkı boşluk */
+  /** Analitik KPI kartı: kısa gövde, küçük etiket, sıkı boşluk */
   compact?: boolean;
 }) {
   if (compact) {
     return (
       <article
-        className={`rounded-md border border-stone-200/50 bg-white px-2 py-1.5 shadow-[0_1px_0_0_rgba(28,25,23,0.04)] ${className ?? ""}`}
+        className={`rounded-md border border-stone-200/50 bg-white px-2 py-1 shadow-[0_1px_0_0_rgba(28,25,23,0.04)] ${className ?? ""}`}
       >
-        <p className="text-[8.5px] font-semibold uppercase leading-tight tracking-[0.1em] text-stone-500">{title}</p>
+        <p className="text-[8px] font-semibold leading-tight tracking-tight text-stone-500">{title}</p>
         <div
-          className={`mt-0.5 text-xl font-semibold tabular-nums leading-none tracking-tight text-stone-950 ${valueClassName ?? ""}`}
+          className={`mt-0.5 text-lg font-semibold tabular-nums leading-none tracking-tight text-stone-950 ${valueClassName ?? ""}`}
         >
           {valueNode ?? value}
         </div>
@@ -1047,16 +1047,16 @@ function Metric({
   }
 
   const shell = emphasis
-    ? "rounded-2xl border border-stone-200/80 bg-[linear-gradient(165deg,#fffdfb_0%,#f7f4ef_100%)] p-5 shadow-[0_4px_20px_-8px_rgba(28,25,23,0.06)] ring-1 ring-stone-900/[0.04]"
-    : "rounded-2xl border border-stone-200/70 bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] p-4 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)]";
+    ? "rounded-2xl border border-stone-200/80 bg-[linear-gradient(165deg,#fffdfb_0%,#f7f4ef_100%)] p-4 shadow-[0_4px_20px_-8px_rgba(28,25,23,0.06)] ring-1 ring-stone-900/[0.04]"
+    : "rounded-2xl border border-stone-200/70 bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)]";
   return (
     <article className={`${shell} ${className ?? ""}`}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-700">{title}</p>
-      <div className={`mt-2 font-serif text-2xl font-semibold tracking-tight text-stone-950 ${valueClassName ?? ""}`}>
+      <div className={`mt-1.5 font-serif text-xl font-semibold tracking-tight text-stone-950 ${valueClassName ?? ""}`}>
         {valueNode ?? value}
       </div>
-      {trend ? <p className="mt-1.5 text-[11px] leading-snug text-stone-600">{trend}</p> : null}
-      {helper ? <p className="mt-2 text-[12px] leading-relaxed text-stone-700">{helper}</p> : null}
+      {trend ? <p className="mt-1 text-[11px] leading-snug text-stone-600">{trend}</p> : null}
+      {helper ? <p className="mt-1.5 text-[12px] leading-relaxed text-stone-700">{helper}</p> : null}
     </article>
   );
 }

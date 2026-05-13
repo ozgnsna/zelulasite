@@ -49,19 +49,34 @@ function opsStatusChip(o: AdminOrderListRow): { label: string; className: string
   const os = String(o.order_status ?? "");
   const pay = String(o.payment_status ?? "");
   if (os === "cancelled") {
-    return { label: "İptal", className: "border-rose-300/80 bg-rose-50 text-rose-950 ring-rose-600/15" };
+    return {
+      label: "İptal",
+      className: "border-rose-200/70 bg-rose-50/80 text-rose-800/90 ring-rose-400/12",
+    };
   }
   if (pay !== "paid") {
-    return { label: "Beklemede", className: "border-stone-300/90 bg-stone-100 text-stone-800 ring-stone-500/10" };
+    return {
+      label: "Beklemede",
+      className: "border-amber-200/80 bg-amber-50/85 text-amber-900/85 ring-amber-300/15",
+    };
   }
   if (os === "shipped" || os === "hand_delivered") {
-    return { label: "Tamamlandı", className: "border-emerald-300/80 bg-emerald-50 text-emerald-950 ring-emerald-600/12" };
+    return {
+      label: "Tamamlandı",
+      className: "border-emerald-300/70 bg-emerald-50/90 text-emerald-900 ring-emerald-600/10",
+    };
   }
   if (os === "processing") {
-    return { label: "Hazırlanıyor", className: "border-amber-400/80 bg-amber-50 text-amber-950 ring-amber-600/12" };
+    return {
+      label: "Hazırlanıyor",
+      className: "border-slate-400/45 bg-slate-100/90 text-slate-800 ring-slate-500/12",
+    };
   }
   if (os === "pending" || os === "confirmed") {
-    return { label: "Kargoya hazır", className: "border-sky-400/75 bg-sky-50 text-sky-950 ring-sky-600/12" };
+    return {
+      label: "Kargoya hazır",
+      className: "border-emerald-600/35 bg-emerald-100/95 text-emerald-950 ring-emerald-700/18",
+    };
   }
   return { label: os || "—", className: "border-stone-200 bg-stone-50 text-stone-700" };
 }
@@ -194,14 +209,14 @@ export function AdminOrdersListShell({
 
   return (
     <div className="min-w-0">
-      <div className="sticky top-0 z-30 -mx-1 border-b border-stone-200/80 bg-[#eceae6]/95 px-1 pb-2 pt-1 backdrop-blur-sm">
-        <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:flex-wrap sm:pb-0 [&::-webkit-scrollbar]:hidden">
+      <div className="sticky top-0 z-30 -mx-1 border-b border-stone-200/80 bg-[#eceae6]/95 px-1 pb-1.5 pt-0.5 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-1 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:flex-wrap sm:pb-0 [&::-webkit-scrollbar]:hidden">
           {FILTERS.map((f) => (
             <Link
               key={f.id}
               href={ordersListHref(f.id)}
               className={cn(
-                "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition",
+                "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition",
                 activeFilter === f.id
                   ? "border-stone-900 bg-stone-900 text-white"
                   : "border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50",
@@ -214,16 +229,16 @@ export function AdminOrdersListShell({
 
         <div
           className={cn(
-            "mt-2 flex flex-wrap items-center gap-2 rounded-lg border px-2 py-1.5 shadow-sm",
+            "mt-1.5 flex flex-wrap items-center gap-1.5 rounded-lg border px-2 py-1 shadow-sm",
             count > 0 ? "border-amber-200/60 bg-amber-50/90" : "border-stone-200/70 bg-white/80",
           )}
         >
-          <span className="text-[11px] font-bold tabular-nums text-stone-800">{count} seçili</span>
+          <span className="text-[10px] font-bold tabular-nums text-stone-800">{count} seçili</span>
           <button
             type="button"
             disabled={pending || count === 0}
             onClick={() => runBulk("prepare")}
-            className="rounded-md border border-amber-700/80 bg-white px-2 py-1 text-[11px] font-bold text-amber-950 hover:bg-amber-100/80 disabled:opacity-40"
+            className="rounded-md border border-amber-700/80 bg-white px-2 py-0.5 text-[10px] font-bold text-amber-950 hover:bg-amber-100/80 disabled:opacity-40"
           >
             Toplu hazırla
           </button>
@@ -231,7 +246,7 @@ export function AdminOrdersListShell({
             type="button"
             disabled={pending || count === 0}
             onClick={() => runBulk("ship")}
-            className="rounded-md border border-stone-800/20 bg-stone-900 px-2 py-1 text-[11px] font-bold text-white hover:bg-stone-800 disabled:opacity-40"
+            className="rounded-md border border-stone-800/20 bg-stone-900 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-stone-800 disabled:opacity-40"
           >
             Toplu kargola
           </button>
@@ -239,7 +254,7 @@ export function AdminOrdersListShell({
             type="button"
             disabled={pending || count === 0}
             onClick={() => printOrderLabels(selectedRows)}
-            className="rounded-md border border-stone-300 bg-white px-2 py-1 text-[11px] font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-40"
+            className="rounded-md border border-stone-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-40"
           >
             Barkod yazdır
           </button>
@@ -247,7 +262,7 @@ export function AdminOrdersListShell({
             <button
               type="button"
               onClick={() => setSelected(new Set())}
-              className="ml-auto text-[11px] font-semibold text-stone-600 underline-offset-2 hover:underline"
+              className="ml-auto text-[10px] font-semibold text-stone-600 underline-offset-2 hover:underline"
             >
               Seçimi temizle
             </button>
@@ -255,7 +270,7 @@ export function AdminOrdersListShell({
         </div>
       </div>
 
-      <div className="mt-1.5 flex items-center justify-between gap-2 border-b border-stone-200/60 pb-1 text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+      <div className="mt-1 flex items-center justify-between gap-2 border-b border-stone-200/60 pb-0.5 text-[9px] font-semibold uppercase tracking-wide text-stone-500">
         <label className="inline-flex cursor-pointer items-center gap-1.5 text-stone-600">
           <input
             type="checkbox"
@@ -269,7 +284,7 @@ export function AdminOrdersListShell({
       </div>
 
       <div
-        className="mt-1 hidden gap-x-2 border-b border-stone-200/40 pb-1 text-[9px] font-bold uppercase tracking-wide text-stone-400 sm:grid sm:grid-cols-[2rem_6.5rem_minmax(0,1fr)_auto_auto_auto_5.25rem_auto] sm:items-end sm:pl-0.5"
+        className="mt-0.5 hidden gap-x-2 border-b border-stone-200/40 pb-0.5 text-[8px] font-bold uppercase tracking-wide text-stone-400 sm:grid sm:grid-cols-[2rem_6.5rem_minmax(0,1fr)_auto_auto_auto_5.25rem_auto] sm:items-end sm:pl-0.5"
         aria-hidden
       >
         <span />
@@ -284,7 +299,7 @@ export function AdminOrdersListShell({
 
       <ul className="divide-y divide-stone-200/50">
         {orders.length === 0 ? (
-          <li className="py-8 text-center text-[13px] text-stone-500">Bu görünümde sipariş yok.</li>
+          <li className="py-6 text-center text-[13px] text-stone-500">Bu görünümde sipariş yok.</li>
         ) : (
           orders.map((o) => {
             const ops = opsStatusChip(o);
@@ -296,8 +311,8 @@ export function AdminOrdersListShell({
               minute: "2-digit",
             });
             return (
-              <li key={o.id} className="py-2 sm:grid sm:grid-cols-[2rem_6.5rem_minmax(0,1fr)_auto_auto_auto_5.25rem_auto] sm:items-center sm:gap-x-2 sm:py-1.5">
-                <div className="flex flex-col gap-1 sm:contents">
+              <li key={o.id} className="py-1.5 sm:grid sm:grid-cols-[2rem_6.5rem_minmax(0,1fr)_auto_auto_auto_5.25rem_auto] sm:items-center sm:gap-x-2 sm:py-1">
+                <div className="flex flex-col gap-0.5 sm:contents">
                   <div className="flex items-start gap-2 sm:contents">
                     <div className="flex shrink-0 items-center pt-0.5 sm:block sm:justify-self-center sm:pt-0">
                       <input
@@ -319,16 +334,16 @@ export function AdminOrdersListShell({
                     </div>
                   </div>
                   <div className="min-w-0 pl-7 sm:pl-0">
-                    <p className="truncate text-[12px] font-semibold leading-tight text-stone-900 sm:text-[12px]">
+                    <p className="truncate text-[11px] font-semibold leading-tight text-stone-900 sm:text-[11px]">
                       {o.customer_name || "—"}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-1.5 flex flex-wrap items-center gap-1 sm:mt-0 sm:contents">
+                <div className="mt-1 flex flex-wrap items-center gap-0.5 sm:mt-0 sm:contents">
                   <span
                     className={cn(
-                      "inline-flex w-fit shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ring-1 ring-inset",
+                      "inline-flex w-fit shrink-0 rounded-full border px-1.5 py-[1px] text-[8.5px] font-bold uppercase tracking-wide ring-1 ring-inset",
                       ops.className,
                     )}
                   >
@@ -336,7 +351,7 @@ export function AdminOrdersListShell({
                   </span>
                   <span
                     className={cn(
-                      "inline-flex w-fit shrink-0 rounded-full border px-1.5 py-px text-[9px] font-semibold ring-1 ring-inset",
+                      "inline-flex w-fit shrink-0 rounded-full border px-1.5 py-[1px] text-[8.5px] font-semibold ring-1 ring-inset",
                       paymentChipClass(String(o.payment_status ?? "")),
                     )}
                   >
@@ -348,7 +363,7 @@ export function AdminOrdersListShell({
                   >
                     {cargoShort(o)}
                   </span>
-                  <span className="text-[12px] font-semibold tabular-nums text-stone-900 sm:text-right">
+                  <span className="text-[11px] font-semibold tabular-nums text-stone-900 sm:text-right">
                     {Number(o.total ?? 0).toLocaleString("tr-TR", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -357,7 +372,7 @@ export function AdminOrdersListShell({
                   </span>
                   <Link
                     href={`/admin/orders/${o.id}`}
-                    className="inline-flex min-h-[32px] min-w-[2.75rem] items-center justify-center rounded-md border border-stone-800/15 bg-stone-900 px-2 text-[11px] font-semibold text-white hover:bg-stone-800 sm:min-h-0 sm:justify-self-end sm:py-0.5"
+                    className="inline-flex min-h-[34px] min-w-[2.5rem] items-center justify-center rounded-md border border-stone-800/15 bg-stone-900 px-1.5 text-[10px] font-semibold text-white hover:bg-stone-800 sm:min-h-0 sm:justify-self-end sm:px-2 sm:py-px sm:text-[10px]"
                   >
                     Aç
                   </Link>

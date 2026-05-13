@@ -17,12 +17,14 @@ export async function getHomeData() {
         .from("products")
         .select("*, category:categories(*), collection:collections(*), product_images(*)")
         .eq("is_active", true)
+        .gt("stock_quantity", 0)
         .eq("featured", true)
         .limit(8),
       supabase
         .from("products")
         .select("*, category:categories(*), collection:collections(*), product_images(*)")
         .eq("is_active", true)
+        .gt("stock_quantity", 0)
         .eq("new_arrival", true)
         .order("created_at", { ascending: false })
         .limit(8),
@@ -81,7 +83,8 @@ export async function getProducts(params: {
     let query = supabase
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .gt("stock_quantity", 0);
 
     if (categoryIdsFromSlugs.length > 0) {
       query = query.in("category_id", categoryIdsFromSlugs);
@@ -476,6 +479,7 @@ export async function getProductBySlug(slug: string) {
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
       .eq("slug", decodedSlug)
       .eq("is_active", true)
+      .gt("stock_quantity", 0)
       .maybeSingle();
     if (data) {
       const p = data as Product;
@@ -487,6 +491,7 @@ export async function getProductBySlug(slug: string) {
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
       .eq("is_active", true)
+      .gt("stock_quantity", 0)
       .limit(1200);
     const products = (allActive ?? []) as Product[];
     if (products.length === 0) return null;
