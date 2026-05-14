@@ -1,6 +1,6 @@
 "use client";
 
-import { Package } from "lucide-react";
+import { Package, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
@@ -142,6 +142,25 @@ export function AdminOrdersListShell({
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const queryNorm = searchQuery.trim().toLowerCase();
+
+  const displayOrders = useMemo(() => {
+    if (!queryNorm) return orders;
+    return orders.filter((o) => {
+      const num = String(o.order_number ?? "").toLowerCase();
+      const cust = String(o.customer_name ?? "").toLowerCase();
+      const pay = paymentStatusLabelTr(String(o.payment_status ?? "")).toLowerCase();
+      const opsLabel = opsStatusChip(o).label.toLowerCase();
+      return (
+        num.includes(queryNorm) ||
+        cust.includes(queryNorm) ||
+        pay.includes(queryNorm) ||
+        opsLabel.includes(queryNorm)
+      );
+    });
+  }, [orders, queryNorm]);
+
   const toggle = useCallback((id: string) => {
     setSelected((prev) => {
       const n = new Set(prev);
@@ -152,11 +171,11 @@ export function AdminOrdersListShell({
   }, []);
 
   const toggleAllOnPage = useCallback(() => {
-    if (orders.length === 0) return;
-    const allIds = orders.map((o) => o.id);
+    if (displayOrders.length === 0) return;
+    const allIds = displayOrders.map((o) => o.id);
     const allSelected = allIds.every((id) => selected.has(id));
     setSelected(allSelected ? new Set() : new Set(allIds));
-  }, [orders, selected]);
+  }, [displayOrders, selected]);
 
   const selectedRows = useMemo(() => orders.filter((o) => selected.has(o.id)), [orders, selected]);
 
@@ -207,16 +226,35 @@ export function AdminOrdersListShell({
   );
 
   const count = selected.size;
+  const hasServerRows = orders.length > 0;
+  const hasVisibleRows = displayOrders.length > 0;
+  const searchActive = queryNorm.length > 0;
 
   const gridCols =
     "sm:grid sm:grid-cols-[1.75rem_6.25rem_minmax(0,1fr)_7.25rem_5.5rem_3.75rem_5.5rem_3.25rem] sm:items-center sm:gap-x-1.5 sm:px-1.5";
 
   return (
     <div className="min-w-0">
-      <div className="overflow-hidden rounded-lg border border-stone-200/80 bg-white/55 shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
-        <div className="sticky top-0 z-30 border-b border-stone-300/50 bg-[#eceae6]/95 px-1.5 py-1 backdrop-blur-sm supports-[backdrop-filter]:bg-[#eceae6]/88 supports-[backdrop-filter]:shadow-[inset_0_-1px_0_rgba(28,25,23,0.06)]">
-          <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:flex-1 [&::-webkit-scrollbar]:hidden">
+      <div className="overflow-hidden rounded-md border border-stone-200/70 bg-white/[0.38] ring-1 ring-stone-950/[0.035]">
+        <div className="sticky top-0 z-30 border-b border-stone-300/50 border-l-2 border-l-amber-400/45 bg-[#f1efe9]/96 backdrop-blur-sm supports-[backdrop-filter]:bg-[#f1efe9]/90">
+          <div className="flex flex-col gap-1.5 px-2 py-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1">
+            <div className="relative w-full min-w-0 sm:w-[13.75rem] sm:max-w-[40%] sm:flex-none">
+              <Search
+                className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-stone-400"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Sipariş no, müşteri, durum…"
+                className="w-full rounded-md border border-stone-200/90 bg-white py-1 pl-8 pr-2 text-[11px] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] placeholder:text-stone-400 focus:border-amber-400/50 focus:outline-none focus:ring-1 focus:ring-amber-300/40"
+                aria-label="Siparişlerde ara"
+              />
+            </div>
+            <div className="hidden h-5 w-px shrink-0 self-stretch bg-stone-300/75 sm:block" aria-hidden />
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {FILTERS.map((f) => (
                 <Link
                   key={f.id}
@@ -225,18 +263,18 @@ export function AdminOrdersListShell({
                     "shrink-0 rounded-full border px-1.5 py-px text-[10px] font-semibold leading-tight transition",
                     activeFilter === f.id
                       ? "border-stone-900 bg-stone-900 text-white shadow-sm"
-                      : "border-stone-200/90 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50",
+                      : "border-stone-200/90 bg-white text-stone-700 hover:border-amber-300/60 hover:bg-amber-50/40",
                   )}
                 >
                   {f.label}
                 </Link>
               ))}
             </div>
-            <div className="hidden h-3.5 w-px shrink-0 bg-stone-300/90 sm:block" aria-hidden />
+            <div className="hidden h-5 w-px shrink-0 self-stretch bg-stone-300/75 sm:block" aria-hidden />
             <div
               className={cn(
                 "flex flex-wrap items-center gap-0.5 rounded-md py-px sm:px-1",
-                count > 0 ? "bg-amber-50/85 ring-1 ring-amber-200/45" : "",
+                count > 0 ? "bg-amber-50/90 ring-1 ring-amber-200/55" : "",
               )}
             >
               <span className="px-0.5 text-[10px] font-bold tabular-nums text-stone-800">{count} seçili</span>
@@ -244,7 +282,7 @@ export function AdminOrdersListShell({
                 type="button"
                 disabled={pending || count === 0}
                 onClick={() => runBulk("prepare")}
-                className="rounded border border-amber-700/75 bg-white px-1.5 py-px text-[10px] font-bold text-amber-950 hover:bg-amber-100/80 disabled:opacity-40"
+                className="rounded border border-amber-700/70 bg-white px-1.5 py-px text-[10px] font-bold text-amber-950 hover:bg-amber-100/80 disabled:opacity-40"
               >
                 Toplu hazırla
               </button>
@@ -268,14 +306,20 @@ export function AdminOrdersListShell({
                 <button
                   type="button"
                   onClick={() => setSelected(new Set())}
-                  className="px-0.5 text-[10px] font-semibold text-stone-600 underline-offset-2 hover:underline sm:ml-0.5"
+                  className="px-0.5 text-[10px] font-semibold text-stone-600 underline-offset-2 hover:underline"
                 >
                   Temizle
                 </button>
               ) : null}
             </div>
-            <span className="hidden text-[10px] font-semibold tabular-nums text-stone-600 sm:ml-auto sm:block">
-              {orders.length} kayıt
+            <span className="shrink-0 text-[10px] font-semibold tabular-nums text-stone-500 sm:ml-auto">
+              {searchActive ? (
+                <>
+                  {displayOrders.length} / {orders.length} kayıt
+                </>
+              ) : (
+                <>{orders.length} kayıt</>
+              )}
             </span>
           </div>
         </div>
@@ -284,13 +328,13 @@ export function AdminOrdersListShell({
           className={cn(
             gridCols,
             "hidden border-b border-stone-300/55 bg-gradient-to-b from-stone-100/95 to-stone-100/75 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-stone-700",
-            orders.length === 0 && "sm:hidden",
+            !hasVisibleRows && "sm:hidden",
           )}
         >
           <label className="inline-flex cursor-pointer items-center gap-1 justify-self-start text-[10px] font-semibold normal-case tracking-normal text-stone-800">
             <input
               type="checkbox"
-              checked={orders.length > 0 && orders.every((o) => selected.has(o.id))}
+              checked={displayOrders.length > 0 && displayOrders.every((o) => selected.has(o.id))}
               onChange={toggleAllOnPage}
               className="size-3 rounded border-stone-400 text-stone-900"
             />
@@ -308,37 +352,72 @@ export function AdminOrdersListShell({
 
         <div
           className={cn(
-            "flex items-center justify-between gap-2 border-b border-stone-300/40 bg-stone-50/80 px-1.5 py-0.5 text-[10px] font-semibold text-stone-700 sm:hidden",
-            orders.length === 0 && "hidden",
+            "flex items-center justify-between gap-2 border-b border-stone-300/40 bg-stone-50/85 px-2 py-0.5 text-[10px] font-semibold text-stone-700 sm:hidden",
+            !hasVisibleRows && "hidden",
           )}
         >
           <label className="inline-flex cursor-pointer items-center gap-1.5">
             <input
               type="checkbox"
-              checked={orders.length > 0 && orders.every((o) => selected.has(o.id))}
+              checked={displayOrders.length > 0 && displayOrders.every((o) => selected.has(o.id))}
               onChange={toggleAllOnPage}
               className="size-3 rounded border-stone-400"
             />
             <span className="text-stone-800">Sayfadakiler</span>
           </label>
-          <span className="tabular-nums text-stone-600">{orders.length} kayıt</span>
+          <span className="tabular-nums text-stone-600">
+            {searchActive ? `${displayOrders.length}/${orders.length}` : orders.length} kayıt
+          </span>
         </div>
 
         <ul className="divide-y divide-stone-200/55">
-          {orders.length === 0 ? (
-            <li className="px-3 py-7 sm:py-8">
-              <div className="mx-auto flex max-w-sm flex-col items-center gap-2 text-center">
-                <div className="flex size-9 items-center justify-center rounded-full border border-stone-200/80 bg-stone-50 shadow-sm">
-                  <Package className="size-4 text-stone-400" strokeWidth={1.5} aria-hidden />
+          {!hasVisibleRows ? (
+            <li className="px-3 py-4 sm:py-5">
+              <div className="mx-auto flex max-w-md flex-col items-center gap-2 text-center sm:flex-row sm:items-center sm:justify-center sm:gap-4 sm:text-left">
+                <Package className="size-7 shrink-0 text-stone-300" strokeWidth={1.5} aria-hidden />
+                <div className="min-w-0 space-y-1">
+                  <p className="text-[12px] font-semibold text-stone-800">
+                    {!hasServerRows
+                      ? activeFilter === "all"
+                        ? "Henüz sipariş yok"
+                        : "Bu filtrede sipariş yok"
+                      : "Eşleşen sipariş yok"}
+                  </p>
+                  <p className="text-[10px] leading-snug text-stone-500">
+                    {!hasServerRows ? (
+                      activeFilter === "all" ? (
+                        <>Yeni siparişler burada listelenir.</>
+                      ) : (
+                        <>Koşulları genişleterek tüm listeyi görebilirsiniz.</>
+                      )
+                    ) : (
+                      <>Arama terimini veya filtreyi değiştirin.</>
+                    )}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2 pt-1 sm:justify-start">
+                    {searchActive ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="rounded-md border border-stone-300/90 bg-white px-2.5 py-1 text-[10px] font-semibold text-stone-800 shadow-sm hover:bg-stone-50"
+                      >
+                        Aramayı temizle
+                      </button>
+                    ) : null}
+                    {activeFilter !== "all" ? (
+                      <Link
+                        href="/admin/orders"
+                        className="rounded-md border border-amber-600/25 bg-amber-50/95 px-2.5 py-1 text-[10px] font-semibold text-amber-950 shadow-sm hover:bg-amber-100/90"
+                      >
+                        Tüm siparişleri göster
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
-                <p className="text-[13px] font-semibold text-stone-800">Bu görünümde sipariş yok</p>
-                <p className="text-[11px] leading-snug text-stone-500">
-                  Farklı bir filtre seçin veya listeyi daha sonra yenileyin.
-                </p>
               </div>
             </li>
           ) : (
-            orders.map((o) => {
+            displayOrders.map((o) => {
               const ops = opsStatusChip(o);
               const payLabel = paymentStatusLabelTr(String(o.payment_status ?? ""));
               const when = new Date(o.created_at).toLocaleString("tr-TR", {
