@@ -31,6 +31,7 @@ import {
 } from "@/lib/admin/products-list-sales";
 import { AdminProductOptimizePanel } from "@/components/admin/products/AdminProductOptimizePanel";
 import { AdminProductsBulkQuickOptimizeButton } from "@/components/admin/products/AdminProductsBulkQuickOptimizeButton";
+import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TRENDYOL_IMPORTED_REVIEW_NOTE } from "@/lib/marketplaces/trendyol/products";
 import { createClient } from "@/lib/supabase/server";
@@ -319,7 +320,7 @@ export default async function AdminProductsPage({
   return (
     <main className="min-h-dvh bg-[#eceae6]">
       <AdminProductsScrollPersistence />
-      <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+      <div className={`${ADMIN_OPERATIONS_MAIN} py-4 lg:py-5`}>
         {deletedCount > 0 ? (
           <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
             {deletedCount} ürün silindi.

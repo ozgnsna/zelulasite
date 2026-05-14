@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { saveCategory, saveCollection } from "@/app/actions/admin";
+import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,8 +30,7 @@ export default async function AdminSettingsPage() {
   const collections = collectionsRes.data ?? [];
 
   return (
-    <div className="min-h-dvh bg-[#eceae6]">
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <main className={`${ADMIN_OPERATIONS_MAIN} py-8 sm:py-10 lg:py-10`}>
         <div className="mb-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">Yapılandırma</p>
           <h1 className="mt-1 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">Site ayarları</h1>
@@ -109,7 +109,6 @@ export default async function AdminSettingsPage() {
           </Link>{" "}
           menüsünü kullanın.
         </p>
-      </main>
-    </div>
+    </main>
   );
 }

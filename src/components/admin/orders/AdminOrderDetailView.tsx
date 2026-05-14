@@ -245,7 +245,7 @@ export function AdminOrderDetailView({
       : null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-16">
+    <div className="mx-auto w-full min-w-0 space-y-6 pb-16">
       <Link
         href="/admin"
         className="inline-block text-sm font-medium text-stone-700 transition hover:text-stone-950"

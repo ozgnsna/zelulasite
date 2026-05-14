@@ -19,6 +19,7 @@ import {
 import { buildCategoryReadinessFromCache, isCategoryCacheFresh } from "@/lib/marketplaces/trendyol/categories";
 import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
+import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { AdminSyncLogsSection } from "@/components/admin/dashboard/AdminSyncLogsSection";
 import { AdminTrendyolIntegrationCard } from "@/components/admin/dashboard/AdminTrendyolIntegrationCard";
 import { AdminTrendyolReadinessSection } from "@/components/admin/dashboard/AdminTrendyolReadinessSection";
@@ -216,7 +217,7 @@ export default async function AdminTrendyolPage({
   const disabledCount = trendyolRowsRaw.filter((r) => r.readiness.status === "disabled").length;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <main className={`${ADMIN_OPERATIONS_MAIN} py-8 sm:py-10 lg:py-10`}>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-500">Pazaryeri</p>

@@ -3,6 +3,7 @@ import {
   AdminOrdersListShell,
   type AdminOrderListRow,
 } from "@/components/admin/orders/AdminOrdersListShell";
+import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -78,7 +79,7 @@ export default async function AdminOrdersListPage({
   const orders = (rows ?? []) as AdminOrderListRow[];
 
   return (
-    <main className="mx-auto min-w-0 max-w-6xl px-3 py-3 sm:px-5 sm:py-4">
+    <main className={`${ADMIN_OPERATIONS_MAIN} py-3 sm:py-4`}>
       <header className="mb-1.5 border-b border-stone-200/70 pb-1 sm:mb-2 sm:pb-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Operasyon</p>
         <h1 className="mt-0.5 font-serif text-lg font-light tracking-tight text-stone-900 sm:text-2xl">Siparişler</h1>

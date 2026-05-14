@@ -4,6 +4,7 @@ import {
   loyaltyReferralReversalDescription,
 } from "@/lib/loyalty/ledger-descriptions";
 import { buildAdminOrderTimeline } from "@/lib/admin/order-timeline";
+import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -186,7 +187,7 @@ export default async function AdminOrderDetailPage({
 
   return (
     <main className="min-h-dvh bg-[#eceae6] py-8 sm:py-10">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className={ADMIN_OPERATIONS_MAIN}>
         <AdminOrderDetailView
           order={order}
           lines={lines}

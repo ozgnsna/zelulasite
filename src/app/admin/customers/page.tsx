@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Search } from "lucide-react";
+import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -122,7 +123,7 @@ export default async function AdminCustomersPage() {
   const hasAnyIdentity = recentList.length > 0;
 
   return (
-    <main className="mx-auto min-w-0 max-w-5xl px-3 py-3 sm:px-5 sm:py-4">
+    <main className={`${ADMIN_OPERATIONS_MAIN} py-3 sm:py-4`}>
       <header className="flex flex-wrap items-end justify-between gap-2 border-b border-stone-200/70 pb-2">
         <div>
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-500">Operasyon</p>

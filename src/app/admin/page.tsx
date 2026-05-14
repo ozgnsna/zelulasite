@@ -9,6 +9,7 @@ import {
   testTrendyolConnectionAction,
 } from "@/app/actions/admin";
 import { AdminOperationsDock } from "@/components/admin/AdminOperationsDock";
+import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { buildDashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
@@ -343,7 +344,7 @@ export default async function AdminPage({
 
   return (
     <>
-      <main className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-24 lg:pt-7">
+      <main className={`${ADMIN_OPERATIONS_MAIN} pb-28 pt-5 lg:pb-24 lg:pt-7`}>
         <div className="mb-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">Operasyon</p>
           <h1 className="mt-1 font-serif text-3xl font-light tracking-tight text-stone-950">Kontrol paneli</h1>
