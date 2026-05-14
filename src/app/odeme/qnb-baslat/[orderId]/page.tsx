@@ -7,8 +7,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildQnbCheckoutFormFields,
   getMissingQnbCredentialEnvNames,
+  getMissingQnbEnvNamesForDiagnostics,
   getQnbCredentials,
   getQnbFlowDebugMeta,
+  getQnbGatewayRoutingDebug,
+  getQnbLiveConfigurationEnvHintNames,
   getQnbPaymentConfig,
   isBankReviewMode,
 } from "@/lib/payments/qnb-finansbank";
@@ -53,6 +56,82 @@ function PrepError({
   );
 }
 
+/** Yalnızca `QNB_PAY_FLOW_DEBUG=1` (veya dev) iken; URL / mod bilgisi, sır yok. */
+function QnbGatewayRoutingDebugPanel({
+  flowDebug,
+  meta,
+}: {
+  flowDebug: boolean;
+  meta: ReturnType<typeof getQnbGatewayRoutingDebug> | null;
+}) {
+  if (!flowDebug || !meta) return null;
+  return (
+    <div
+      className="mx-auto max-w-md rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5 text-[11px] text-stone-800"
+      role="status"
+    >
+      <p className="font-semibold text-stone-900">QNB ödeme yönlendirmesi (teşhis)</p>
+      <ul className="mt-1.5 space-y-1 font-mono text-[10px] leading-snug text-stone-700 break-all">
+        <li>
+          <span className="font-medium text-stone-800">secureType:</span> {meta.secureType}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">QNB_TEST_MODE (ham):</span> {meta.qnbTestModeRaw ?? "(tanımsız)"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">Canlı vPOS kökü (TEST_MODE=0):</span>{" "}
+          {meta.qnbTestModeLiveHost ? "evet" : "hayır"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">QNB_GATEWAY_URL override:</span>{" "}
+          {meta.qnbGatewayUrlOverrideSet ? "evet" : "hayır"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">Çözülen form action (POST):</span> {meta.gatewayUrlResolved}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+/** Yalnızca isimler; değer yok. `QNB_PAY_FLOW_DEBUG` veya geliştirme ortamında gösterilir. */
+function QnbPayFlowEnvDiagnostics({
+  flowDebug,
+  missing,
+  hints,
+}: {
+  flowDebug: boolean;
+  missing: string[];
+  hints: string[];
+}) {
+  if (!flowDebug) return null;
+  if (missing.length === 0 && hints.length === 0) {
+    return (
+      <div className="mx-auto max-w-md px-4 pt-4 text-[11px] leading-relaxed text-stone-500" role="status">
+        QNB yapılandırma özeti: tanımlı zorunlu anahtarlar tam (değerler gösterilmez).{" "}
+        <span className="text-stone-400">Yalnızca ödeme akışı teşhisi açıkken görünür.</span>
+      </div>
+    );
+  }
+  return (
+    <div
+      className="mx-auto max-w-md border-b border-stone-200/60 px-4 pb-3 pt-4 text-[11px] leading-relaxed text-stone-600"
+      role="status"
+    >
+      {missing.length > 0 ? (
+        <p>
+          <span className="font-medium text-stone-800">Eksik ortam değişkeni:</span> {missing.join(", ")}
+        </p>
+      ) : null}
+      {hints.length > 0 ? (
+        <p className={missing.length > 0 ? "mt-1.5" : ""}>
+          <span className="font-medium text-stone-800">Canlı için gözden geçirin:</span> {hints.join(", ")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default async function QnbPaymentStartPage({ params }: { params: Promise<{ orderId: string }> }) {
   const incidentId = `PF-${randomBytes(5).toString("hex")}`;
   const flowDebug = isPaymentFlowDebugEnabled();
@@ -76,6 +155,8 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
     }
 
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
+    const qnbPayFlowDiagMissing = getMissingQnbEnvNamesForDiagnostics();
+    const qnbPayFlowDiagHints = getQnbLiveConfigurationEnvHintNames();
     if (!siteUrl) {
       logPayment("error", "qnb-baslat: NEXT_PUBLIC_SITE_URL eksik.", { incidentId, ...getQnbPaymentConfig() });
       return (
@@ -143,6 +224,8 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
 
     const hasCustomGateway = Boolean(process.env.QNB_GATEWAY_URL?.trim());
 
+    const gatewayRoutingDebug = flowDebug ? getQnbGatewayRoutingDebug(built.secureType) : null;
+
     if (flowDebug) {
       logPayment("info", "qnb-baslat: ödeme ekranı seçimi.", {
         orderId,
@@ -151,6 +234,8 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
         ...getQnbPaymentConfig(),
         uiBranch: built.secureType === "3DPay" ? "Qnb3DPayForm" : "QnbGatewayAutoPost",
         gatewayUrl: built.gatewayUrl,
+        missingEnvNamesOnly: qnbPayFlowDiagMissing,
+        liveConfigHintEnvNamesOnly: qnbPayFlowDiagHints,
       });
     }
 
@@ -234,6 +319,14 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
 
       return (
         <main className="min-h-[50vh] bg-[#f9f6f2]">
+          <div className="space-y-2 px-4 pt-4">
+            <QnbGatewayRoutingDebugPanel flowDebug={flowDebug} meta={gatewayRoutingDebug} />
+            <QnbPayFlowEnvDiagnostics
+              flowDebug={flowDebug}
+              missing={qnbPayFlowDiagMissing}
+              hints={qnbPayFlowDiagHints}
+            />
+          </div>
           <Qnb3DPayForm
             postUrl={urlVal.url}
             hiddenFieldsJson={ser.json}
@@ -280,6 +373,14 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
 
     return (
       <main className="min-h-[40vh]">
+        <div className="space-y-2 px-4 pt-4">
+          <QnbGatewayRoutingDebugPanel flowDebug={flowDebug} meta={gatewayRoutingDebug} />
+          <QnbPayFlowEnvDiagnostics
+            flowDebug={flowDebug}
+            missing={qnbPayFlowDiagMissing}
+            hints={qnbPayFlowDiagHints}
+          />
+        </div>
         <QnbGatewayAutoPost postUrl={urlVal.url} fields={built.fields} flowDebug={flowDebug} />
       </main>
     );

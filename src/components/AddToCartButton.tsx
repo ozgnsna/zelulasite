@@ -67,7 +67,11 @@ export function AddToCartButton({
 
   const runAdd = (thenRedirect?: string) => {
     start(async () => {
-      await addToCart(productId);
+      const res = await addToCart(productId);
+      if (!res.ok) {
+        toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
+        return;
+      }
       trackAddToCart({
         product_id: productId,
         product_name: productName,
@@ -89,6 +93,7 @@ export function AddToCartButton({
         setTimeout(() => setPopPrimary(false), 160);
         toast.success("Sepetine zarif bir dokunuş eklendi ✨", { description: productName, duration: 2600 });
         queueMicrotask(() => dispatchAtcShareMoment(productSlug ?? null));
+        router.refresh();
       }
     });
   };
@@ -116,7 +121,11 @@ export function AddToCartButton({
             title={stock < 1 ? "Bu ürün stokta olmadığı için sepete eklenemez." : undefined}
             onClick={() => {
               startSecondary(async () => {
-                await addToCart(productId);
+                const res = await addToCart(productId);
+                if (!res.ok) {
+                  toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
+                  return;
+                }
                 trackAddToCart({
                   product_id: productId,
                   product_name: productName,
@@ -129,6 +138,7 @@ export function AddToCartButton({
                 setTimeout(() => setPopSecondary(false), 160);
                 toast.success("Sepetine zarif bir dokunuş eklendi ✨", { description: productName, duration: 2600 });
                 queueMicrotask(() => dispatchAtcShareMoment(productSlug ?? null));
+                router.refresh();
               });
             }}
             className={cn(

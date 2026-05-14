@@ -27,8 +27,36 @@ export async function setCartItems(items: CartItem[]) {
   });
 }
 
-export async function getDetailedCart() {
+/** Clamp cart lines to current DB stock; persist cookie if anything changed. Returns the cart to use for reads. */
+export async function reconcileCartCookie(): Promise<CartItem[]> {
   const items = await getCartItems();
+  if (items.length === 0) return [];
+  try {
+    const supabase = await createClient();
+    const ids = [...new Set(items.map((x) => x.productId))];
+    const { data, error } = await supabase.from("products").select("id,stock_quantity,is_active").in("id", ids);
+    if (error || !data) return items;
+    const byId = new Map(data.map((r) => [r.id, r as { id: string; stock_quantity: number | null; is_active: boolean | null }]));
+    const next: CartItem[] = [];
+    for (const item of items) {
+      const p = byId.get(item.productId);
+      if (!p) continue;
+      const stock = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
+      const maxBuy = p.is_active ? stock : 0;
+      const qty = maxBuy <= 0 ? 0 : Math.min(item.quantity, maxBuy);
+      if (qty > 0) next.push({ productId: item.productId, quantity: qty });
+    }
+    const same =
+      items.length === next.length && items.every((it, i) => it.productId === next[i]?.productId && it.quantity === next[i]?.quantity);
+    if (!same) await setCartItems(next);
+    return next;
+  } catch {
+    return items;
+  }
+}
+
+export async function getDetailedCart() {
+  const items = await reconcileCartCookie();
   if (items.length === 0) return { lines: [], subtotal: 0 };
   try {
     const supabase = await createClient();
@@ -37,8 +65,7 @@ export async function getDetailedCart() {
       .from("products")
       .select("*, product_images(*)")
       .in("id", ids)
-      .eq("is_active", true)
-      .gt("stock_quantity", 0);
+      .eq("is_active", true);
     const byId = new Map((data ?? []).map((p) => [p.id, p as Product]));
     const lines = items
       .map((item) => {

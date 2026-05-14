@@ -493,18 +493,18 @@ export default async function AdminProductsPage({
         </section>
 
         <section className="rounded-lg border border-stone-200/60 bg-white p-2 shadow-sm sm:p-2.5">
-          <div className="mb-2 flex flex-wrap items-end justify-between gap-2 border-b border-stone-100/90 pb-2.5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-stone-100/90 pb-2.5">
             <div className="min-w-0">
-              <h2 className="text-xs font-semibold text-stone-900">Liste</h2>
-              <p className="text-[10px] tabular-nums text-stone-500">{rangeLabel}</p>
+              <h2 className="text-xs font-semibold leading-none text-stone-900">Liste</h2>
+              <p className="mt-1 text-[10px] tabular-nums leading-none text-stone-500">{rangeLabel}</p>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <div className="flex flex-wrap items-center justify-end gap-1">
               {totalPages > 1 ? (
-                <nav className="flex flex-wrap items-center gap-0.5" aria-label="Sayfalama">
+                <nav className="flex items-center gap-px" aria-label="Sayfalama">
                   {currentPage > 1 ? (
                     <Link
                       href={listQuery({ page: String(currentPage - 1) })}
-                      className="rounded border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
+                      className="rounded-md border border-stone-200/50 bg-stone-50/60 px-1 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/70 hover:bg-stone-100/80 hover:text-stone-800"
                     >
                       ‹
                     </Link>
@@ -513,8 +513,10 @@ export default async function AdminProductsPage({
                     <Link
                       key={n}
                       href={listQuery({ page: String(n) })}
-                      className={`min-w-[1.5rem] rounded border px-1 py-0.5 text-center text-[10px] font-medium tabular-nums ${
-                        n === currentPage ? "border-stone-800 bg-stone-800 text-white" : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
+                      className={`min-w-[1.375rem] rounded-md border px-1 py-0.5 text-center text-[10px] font-medium tabular-nums transition-colors ${
+                        n === currentPage
+                          ? "border-stone-600/40 bg-stone-600 text-white hover:bg-stone-600"
+                          : "border-stone-200/50 bg-stone-50/40 text-stone-600 hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
                       }`}
                     >
                       {n}
@@ -523,7 +525,7 @@ export default async function AdminProductsPage({
                   {currentPage < totalPages ? (
                     <Link
                       href={listQuery({ page: String(currentPage + 1) })}
-                      className="rounded border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
+                      className="rounded-md border border-stone-200/50 bg-stone-50/60 px-1 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/70 hover:bg-stone-100/80 hover:text-stone-800"
                     >
                       ›
                     </Link>
@@ -533,14 +535,14 @@ export default async function AdminProductsPage({
               <form action={sendAllProductsToTrendyolAction} data-save-scroll-on-submit="true" className="inline">
                 <button
                   type="submit"
-                  className="rounded border border-stone-300 bg-white px-2 py-1 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
+                  className="rounded-md border border-stone-200/50 bg-stone-50/40 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
                 >
                   Tüm kataloğu TY
                 </button>
               </form>
               <Link
                 href="/admin/products/new"
-                className="rounded border border-stone-300 bg-white px-2 py-1 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
+                className="rounded-md border border-stone-200/50 bg-stone-50/40 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
               >
                 + Yeni
               </Link>
@@ -653,14 +655,19 @@ export default async function AdminProductsPage({
                   !isActive ? "Pasif" : null,
                 ].filter(Boolean) as string[];
                 const tyTitle = tyHintParts.length ? `Trendyol: ${tyHintParts.join(", ")}` : undefined;
+                const tyChipClass = !Boolean(p.trendyol_active)
+                  ? "border-stone-200/70 bg-stone-50/90 text-stone-600"
+                  : listed
+                    ? "border-stone-200/60 bg-stone-100/60 text-stone-600"
+                    : "border-amber-200/45 bg-amber-50/35 text-amber-900/70";
 
                 return (
                   <div
                     key={p.id}
                     className={`product-row group border-b border-stone-100/80 px-2.5 py-2.5 transition-colors last:border-b-0 sm:px-3 sm:py-3 hover:bg-white/90 ${rowClass}`}
                   >
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between sm:gap-3">
-                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-stretch sm:justify-between sm:gap-2">
+                      <div className="flex w-full min-w-0 flex-1 items-start gap-3">
                         <input
                           type="checkbox"
                           name="product_ids"
@@ -681,27 +688,32 @@ export default async function AdminProductsPage({
                           </div>
                           <div className="min-w-0 flex-1 pt-0.5">
                             <p className="truncate text-[15px] font-semibold leading-snug tracking-tight text-stone-900">{p.name}</p>
-                            <p className="mt-1 font-mono text-[10px] font-normal uppercase tracking-wider text-stone-400">
+                            <p className="mt-1 font-mono text-[11px] font-normal uppercase tracking-wide text-stone-500">
                               {(p.sku || "—").toUpperCase()}
                             </p>
                             <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
                               <span className="text-[15px] font-semibold tabular-nums tracking-tight text-stone-900">
                                 {formatPrice(Number(p.price ?? 0))}
                               </span>
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-stone-500">
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-stone-500">
                                 <span className={`tabular-nums ${stock === 0 ? "font-medium text-rose-700" : stockLow ? "font-medium text-amber-800" : "text-stone-500"}`}>
                                   Stok {stock}
                                 </span>
-                                <span className="hidden h-3 w-px bg-stone-200 sm:inline" aria-hidden />
-                                <span className="tabular-nums text-stone-500" title={tyTitle}>
-                                  Trendyol{" "}
-                                  <span className="font-medium text-stone-700">{tyStatusShort}</span>
+                                <span className="hidden h-3 w-px shrink-0 bg-stone-200/90 sm:inline" aria-hidden />
+                                <span
+                                  className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[9px] font-medium tabular-nums leading-none tracking-wide ${tyChipClass}`}
+                                  title={tyTitle}
+                                  aria-label={`Trendyol durumu: ${tyStatusShort}`}
+                                >
+                                  {tyStatusShort}
                                 </span>
                               </div>
                             </div>
                             <details className="mt-2 group/details">
-                              <summary className="cursor-pointer list-none text-[10px] font-normal text-stone-400 [&::-webkit-details-marker]:hidden">
-                                <span className="hover:text-stone-600 group-open/details:text-stone-500">Detay ve uyarılar</span>
+                              <summary className="cursor-pointer list-none text-[10px] font-normal text-stone-500 transition-colors duration-200 ease-out hover:text-stone-700 [&::-webkit-details-marker]:hidden">
+                                <span className="border-b border-transparent pb-px transition-[border-color,color] duration-200 ease-out hover:border-stone-300/60 group-open/details:border-stone-200/70 group-open/details:text-stone-600">
+                                  Detay ve uyarılar
+                                </span>
                               </summary>
                               <div className="mt-1 space-y-1 border-t border-stone-100/90 pt-1">
                                 <div className="flex flex-wrap items-center gap-1">
@@ -754,22 +766,22 @@ export default async function AdminProductsPage({
                           </div>
                         </Link>
                       </div>
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 self-center pl-6 sm:pl-0">
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 self-center sm:pl-1">
                         <button
                           type="submit"
                           form={`sync-ty-${p.id}`}
-                          className="rounded px-1 py-0.5 text-[9px] font-normal text-stone-400 hover:text-stone-600"
+                          className="-mr-0.5 rounded px-1 py-0.5 text-[9px] font-normal text-stone-400 transition-colors duration-150 hover:text-stone-600"
                         >
                           TY gönder
                         </button>
                         <Link
                           href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                          className="rounded-md border border-stone-800 bg-stone-900 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-stone-800"
+                          className="rounded-md border border-stone-800 bg-stone-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-stone-800"
                         >
                           Düzenle
                         </Link>
                         <details className="relative">
-                          <summary className="list-none cursor-pointer rounded-md border border-stone-200/90 bg-white px-1.5 py-1 text-[11px] font-medium text-stone-400 hover:bg-stone-50 hover:text-stone-600 [&::-webkit-details-marker]:hidden">
+                          <summary className="list-none cursor-pointer rounded-md border border-stone-200/90 bg-white px-1 py-0.5 text-[11px] font-medium text-stone-400 transition-colors hover:bg-stone-50 hover:text-stone-600 [&::-webkit-details-marker]:hidden">
                             ⋯
                           </summary>
                           <div className="absolute right-0 z-20 mt-0.5 w-36 overflow-hidden rounded border border-stone-200 bg-white py-0.5 shadow-md ring-1 ring-stone-900/5">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { addToCart } from "@/app/actions/store";
 import { toast } from "sonner";
 import { trackAddToCart } from "@/lib/analytics";
@@ -30,6 +31,7 @@ export function QuickAddButton({
 }) {
   const [pending, start] = useTransition();
   const [pop, setPop] = useState(false);
+  const router = useRouter();
 
   return (
     <button
@@ -37,7 +39,11 @@ export function QuickAddButton({
       disabled={pending}
       onClick={() =>
         start(async () => {
-          await addToCart(productId);
+          const res = await addToCart(productId);
+          if (!res.ok) {
+            toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
+            return;
+          }
           setPop(true);
           setTimeout(() => setPop(false), 150);
           toast.success(successMessage, { description: productName });
@@ -50,6 +56,7 @@ export function QuickAddButton({
             category,
             collection,
           });
+          router.refresh();
         })
       }
       className={cn(

@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { z } from "zod";
-import { getCartItems, setCartItems } from "@/lib/cart";
+import { getCartItems, reconcileCartCookie, setCartItems } from "@/lib/cart";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { initializePayment } from "@/lib/payments/provider";
@@ -74,23 +74,62 @@ function safeLegalUserAgent(h: Headers): string | null {
 const LEGAL_CHECKOUT_ACK_ERROR =
   "Devam etmek için mesafeli satış sözleşmesi, ön bilgilendirme formu ve gizlilik politikasını onaylamalısınız.";
 
-export async function addToCart(productId: string) {
+export type AddToCartResult = { ok: true } | { ok: false; error: string };
+
+export async function addToCart(productId: string): Promise<AddToCartResult> {
+  await reconcileCartCookie();
   const cart = await getCartItems();
+  const supabase = await createClient();
+  const { data: p, error } = await supabase
+    .from("products")
+    .select("id,stock_quantity,is_active")
+    .eq("id", productId)
+    .maybeSingle();
+  if (error || !p || !p.is_active) {
+    revalidatePath("/sepet");
+    revalidatePath("/");
+    return { ok: false, error: "Ürün bulunamadı veya satışta değil." };
+  }
+  const stock = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
+  if (stock < 1) {
+    revalidatePath("/sepet");
+    revalidatePath("/");
+    return { ok: false, error: "Bu ürün için stok bulunmuyor." };
+  }
   const existing = cart.find((i) => i.productId === productId);
+  const currentQty = existing?.quantity ?? 0;
+  if (currentQty + 1 > stock) {
+    revalidatePath("/sepet");
+    revalidatePath("/");
+    return { ok: false, error: "Stoktan fazla adet sepete eklenemez." };
+  }
   if (existing) existing.quantity += 1;
   else cart.push({ productId, quantity: 1 });
   await setCartItems(cart);
   revalidatePath("/sepet");
   revalidatePath("/");
+  return { ok: true };
 }
 
 export async function updateCartItem(productId: string, quantity: number) {
+  await reconcileCartCookie();
   const cart = await getCartItems();
+  const supabase = await createClient();
+  const { data: p } = await supabase
+    .from("products")
+    .select("stock_quantity,is_active")
+    .eq("id", productId)
+    .maybeSingle();
+  const stock = p && p.is_active ? Math.max(0, Math.floor(Number(p.stock_quantity ?? 0))) : 0;
+  const desiredRaw = Number(quantity);
+  const desired = Number.isFinite(desiredRaw) ? Math.trunc(desiredRaw) : 0;
+  const capped = desired <= 0 ? 0 : Math.min(Math.max(1, desired), stock);
   const next = cart
-    .map((i) => (i.productId === productId ? { ...i, quantity } : i))
+    .map((i) => (i.productId === productId ? { ...i, quantity: capped } : i))
     .filter((i) => i.quantity > 0);
   await setCartItems(next);
   revalidatePath("/sepet");
+  revalidatePath("/");
 }
 
 export async function clearCart() {
@@ -135,6 +174,7 @@ export async function createCheckout(formData: FormData) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Form bilgileri eksik." };
   }
 
+  await reconcileCartCookie();
   const supabase = await createClient();
   const {
     data: { user },
@@ -166,7 +206,8 @@ export async function createCheckout(formData: FormData) {
         error: "Sepetinizde satışa kapalı ürünler var. Sepet sayfasından kaldırıp tekrar deneyin.",
       };
     }
-    if (Number(p.stock_quantity ?? 0) < line.quantity) {
+    const available = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
+    if (available < line.quantity) {
       return {
         ok: false,
         error: "Bir veya daha fazla ürün için stok yetersiz. Miktarları güncelleyip tekrar deneyin.",

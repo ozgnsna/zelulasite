@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition, useState } from "react";
+import { toast } from "sonner";
 import { addToCart } from "@/app/actions/store";
 import { formatTry } from "@/lib/money";
 import { dispatchAtcShareMoment } from "@/lib/referral/share-copy";
@@ -50,7 +51,12 @@ export function CartUpsellStrip({ items }: { items: CartUpsellItem[] }) {
                 onClick={() => {
                   setPendingId(p.id);
                   start(async () => {
-                    await addToCart(p.id);
+                    const res = await addToCart(p.id);
+                    if (!res.ok) {
+                      toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
+                      setPendingId(null);
+                      return;
+                    }
                     setPendingId(null);
                     queueMicrotask(() => dispatchAtcShareMoment(p.slug));
                     router.refresh();

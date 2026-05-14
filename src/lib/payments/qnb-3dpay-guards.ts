@@ -42,6 +42,13 @@ export function validateQnbGatewayPostUrl(
       return { ok: false, reason: "protocol_not_allowed" };
     }
     if (!u.hostname) return { ok: false, reason: "no_host" };
+    const h = u.hostname.toLowerCase();
+    if (h === "vpos.qnb.com.tr" || h === "vpostest.qnb.com.tr") {
+      const pl = u.pathname.toLowerCase();
+      if (!pl.includes("/gateway/") || (!pl.endsWith("default.aspx") && !pl.endsWith("3dhost.aspx"))) {
+        return { ok: false, reason: "qnb_vpos_requires_gateway_default_or_3dhost_aspx" };
+      }
+    }
     return { ok: true, url: t };
   } catch {
     return { ok: false, reason: "invalid_url" };

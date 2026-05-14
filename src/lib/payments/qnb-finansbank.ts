@@ -53,9 +53,57 @@ export function getQnbFlowDebugMeta() {
   };
 }
 
+const QNB_VPOS_HOSTS = new Set(["vpos.qnb.com.tr", "vpostest.qnb.com.tr"]);
+
+/**
+ * QNB_GATEWAY_URL often mis-set to `https://vpos.qnb.com.tr` (site root) → bank redirects to
+ * VPOS Yönetim / login, not the payment gateway. Force canonical `/Gateway/*.aspx` on known vPOS hosts.
+ */
+function normalizeCustomQnbGatewayUrl(input: string, secureType: QnbSecureType): string {
+  const trimmed = input.trim();
+  let u: URL;
+  try {
+    u = new URL(trimmed);
+  } catch {
+    return trimmed;
+  }
+  const host = u.hostname.toLowerCase();
+  if (!QNB_VPOS_HOSTS.has(host)) return trimmed;
+
+  const pathLower = u.pathname.toLowerCase();
+  const ok3dpay = pathLower.includes("/gateway/") && pathLower.endsWith("default.aspx");
+  const ok3dhost = pathLower.includes("/gateway/") && pathLower.endsWith("3dhost.aspx");
+  if (secureType === "3DPay" && ok3dpay) return trimmed;
+  if (secureType === "3DHost" && ok3dhost) return trimmed;
+
+  const canonicalPath = secureType === "3DPay" ? "/Gateway/Default.aspx" : "/Gateway/3DHost.aspx";
+  return `${u.origin}${canonicalPath}`;
+}
+
+/** Non-secret routing snapshot for `QNB_PAY_FLOW_DEBUG` UI (no credentials). */
+export function getQnbGatewayRoutingDebug(secureType: QnbSecureType = getQnbSecureType()) {
+  const rawOverride = process.env.QNB_GATEWAY_URL?.trim() ?? null;
+  const resolved = getQnbGatewayUrl(secureType);
+  return {
+    secureType,
+    qnbTestModeRaw: process.env.QNB_TEST_MODE?.trim() ?? null,
+    qnbTestModeLiveHost: process.env.QNB_TEST_MODE === "0",
+    qnbGatewayUrlOverrideSet: Boolean(rawOverride),
+    gatewayUrlResolved: resolved,
+  };
+}
+
 export function getQnbGatewayUrl(secureType: QnbSecureType = getQnbSecureType()): string {
   const custom = process.env.QNB_GATEWAY_URL?.trim();
-  if (custom) return custom;
+  if (custom) {
+    const normalized = normalizeCustomQnbGatewayUrl(custom, secureType);
+    if (normalized !== custom && isPaymentFlowDebugEnabled()) {
+      logPayment("warn", "QNB_GATEWAY_URL was not a full Gateway *.aspx path; normalized for known vPOS host.", {
+        secureType,
+      });
+    }
+    return normalized;
+  }
   const live = process.env.QNB_TEST_MODE === "0";
   const host = live ? "https://vpos.qnb.com.tr/Gateway" : "https://vpostest.qnb.com.tr/Gateway";
   return secureType === "3DPay" ? `${host}/Default.aspx` : `${host}/3DHost.aspx`;
@@ -108,6 +156,29 @@ export function getMissingQnbCredentialEnvNames(): string[] {
     ["QNB_MERCHANT_PASS", process.env.QNB_MERCHANT_PASS?.trim() ?? ""],
   ];
   return pairs.filter(([, v]) => !v).map(([k]) => k);
+}
+
+/** Non-secret: unset/empty env **names** only. Never returns or logs values. */
+export function getMissingQnbEnvNamesForDiagnostics(): string[] {
+  const names: string[] = [];
+  if (!process.env.NEXT_PUBLIC_SITE_URL?.trim()) names.push("NEXT_PUBLIC_SITE_URL");
+  for (const k of getMissingQnbCredentialEnvNames()) {
+    if (!names.includes(k)) names.push(k);
+  }
+  return names;
+}
+
+/**
+ * Non-secret: env **names** that are usually wrong for live (values never returned).
+ * Empty when live-oriented flags look correct.
+ */
+export function getQnbLiveConfigurationEnvHintNames(): string[] {
+  const hints: string[] = [];
+  if (process.env.QNB_TEST_MODE?.trim() !== "0") hints.push("QNB_TEST_MODE");
+  const mock = process.env.QNB_USE_MOCK?.trim().toLowerCase();
+  if (mock === "true" || mock === "1") hints.push("QNB_USE_MOCK");
+  if (process.env.QNB_RELAX_RETURN_HASH === "true") hints.push("QNB_RELAX_RETURN_HASH");
+  return hints;
 }
 
 /** Sırlar döndürülmez; yalnızca yapılandırma özeti (log / teşhis). */

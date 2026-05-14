@@ -1,8 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { updateCartItem } from "@/app/actions/store";
 import { formatTry } from "@/lib/money";
 import { trackRemoveFromCart } from "@/lib/analytics";
@@ -23,8 +24,36 @@ export type CartLineRow = {
 };
 
 export function CartLineControls({ line }: { line: CartLineRow }) {
+  const router = useRouter();
   const [pending, start] = useTransition();
+  const [draftQty, setDraftQty] = useState(String(line.quantity));
+  const maxQ = Math.max(0, Math.floor(Number(line.product.stock ?? 0)));
   const lineTotal = line.product.price * line.quantity;
+
+  useEffect(() => {
+    setDraftQty(String(line.quantity));
+  }, [line.quantity]);
+
+  const applyQty = (next: number) => {
+    if (next === line.quantity) return;
+    start(() => {
+      const prev = line.quantity;
+      if (next < prev) {
+        trackRemoveFromCart({
+          product_id: line.product.id,
+          product_name: line.product.name,
+          price: line.product.price,
+          quantity: prev - next,
+          category: line.product.category,
+          collection: line.product.collection,
+        });
+      }
+      void updateCartItem(line.product.id, next).then(() => router.refresh());
+    });
+  };
+
+  const plusDisabled = pending || maxQ < 1 || line.quantity >= maxQ;
+  const minusDisabled = pending;
 
   return (
     <li className="flex gap-5 rounded-2xl border border-[#ebe6df]/90 bg-white/95 p-5 shadow-[0_8px_22px_rgba(62,52,38,0.06)] transition duration-300 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[0_14px_32px_rgba(62,52,38,0.09)]">
@@ -52,44 +81,61 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
             <p className="text-[15px] text-stone-500">
               Birim {formatTry(line.product.price)}
             </p>
+            {maxQ > 0 ? (
+              <p className="mt-0.5 text-xs text-stone-500">Stok: {maxQ}</p>
+            ) : (
+              <p className="mt-0.5 text-xs font-medium text-rose-800">Stokta yok</p>
+            )}
           </div>
-          <p className="text-base font-semibold text-stone-900">
-            {formatTry(lineTotal)}
-          </p>
+          <p className="text-base font-semibold text-stone-900">{formatTry(lineTotal)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-stone-600">
-            Adet
-            <select
-              disabled={pending}
-              className="rounded-full border border-[#e4d8c8] bg-[linear-gradient(180deg,#ffffff,#f9f5ef)] px-3 py-1.5 text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-              value={line.quantity}
-              onChange={(e) => {
-                const q = Number(e.target.value);
-                start(() => {
-                  if (q < line.quantity) {
-                    trackRemoveFromCart({
-                      product_id: line.product.id,
-                      product_name: line.product.name,
-                      price: line.product.price,
-                      quantity: line.quantity - q,
-                      category: line.product.category,
-                      collection: line.product.collection,
-                    });
-                  }
-                  void updateCartItem(line.product.id, q);
-                });
-              }}
-            >
-              {Array.from({ length: Math.min(line.product.stock, 99) }, (_, i) => i + 1).map(
-                (n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
+          {maxQ >= 1 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-stone-600">Adet</span>
+              <div className="inline-flex items-center gap-1 rounded-full border border-[#e4d8c8] bg-[linear-gradient(180deg,#ffffff,#f9f5ef)] p-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                <button
+                  type="button"
+                  disabled={minusDisabled}
+                  aria-label="Adeti azalt"
+                  onClick={() => applyQty(Math.max(0, line.quantity - 1))}
+                  className="flex h-8 min-w-[2rem] items-center justify-center rounded-full text-base font-medium text-stone-800 transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={maxQ}
+                  disabled={pending}
+                  aria-label="Adet"
+                  className="h-8 w-11 border-0 bg-transparent text-center text-sm font-medium text-stone-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  value={draftQty}
+                  onChange={(e) => {
+                    const t = e.target.value.replace(/[^\d]/g, "");
+                    setDraftQty(t);
+                  }}
+                  onBlur={() => {
+                    let n = parseInt(draftQty, 10);
+                    if (!Number.isFinite(n)) n = line.quantity;
+                    n = Math.min(maxQ, Math.max(1, n));
+                    setDraftQty(String(n));
+                    if (n !== line.quantity) applyQty(n);
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={plusDisabled}
+                  aria-label="Adeti artır"
+                  onClick={() => applyQty(Math.min(maxQ, line.quantity + 1))}
+                  className="flex h-8 min-w-[2rem] items-center justify-center rounded-full text-base font-medium text-stone-800 transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          ) : null}
           <button
             type="button"
             disabled={pending}
@@ -103,7 +149,7 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
                   category: line.product.category,
                   collection: line.product.collection,
                 });
-                void updateCartItem(line.product.id, 0);
+                void updateCartItem(line.product.id, 0).then(() => router.refresh());
               })
             }
             className="text-sm text-stone-500 underline-offset-2 transition hover:text-[#7a5f38] hover:underline"

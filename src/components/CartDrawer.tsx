@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { addToCart } from "@/app/actions/store";
 import { formatTry } from "@/lib/money";
 import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
@@ -157,11 +158,16 @@ export function CartDrawer({
                           disabled={item.stock < 1 || pendingUpsellId === item.id}
                           onClick={() => {
                             setPendingUpsellId(item.id);
-                            start(async () => {
-                              await addToCart(item.id);
-                              setPendingUpsellId(null);
-                              router.refresh();
-                            });
+                  start(async () => {
+                    const res = await addToCart(item.id);
+                    if (!res.ok) {
+                      toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
+                      setPendingUpsellId(null);
+                      return;
+                    }
+                    setPendingUpsellId(null);
+                    router.refresh();
+                  });
                           }}
                           className="shrink-0 rounded-full border border-[#e4d7c4] px-2.5 py-1 text-[10px] font-medium text-stone-800 transition hover:border-[#c6a15b]/55 disabled:cursor-not-allowed disabled:opacity-50"
                         >
