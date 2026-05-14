@@ -9,6 +9,7 @@ import {
   testTrendyolConnectionAction,
 } from "@/app/actions/admin";
 import { AdminOperationsDock } from "@/components/admin/AdminOperationsDock";
+import { ADMIN_ORDERS_LIST_SELECT, istanbulDayUtcRange } from "@/lib/admin/admin-orders-list";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -68,15 +69,6 @@ function kpiRevenueDeltaTr(current: number, previous: number): ReactNode {
       <span className="text-[10px] font-medium opacity-90">dünden</span>
     </span>
   );
-}
-
-/** Europe/Istanbul takvim günü (hosting UTC iken “bugün” sapmasını önler) */
-function istanbulDayUtcRange(): { start: Date; end: Date } {
-  const ymd = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
-  return {
-    start: new Date(`${ymd}T00:00:00+03:00`),
-    end: new Date(`${ymd}T23:59:59.999+03:00`),
-  };
 }
 
 /** Bir önceki İstanbul takvim günü */
@@ -187,7 +179,7 @@ export default async function AdminPage({
       .limit(2000),
     admin
       .from("orders")
-      .select("id,total,payment_status,order_status,order_number,customer_name,created_at")
+      .select(ADMIN_ORDERS_LIST_SELECT)
       .order("created_at", { ascending: false })
       .limit(50),
     admin

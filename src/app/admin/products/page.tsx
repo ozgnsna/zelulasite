@@ -12,7 +12,6 @@ import { AdminProductsScrollPersistence } from "@/components/admin/products/Admi
 import { AdminProductsSelectionToolbar } from "@/components/admin/products/AdminProductsSelectionToolbar";
 import {
   buildOptimizeHints,
-  buildPriorityTopFive,
   computePriceBenchmarks,
   dominantAndSecondaryIssues,
   marketAvgHintForProduct,
@@ -40,8 +39,6 @@ export const dynamic = "force-dynamic";
 
 const BULK_FORM_ID = "admin-products-bulk";
 const PAGE_SIZE = 12;
-const PRIORITY_STRIP_CAP = 20;
-const PRIORITY_PREVIEW = 5;
 
 type ProductListRow = ProductListOptRow & {
   short_description: string | null;
@@ -78,29 +75,29 @@ function priorityBadge(priority: ProductRowPriority): { label: string; className
   if (priority === "critical") {
     return {
       label: "Kritik",
-      className: "border-rose-400/80 bg-rose-100/90 text-rose-950 ring-1 ring-rose-500/15",
+      className: "border-rose-200/70 bg-rose-50/80 text-rose-900/90",
     };
   }
   if (priority === "needs_improvement") {
     return {
       label: "Geliştir",
-      className: "border-amber-400/75 bg-amber-50/95 text-amber-950 ring-1 ring-amber-600/12",
+      className: "border-amber-200/70 bg-amber-50/70 text-amber-950/90",
     };
   }
   return {
     label: "Sağlıklı",
-    className: "border-emerald-300/70 bg-emerald-50/80 text-emerald-900 ring-1 ring-emerald-600/10",
+    className: "border-stone-200/80 bg-stone-50/80 text-stone-600",
   };
 }
 
 function rowShellClass(priority: ProductRowPriority): string {
   if (priority === "critical") {
-    return "border-l-[4px] border-l-rose-600 bg-gradient-to-r from-rose-100/55 via-rose-50/40 to-white shadow-[0_1px_0_rgba(244,63,94,0.14)]";
+    return "border-l-2 border-l-rose-400/50 bg-rose-50/15";
   }
   if (priority === "needs_improvement") {
-    return "border-l-[4px] border-l-amber-400 bg-gradient-to-r from-amber-50/35 to-white";
+    return "border-l-2 border-l-amber-300/50 bg-amber-50/10";
   }
-  return "border-l border-l-stone-200/60 bg-white/70";
+  return "border-l border-l-transparent bg-white/75";
 }
 
 export default async function AdminProductsPage({
@@ -121,7 +118,6 @@ export default async function AdminProductsPage({
     bulkCount?: string;
     bulkError?: string;
     page?: string;
-    focus?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -132,7 +128,6 @@ export default async function AdminProductsPage({
   const reviewFilter = (sp.review ?? "all").trim();
   const salesFilter = (sp.sales ?? "all").trim();
   const sortFilter = (sp.sort ?? "newest").trim() === "oldest" ? "oldest" : "newest";
-  const focusUrgent = String(sp.focus ?? "").trim().toLowerCase() === "urgent";
   const pageRaw = Math.max(1, parseInt(String(sp.page ?? "1").trim(), 10) || 1);
   const deletedCount = Number(sp.deleted ?? 0);
   const deleteError = sp.deleteError ?? "";
@@ -193,13 +188,10 @@ export default async function AdminProductsPage({
 
   const allRows = (products ?? []) as ProductListRow[];
   const priceBenchmarks = computePriceBenchmarks(allRows);
-  const priorityEntries = buildPriorityTopFive(allRows, salesByProduct, viewsByProduct, PRIORITY_STRIP_CAP);
-  const priorityStripIds = new Set(priorityEntries.slice(0, PRIORITY_PREVIEW).map((e) => e.product.id));
   const totalCatalog = allRows.length;
   const listedActiveCount = allRows.filter((p) => Boolean(p.is_active) && isListedOnTrendyol(p)).length;
   const readinessPct =
     totalCatalog > 0 ? Math.min(100, Math.round((listedActiveCount / totalCatalog) * 100)) : 0;
-  const barWidthPct = readinessPct <= 0 ? 0 : Math.max(readinessPct, 4);
   const rows = allRows.filter((p) => {
     if (!query) return true;
     const hay = `${p.name ?? ""} ${p.sku ?? ""}`.toLowerCase();
@@ -252,7 +244,6 @@ export default async function AdminProductsPage({
     const sales = overrides.sales !== undefined ? overrides.sales : salesFilter;
     const sort = overrides.sort !== undefined ? overrides.sort : sortFilter;
     const page = overrides.page !== undefined ? overrides.page : String(currentPage);
-    const focus = overrides.focus !== undefined ? overrides.focus : focusUrgent ? "urgent" : "";
     if (q) p.set("q", q);
     if (status && status !== "all") p.set("status", status);
     if (trendyol && trendyol !== "all") p.set("trendyol", trendyol);
@@ -260,13 +251,10 @@ export default async function AdminProductsPage({
     if (review && review !== "all") p.set("review", review);
     if (sales && sales !== "all") p.set("sales", sales);
     if (sort && sort !== "newest") p.set("sort", sort);
-    if (focus === "urgent") p.set("focus", "urgent");
     if (page && page !== "1") p.set("page", page);
     const s = p.toString();
     return s ? `/admin/products?${s}` : "/admin/products";
   };
-
-  const priorityRowsShown = focusUrgent ? priorityEntries : priorityEntries.slice(0, PRIORITY_PREVIEW);
 
   const pageWindow = 2;
   const pageNums: number[] = [];
@@ -274,7 +262,7 @@ export default async function AdminProductsPage({
     pageNums.push(i);
   }
 
-  const syncFormProductIds = [...new Set([...paginatedRows.map((p) => p.id), ...priorityStripIds])];
+  const syncFormProductIds = paginatedRows.map((p) => p.id);
 
   const activeCount = allRows.filter((p) => Boolean(p.is_active)).length;
   const lowStockCount = allRows.filter((p) => {
@@ -313,7 +301,6 @@ export default async function AdminProductsPage({
       <input type="hidden" name="sales" value={salesFilter} />
       <input type="hidden" name="sort" value={sortFilter} />
       {currentPage > 1 ? <input type="hidden" name="page" value={String(currentPage)} /> : null}
-      {focusUrgent ? <input type="hidden" name="focus" value="urgent" /> : null}
     </>
   );
 
@@ -393,252 +380,187 @@ export default async function AdminProductsPage({
           </div>
         </div>
 
-        <section className="mb-3 rounded-xl border border-rose-200/50 bg-gradient-to-r from-rose-50/80 to-amber-50/40 p-3 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-rose-800/90">Acil</p>
-              <h2 className="text-sm font-semibold text-rose-950">Satış riski — önce bunlara bak</h2>
+        <section className="mb-3 rounded-lg border border-stone-200/60 bg-white p-2.5 shadow-sm">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-md border border-stone-100 bg-stone-50/70 px-2 py-1.5">
+              <p className="text-[9px] font-medium text-stone-500">Toplam ürün</p>
+              <p className="text-sm font-semibold tabular-nums text-stone-900">{allRows.length}</p>
             </div>
-            {priorityEntries.length > PRIORITY_PREVIEW ? (
-              focusUrgent ? (
-                <Link href={listQuery({ focus: "" })} className="text-[11px] font-semibold text-rose-900 underline-offset-2 hover:underline">
-                  Özet (ilk {PRIORITY_PREVIEW})
-                </Link>
-              ) : (
-                <Link href={listQuery({ focus: "urgent" })} className="text-[11px] font-semibold text-rose-900 underline-offset-2 hover:underline">
-                  Tümünü gör ({priorityEntries.length})
-                </Link>
-              )
-            ) : null}
-          </div>
-          {priorityRowsShown.length === 0 ? (
-            <p className="mt-2 rounded-md border border-dashed border-amber-200/80 bg-white/70 px-2 py-1.5 text-[11px] text-amber-900/90">
-              Öncelik kriterine takılan ürün yok.
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-1">
-              {priorityRowsShown.map((entry) => {
-                const p = entry.product as ProductListRow;
-                const stock = Number(p.stock_quantity ?? 0);
-                const salesQty = salesByProduct.get(String(p.id)) ?? 0;
-                const views = viewsByProduct.get(String(p.id)) ?? 0;
-                const listed = isListedOnTrendyol(p);
-                const previewImageUrl = Array.isArray(p.product_images)
-                  ? (
-                      p.product_images?.find((img) => Boolean(img.is_cover) && String(img.image_url ?? "").trim()) ??
-                      p.product_images?.find((img) => String(img.image_url ?? "").trim())
-                    )?.image_url ?? ""
-                  : "";
-                const hasCover = Boolean(
-                  p.product_images?.some((img) => Boolean(img.is_cover) && String(img.image_url ?? "").trim()),
-                );
-                const labels = problemLabelsForProduct({
-                  isActive: Boolean(p.is_active),
-                  listedOnMarketplace: listed,
-                  salesQty,
-                  stock,
-                  views,
-                  hasCoverImage: hasCover,
-                  name: String(p.name ?? ""),
-                });
-                const { dominant: domPri, secondary: secPri } = dominantAndSecondaryIssues(labels);
-                return (
-                  <li
-                    key={p.id}
-                    className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200/40 bg-white/90 px-2 py-1.5 shadow-sm"
-                  >
-                    <div className="relative size-9 shrink-0 overflow-hidden rounded-md border border-stone-200 bg-stone-100">
-                      {previewImageUrl ? (
-                        <Image src={previewImageUrl} alt="" fill sizes="36px" className="object-cover" />
-                      ) : (
-                        <span className="flex h-full items-center justify-center text-[8px] text-stone-400">—</span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-stone-950">{p.name}</p>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                        {domPri ? (
-                          <span className={`inline-block max-w-full truncate font-semibold ${problemSecondaryPillClass(domPri.tone)}`}>
-                            {domPri.label}
-                          </span>
-                        ) : null}
-                        {secPri.slice(0, 2).map((lab) => (
-                          <span key={lab.key} className={problemSecondaryPillClass(lab.tone)}>
-                            {lab.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-1">
-                      <button
-                        type="submit"
-                        form={`sync-ty-${p.id}`}
-                        className="rounded-lg border border-amber-700/90 bg-gradient-to-b from-amber-500 to-amber-600 px-2 py-1.5 text-[10px] font-bold text-white shadow-sm hover:from-amber-400 hover:to-amber-600"
-                      >
-                        TY gönder
-                      </button>
-                      <Link
-                        href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                        className="rounded-md border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-800 hover:bg-stone-50"
-                      >
-                        Düzenle
-                      </Link>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="mb-3 rounded-xl border border-stone-200/55 bg-white p-2.5 shadow-sm">
-          <div className="mb-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="flex flex-col justify-center rounded-lg bg-stone-100/60 px-2 py-1.5">
-              <p className="text-[10px] font-medium text-stone-500">Toplam</p>
-              <p className="text-base font-semibold tabular-nums text-stone-900">{allRows.length}</p>
+            <div className="rounded-md border border-stone-100 bg-stone-50/70 px-2 py-1.5">
+              <p className="text-[9px] font-medium text-stone-500">Aktif ürün</p>
+              <p className="text-sm font-semibold tabular-nums text-stone-900">{activeCount}</p>
             </div>
-            <div className="flex flex-col justify-center rounded-lg bg-stone-100/60 px-2 py-1.5">
-              <p className="text-[10px] font-medium text-stone-500">Aktif</p>
-              <p className="text-base font-semibold tabular-nums text-stone-900">{activeCount}</p>
-            </div>
-            <div className="flex flex-col justify-center rounded-lg bg-rose-100/50 px-2 py-1.5">
-              <p className="text-[10px] font-medium text-rose-900/85">Kritik</p>
-              <p className="text-base font-semibold tabular-nums text-rose-950">{criticalListCount}</p>
-            </div>
-            <div className="flex flex-col justify-center rounded-lg bg-amber-100/50 px-2 py-1.5">
-              <p className="text-[10px] font-medium text-amber-800/90">TY eksik</p>
-              <p className="text-base font-semibold tabular-nums text-amber-950">{missingTrendyolCount}</p>
-            </div>
-            <div className="flex flex-col justify-center rounded-lg bg-stone-100/55 px-2 py-1.5">
-              <p className="text-[10px] font-medium text-stone-500">Uyarı</p>
-              <p className="text-base font-semibold tabular-nums text-stone-900">{totalWarningCount}</p>
+            <div className="rounded-md border border-amber-100/80 bg-amber-50/40 px-2 py-1.5">
+              <p className="text-[9px] font-medium text-amber-900/80">Trendyol eksik</p>
+              <p className="text-sm font-semibold tabular-nums text-amber-950">{missingTrendyolCount}</p>
             </div>
           </div>
-          <div className="rounded-lg border border-stone-200/70 bg-stone-50/50 px-2.5 py-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[10px] font-semibold text-stone-800">Pazaryeri + vitrin tam</p>
-              <p className="text-xs font-bold tabular-nums text-stone-900">{readinessPct}%</p>
-            </div>
-            <p className="mt-0.5 text-[9px] text-stone-500">
-              Aktif ve Trendyol&apos;da eksiksiz / toplam (son {totalCatalog.toLocaleString("tr-TR")} kayıt)
-            </p>
-            <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-stone-200/90">
-              <div
-                className="h-full min-w-0 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 transition-[width]"
-                style={{ width: `${barWidthPct}%` }}
-              />
-            </div>
-          </div>
-          <form
-            className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1.5fr)_repeat(6,minmax(100px,1fr))_auto_auto] lg:items-stretch"
-            method="get"
-          >
-            <input
-              name="q"
-              defaultValue={sp.q ?? ""}
-              placeholder="Ürün adı veya SKU ara..."
-              className="h-9 w-full rounded-lg border border-stone-200/90 bg-white px-3 text-sm text-stone-900 shadow-sm placeholder:text-stone-400"
-            />
-            <select
-              name="status"
-              defaultValue={statusFilter}
-              className="h-9 rounded-lg border border-stone-200/90 bg-white px-2.5 text-sm text-stone-800 shadow-sm"
-            >
-              <option value="all">Durum: Tümü</option>
-              <option value="active">Durum: Aktif</option>
-              <option value="passive">Durum: Pasif</option>
-            </select>
-            <select
-              name="trendyol"
-              defaultValue={trendyolFilter}
-              className="h-9 rounded-lg border border-stone-200/90 bg-white px-2.5 text-sm text-stone-800 shadow-sm"
-            >
-              <option value="all">Trendyol: Tümü</option>
-              <option value="on">Trendyol: Açık</option>
-              <option value="off">Trendyol: Kapalı</option>
-              <option value="missing">Trendyol: Eksik alanlı</option>
-            </select>
-            <select
-              name="stock"
-              defaultValue={stockFilter}
-              className="h-9 rounded-lg border border-stone-200/90 bg-white px-2.5 text-sm text-stone-800 shadow-sm"
-            >
-              <option value="all">Stok: Tümü</option>
-              <option value="low">Stok: Az (1-3)</option>
-              <option value="out">Stok: Tükendi (0)</option>
-            </select>
-            <select
-              name="review"
-              defaultValue={reviewFilter}
-              className="h-9 rounded-lg border border-stone-200/90 bg-white px-2.5 text-sm text-stone-800 shadow-sm"
-            >
-              <option value="all">İnceleme: Tümü</option>
-              <option value="only">İncelenecek ürünler</option>
-            </select>
-            <select
-              name="sales"
-              defaultValue={salesFilter}
-              className="h-9 rounded-lg border border-stone-200/90 bg-white px-2.5 text-sm text-stone-800 shadow-sm"
-            >
-              <option value="all">Satış: Tümü</option>
-              <option value="no_sales">Satış: Satmıyor (ürün)</option>
-              <option value="has_sales">Satış: Satış var</option>
-              <option value="popular">Satış: Popüler (üst dilim)</option>
-            </select>
-            <select
-              name="sort"
-              defaultValue={sortFilter}
-              className="h-9 rounded-lg border border-stone-200/90 bg-white px-2.5 text-sm text-stone-800 shadow-sm"
-            >
-              <option value="newest">Sıralama: En yeni</option>
-              <option value="oldest">Sıralama: En eski</option>
-            </select>
-            <button
-              type="submit"
-              className="h-9 rounded-lg bg-stone-900 px-3 text-xs font-medium text-white shadow-sm hover:bg-stone-800"
-            >
-              Ara
-            </button>
-            <Link
-              href="/admin/products"
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-stone-300 bg-white px-3 text-xs font-medium text-stone-700 shadow-sm hover:bg-stone-50"
-            >
-              Temizle
+          <p className="mt-2 text-[10px] text-stone-500">
+            Kritik ürün: <span className="font-semibold text-stone-700">{criticalListCount}</span>
+            <span className="mx-1.5 text-stone-300">·</span>
+            Uyarı (stok / inceleme / TY): <span className="font-semibold text-stone-700">{totalWarningCount}</span>
+            <span className="mx-1.5 text-stone-300">·</span>
+            Hazırlık <span className="font-semibold text-stone-800">{readinessPct}%</span>
+            <span className="mx-1 text-stone-400">·</span>
+            <span className="text-stone-400">Aktif + TY tam / {totalCatalog} kayıt</span>
+            <span className="mx-1.5 text-stone-300">·</span>
+            <Link href="/admin/trendyol" className="text-stone-500 underline decoration-stone-300 underline-offset-2 hover:text-stone-800">
+              Trendyol paneli
             </Link>
+          </p>
+          <form className="mt-2 space-y-2" method="get">
+            <div className="flex flex-wrap items-end gap-1.5">
+              <div className="min-w-[min(100%,14rem)] flex-1">
+                <label className="sr-only" htmlFor="admin-products-q">
+                  Ara
+                </label>
+                <input
+                  id="admin-products-q"
+                  name="q"
+                  defaultValue={sp.q ?? ""}
+                  placeholder="Ad veya SKU…"
+                  className="h-8 w-full rounded-md border border-stone-200/90 bg-stone-50/50 px-2.5 text-xs text-stone-900 placeholder:text-stone-400"
+                />
+              </div>
+              <select
+                name="status"
+                defaultValue={statusFilter}
+                className="h-8 min-w-[7.5rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+              >
+                <option value="all">Durum: Tümü</option>
+                <option value="active">Aktif</option>
+                <option value="passive">Pasif</option>
+              </select>
+              <select
+                name="trendyol"
+                defaultValue={trendyolFilter}
+                className="h-8 min-w-[9rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+              >
+                <option value="all">Trendyol: Tümü</option>
+                <option value="on">TY açık</option>
+                <option value="off">TY kapalı</option>
+                <option value="missing">TY eksik alan</option>
+              </select>
+              <button
+                type="submit"
+                className="h-8 rounded-md bg-stone-900 px-3 text-[11px] font-medium text-white hover:bg-stone-800"
+              >
+                Ara
+              </button>
+              <Link
+                href="/admin/products"
+                className="inline-flex h-8 items-center rounded-md border border-stone-200 bg-white px-2.5 text-[11px] font-medium text-stone-600 hover:bg-stone-50"
+              >
+                Temizle
+              </Link>
+            </div>
+            <details className="rounded-md border border-stone-200/60 bg-stone-50/40 px-2 py-1.5">
+              <summary className="cursor-pointer list-none text-[10px] font-medium text-stone-600 [&::-webkit-details-marker]:hidden">
+                <span className="underline decoration-stone-300 underline-offset-2 hover:text-stone-900">Daha fazla filtre</span>
+              </summary>
+              <div className="mt-2 flex flex-wrap items-end gap-1.5 border-t border-stone-200/50 pt-2">
+                <select
+                  name="stock"
+                  defaultValue={stockFilter}
+                  className="h-8 min-w-[8.5rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                >
+                  <option value="all">Stok: Tümü</option>
+                  <option value="low">Stok: Az (1–3)</option>
+                  <option value="out">Stok: Tükendi</option>
+                </select>
+                <select
+                  name="review"
+                  defaultValue={reviewFilter}
+                  className="h-8 min-w-[9rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                >
+                  <option value="all">İnceleme: Tümü</option>
+                  <option value="only">İncelenecek</option>
+                </select>
+                <select
+                  name="sales"
+                  defaultValue={salesFilter}
+                  className="h-8 min-w-[9rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                >
+                  <option value="all">Satış: Tümü</option>
+                  <option value="no_sales">Satmıyor</option>
+                  <option value="has_sales">Satış var</option>
+                  <option value="popular">Popüler</option>
+                </select>
+                <select
+                  name="sort"
+                  defaultValue={sortFilter}
+                  className="h-8 min-w-[8rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                >
+                  <option value="newest">En yeni</option>
+                  <option value="oldest">En eski</option>
+                </select>
+                <button
+                  type="submit"
+                  className="h-8 rounded-md border border-stone-300 bg-white px-2.5 text-[11px] font-medium text-stone-700 hover:bg-stone-50"
+                >
+                  Uygula
+                </button>
+              </div>
+            </details>
           </form>
           {salesFilter === "popular" ? (
-            <p className="mt-2 text-[11px] text-stone-500">
-              Popüler eşik (ödenmiş sipariş adedi): <span className="font-semibold text-stone-800">{popularThreshold}+</span>
+            <p className="mt-1.5 text-[10px] text-stone-500">
+              Popüler eşik: <span className="font-medium text-stone-700">{popularThreshold}+</span> satış
             </p>
           ) : null}
         </section>
 
-        <section className="rounded-xl border border-stone-200/55 bg-white p-2.5 shadow-sm">
-          <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold text-stone-900">Liste</h2>
-              <p className="text-[11px] tabular-nums text-stone-500">{rangeLabel}</p>
+        <section className="rounded-lg border border-stone-200/60 bg-white p-2.5 shadow-sm">
+          <div className="mb-2 flex flex-wrap items-end justify-between gap-2 border-b border-stone-100/90 pb-2">
+            <div className="min-w-0">
+              <h2 className="text-xs font-semibold text-stone-900">Liste</h2>
+              <p className="text-[10px] tabular-nums text-stone-500">{rangeLabel}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <form action={sendAllProductsToTrendyolAction} data-save-scroll-on-submit="true">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              {totalPages > 1 ? (
+                <nav className="flex flex-wrap items-center gap-0.5" aria-label="Sayfalama">
+                  {currentPage > 1 ? (
+                    <Link
+                      href={listQuery({ page: String(currentPage - 1) })}
+                      className="rounded border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
+                    >
+                      ‹
+                    </Link>
+                  ) : null}
+                  {pageNums.map((n) => (
+                    <Link
+                      key={n}
+                      href={listQuery({ page: String(n) })}
+                      className={`min-w-[1.5rem] rounded border px-1 py-0.5 text-center text-[10px] font-medium tabular-nums ${
+                        n === currentPage ? "border-stone-800 bg-stone-800 text-white" : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
+                      }`}
+                    >
+                      {n}
+                    </Link>
+                  ))}
+                  {currentPage < totalPages ? (
+                    <Link
+                      href={listQuery({ page: String(currentPage + 1) })}
+                      className="rounded border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
+                    >
+                      ›
+                    </Link>
+                  ) : null}
+                </nav>
+              ) : null}
+              <form action={sendAllProductsToTrendyolAction} data-save-scroll-on-submit="true" className="inline">
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-700/90 bg-gradient-to-b from-amber-500 to-amber-600 px-3 py-2 text-[11px] font-black text-white shadow-md transition hover:from-amber-400 hover:to-amber-600 hover:shadow-lg"
+                  className="rounded border border-stone-300 bg-white px-2 py-1 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
                 >
-                  Tümünü Trendyol&apos;a gönder
-                  <span aria-hidden className="text-amber-100">
-                    →
-                  </span>
+                  Tüm kataloğu TY
                 </button>
               </form>
               <Link
                 href="/admin/products/new"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 shadow-sm transition hover:border-stone-400 hover:bg-stone-50"
+                className="rounded border border-stone-300 bg-white px-2 py-1 text-[10px] font-medium text-stone-700 hover:bg-stone-50"
               >
-                <span aria-hidden className="text-base leading-none text-stone-500">
-                  ➕
-                </span>
-                Yeni ürün
+                + Yeni
               </Link>
             </div>
           </div>
@@ -649,15 +571,15 @@ export default async function AdminProductsPage({
             data-save-scroll-on-submit="true"
           >
             {filterHidden}
-            <div className="bulk-selection-bar mb-2 flex flex-col gap-1.5 rounded-lg border border-stone-200/80 bg-gradient-to-r from-amber-50/40 via-white to-stone-50/60 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="bulk-selection-bar mb-2 flex flex-col gap-1.5 rounded-md border border-amber-200/50 bg-amber-50/30 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between">
               <AdminProductsSelectionToolbar formId={BULK_FORM_ID} />
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <AdminProductsBulkQuickOptimizeButton formId={BULK_FORM_ID} />
                 <button
                   type="submit"
                   name="intent"
                   value="trendyol_send"
-                  className="rounded-lg border border-amber-400/90 bg-amber-50/95 px-3 py-2 text-[11px] font-bold text-amber-950 shadow-sm transition hover:border-amber-500 hover:bg-amber-100"
+                  className="rounded-md border border-amber-600/80 bg-gradient-to-b from-amber-500 to-amber-600 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-sm hover:from-amber-500 hover:to-amber-700"
                 >
                   Seçilileri Trendyol&apos;a gönder
                 </button>
@@ -665,63 +587,22 @@ export default async function AdminProductsPage({
                   type="submit"
                   name="intent"
                   value="price_sync"
-                  className="rounded-lg border border-stone-300/95 bg-white px-3 py-2 text-[11px] font-semibold text-stone-800 shadow-sm transition hover:border-stone-400 hover:bg-stone-50"
+                  className="rounded-md border border-stone-300 bg-white px-2 py-1.5 text-[10px] font-medium text-stone-800 hover:bg-stone-50"
                 >
-                  Fiyat / stok senk.
+                  Fiyat / stok
                 </button>
                 <button
                   type="submit"
                   name="intent"
                   value="disable"
-                  className="rounded-lg border border-stone-600/25 bg-stone-800 px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-stone-900"
+                  className="rounded-md border border-stone-700/20 bg-stone-800 px-2 py-1.5 text-[10px] font-semibold text-white hover:bg-stone-900"
                 >
-                  Seçilileri pasifleştir
+                  Pasifleştir
                 </button>
               </div>
             </div>
 
-            {totalPages > 1 ? (
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
-                <span className="text-[10px] font-medium text-stone-400">Sayfa</span>
-                <nav className="flex flex-wrap items-center gap-1" aria-label="Sayfalama">
-                  {currentPage > 1 ? (
-                    <Link
-                      href={listQuery({ page: String(currentPage - 1) })}
-                      className="rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] font-semibold text-stone-800 hover:bg-stone-50"
-                    >
-                      Önceki
-                    </Link>
-                  ) : (
-                    <span className="rounded-md border border-stone-100 px-2 py-1 text-[11px] text-stone-300">Önceki</span>
-                  )}
-                  {pageNums.map((n) => (
-                    <Link
-                      key={n}
-                      href={listQuery({ page: String(n) })}
-                      className={`min-w-[2rem] rounded-md border px-2 py-1 text-center text-[11px] font-semibold tabular-nums ${
-                        n === currentPage
-                          ? "border-stone-900 bg-stone-900 text-white"
-                          : "border-stone-200 bg-white text-stone-800 hover:bg-stone-50"
-                      }`}
-                    >
-                      {n}
-                    </Link>
-                  ))}
-                  {currentPage < totalPages ? (
-                    <Link
-                      href={listQuery({ page: String(currentPage + 1) })}
-                      className="rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] font-semibold text-stone-800 hover:bg-stone-50"
-                    >
-                      Sonraki
-                    </Link>
-                  ) : (
-                    <span className="rounded-md border border-stone-100 px-2 py-1 text-[11px] text-stone-300">Sonraki</span>
-                  )}
-                </nav>
-              </div>
-            ) : null}
-
-            <div className="divide-y divide-stone-100/90 rounded-lg border border-stone-200/60 bg-stone-50/20">
+            <div className="divide-y divide-stone-100 rounded-md border border-stone-200/50 bg-stone-50/30">
               {paginatedRows.map((p) => {
                 const stock = Number(p.stock_quantity ?? 0);
                 const importedNeedsReview = importedNeedsReviewFn(p);
@@ -779,114 +660,104 @@ export default async function AdminProductsPage({
                   catalogAvg: priceBenchmarks.global,
                   priority,
                 });
-                const strongTrendyolCta = priority === "critical" || priorityStripIds.has(p.id);
                 const tyStatusShort = !Boolean(p.trendyol_active)
-                  ? "TY kapalı"
+                  ? "Kapalı"
                   : listed
-                    ? "TY tamam"
-                    : "TY eksik";
-                const stockPillClass =
-                  stock === 0
-                    ? "border-rose-300/80 bg-rose-50 text-rose-900"
-                    : stockLow
-                      ? "border-amber-300/80 bg-amber-50 text-amber-950"
-                      : "border-stone-200/90 bg-stone-50 text-stone-700";
+                    ? "Tamam"
+                    : "Eksik";
+                const tyHintParts = [
+                  ...missingTrendyolFields,
+                  importedNeedsReview ? "İnceleme" : null,
+                  !isActive ? "Pasif" : null,
+                ].filter(Boolean) as string[];
+                const tyTitle = tyHintParts.length ? `Trendyol: ${tyHintParts.join(", ")}` : undefined;
 
                 return (
                   <div
                     key={p.id}
-                    className={`product-row group border-b border-stone-100/90 px-2 py-1.5 transition-colors last:border-b-0 sm:px-2.5 ${
-                      priority === "critical" ? "ring-1 ring-inset ring-rose-500/10" : ""
-                    } hover:bg-white/90 ${rowClass}`}
+                    className={`product-row group border-b border-stone-100/80 px-2 py-1 transition-colors last:border-b-0 sm:px-2.5 sm:py-1.5 hover:bg-white/80 ${rowClass}`}
                   >
-                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                       <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
                         <input
                           type="checkbox"
                           name="product_ids"
                           value={p.id}
-                          className="mt-1.5 size-3.5 shrink-0 rounded border-stone-300 text-stone-900 sm:mt-0"
+                          className="mt-1 size-3 shrink-0 rounded border-stone-300 text-stone-900 sm:mt-0.5"
                           aria-label={`${p.name} ürününü seç`}
                         />
                         <Link
                           href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                          className="flex min-w-0 flex-1 gap-2 rounded-md outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/40 sm:items-center"
+                          className="flex min-w-0 flex-1 gap-2 rounded-md outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/30 sm:items-center"
                         >
-                          <div className="relative size-9 shrink-0 overflow-hidden rounded-md border border-stone-200/90 bg-stone-100">
+                          <div className="relative size-8 shrink-0 overflow-hidden rounded border border-stone-200/90 bg-stone-100">
                             {previewImageUrl ? (
-                              <Image src={previewImageUrl} alt="" fill sizes="36px" className="object-cover" />
+                              <Image src={previewImageUrl} alt="" fill sizes="32px" className="object-cover" />
                             ) : (
-                              <span className="flex h-full items-center justify-center text-[9px] text-stone-400">—</span>
+                              <span className="flex h-full items-center justify-center text-[8px] text-stone-400">—</span>
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1">
-                              <p className="truncate text-[13px] font-semibold leading-tight text-stone-950">{p.name}</p>
-                              <span
-                                className={`shrink-0 rounded-full border px-1.5 py-px text-[8px] font-bold uppercase tracking-wide ${
-                                  priority === "healthy" ? "border-stone-200/90 bg-stone-50 text-stone-600" : badge.className
-                                }`}
-                              >
-                                {badge.label}
-                              </span>
-                            </div>
+                            <p className="truncate text-[12px] font-medium leading-tight text-stone-900">{p.name}</p>
                             <p className="mt-0.5 font-mono text-[10px] text-stone-500">{(p.sku || "—").toUpperCase()}</p>
-                            <div className="mt-1 flex flex-wrap items-center gap-1">
-                              <span className="text-[12px] font-semibold tabular-nums text-stone-900">{formatPrice(Number(p.price ?? 0))}</span>
-                              <span className={`rounded border px-1.5 py-px text-[9px] font-bold ${stockPillClass}`}>Stok {stock}</span>
-                              <span className="rounded border border-stone-200/90 bg-white px-1.5 py-px text-[9px] font-semibold text-stone-700">
-                                {tyStatusShort}
+                            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px]">
+                              <span className="font-semibold tabular-nums text-stone-900">{formatPrice(Number(p.price ?? 0))}</span>
+                              <span className={`tabular-nums ${stock === 0 ? "text-rose-700" : stockLow ? "text-amber-800" : "text-stone-600"}`}>
+                                Stok {stock}
                               </span>
-                              {missingTrendyolFields.slice(0, 3).map((field) => (
-                                <span
-                                  key={`${p.id}-${field}`}
-                                  className="rounded border border-orange-200/80 bg-orange-50/90 px-1 py-px text-[9px] font-semibold text-orange-950"
-                                >
-                                  {field}
-                                </span>
-                              ))}
-                              {importedNeedsReview ? (
-                                <span className="rounded border border-amber-200/80 bg-amber-50 px-1 py-px text-[9px] font-medium text-amber-900">
-                                  İnceleme
-                                </span>
-                              ) : null}
-                              <span
-                                className={`rounded border px-1 py-px text-[9px] font-semibold ${
-                                  p.is_active ? "border-emerald-200/80 bg-emerald-50 text-emerald-900" : "border-stone-200 bg-stone-100 text-stone-600"
-                                }`}
-                              >
-                                {p.is_active ? "Vitrin" : "Pasif"}
+                              <span className="text-stone-400">·</span>
+                              <span className="text-stone-600" title={tyTitle}>
+                                TY: <span className="font-medium text-stone-800">{tyStatusShort}</span>
                               </span>
-                              <span className="text-[9px] tabular-nums text-stone-500">Satış {salesQty}</span>
                             </div>
-                            <details className="mt-1 group/details">
-                              <summary className="cursor-pointer list-none text-[10px] font-medium text-stone-500 [&::-webkit-details-marker]:hidden">
+                            <details className="mt-0.5 group/details">
+                              <summary className="cursor-pointer list-none text-[9px] font-medium text-stone-500 [&::-webkit-details-marker]:hidden">
                                 <span className="underline decoration-stone-300 underline-offset-2 group-open/details:text-stone-800">
-                                  İpuçları ve sorunlar
+                                  Detay & uyarılar
                                 </span>
                               </summary>
-                              <div className="mt-1 space-y-1.5 border-t border-stone-100/90 pt-1.5">
+                              <div className="mt-1 space-y-1 border-t border-stone-100/90 pt-1">
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <span
+                                    className={`rounded border px-1 py-px text-[8px] font-medium ${
+                                      priority === "healthy" ? "border-stone-200 bg-stone-50 text-stone-600" : badge.className
+                                    }`}
+                                  >
+                                    {badge.label}
+                                  </span>
+                                  <span className="text-[9px] tabular-nums text-stone-500">Satış {salesQty}</span>
+                                  <span className="text-[9px] text-stone-400">·</span>
+                                  <span className="text-[9px] text-stone-500">{views} görüntülenme</span>
+                                  <span
+                                    className={`rounded border px-1 py-px text-[8px] font-medium ${
+                                      p.is_active ? "border-stone-200 bg-stone-50 text-stone-700" : "border-stone-200 bg-stone-100 text-stone-500"
+                                    }`}
+                                  >
+                                    {p.is_active ? "Vitrin" : "Pasif"}
+                                  </span>
+                                </div>
+                                {missingTrendyolFields.length > 0 ? (
+                                  <p className="text-[9px] text-amber-900/90">TY eksik: {missingTrendyolFields.join(", ")}</p>
+                                ) : null}
+                                {importedNeedsReview ? <p className="text-[9px] text-amber-900/90">İçe aktarma incelemesi gerekli.</p> : null}
                                 {domIssue ? (
-                                  <span className={`inline-block max-w-full text-[10px] ${problemDominantBadgeClass(domIssue.tone)}`}>
+                                  <span className={`inline-block max-w-full text-[9px] ${problemDominantBadgeClass(domIssue.tone)}`}>
                                     <strong>{domIssue.label}</strong>
                                   </span>
                                 ) : null}
                                 {secIssues.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
+                                  <div className="flex flex-wrap gap-0.5">
                                     {secIssues.map((lab) => (
-                                      <span key={lab.key} className={problemSecondaryPillClass(lab.tone)}>
+                                      <span key={lab.key} className={`text-[8px] ${problemSecondaryPillClass(lab.tone)}`}>
                                         {lab.label}
                                       </span>
                                     ))}
                                   </div>
                                 ) : null}
                                 {priority !== "healthy" && marketHint ? (
-                                  <p className="text-[10px] font-medium text-violet-950">Pazar: {marketHint}</p>
+                                  <p className="text-[9px] font-medium text-stone-700">Pazar: {marketHint}</p>
                                 ) : null}
-                                {priority !== "healthy" ? (
-                                  <p className="text-[10px] leading-snug text-stone-600">{suggestion}</p>
-                                ) : null}
-                                <p className="text-[9px] text-stone-400">Görüntülenme: {views}</p>
+                                {priority !== "healthy" ? <p className="text-[9px] leading-snug text-stone-600">{suggestion}</p> : null}
                                 <AdminProductOptimizePanel
                                   editHref={`/admin/products/${encodeURIComponent(p.id)}/edit`}
                                   hints={optimizeHints}
@@ -896,40 +767,34 @@ export default async function AdminProductsPage({
                           </div>
                         </Link>
                       </div>
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:flex-col sm:items-end">
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 pl-5 sm:pl-0">
                         <button
                           type="submit"
                           form={`sync-ty-${p.id}`}
-                          className={
-                            strongTrendyolCta
-                              ? "rounded-md border border-amber-800/90 bg-gradient-to-b from-amber-500 to-amber-600 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-sm hover:from-amber-400 hover:to-amber-600"
-                              : "rounded-md border border-amber-300/90 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-950 hover:bg-amber-100/90"
-                          }
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-900/90 hover:bg-amber-50/90 hover:underline"
                         >
                           TY gönder
                         </button>
-                        <div className="flex items-center gap-1">
-                          <Link
-                            href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                            className="rounded-md border border-stone-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-stone-800 hover:bg-stone-50"
-                          >
-                            Düzenle
-                          </Link>
-                          <details className="relative">
-                            <summary className="list-none cursor-pointer rounded-md border border-stone-200 bg-white px-2 py-1.5 text-[10px] font-medium text-stone-600 hover:bg-stone-50 [&::-webkit-details-marker]:hidden">
-                              ⋯
-                            </summary>
-                            <div className="absolute right-0 z-20 mt-0.5 w-40 overflow-hidden rounded-md border border-stone-200 bg-white py-0.5 shadow-md ring-1 ring-stone-900/5">
-                              <Link
-                                href={`/admin/products/${encodeURIComponent(p.id)}/edit#product-section-trendyol`}
-                                className="block px-2 py-1.5 text-[10px] text-stone-700 hover:bg-stone-50"
-                              >
-                                Trendyol
-                              </Link>
-                              <AdminProductDeleteMenuButton formId={`single-delete-${p.id}`} productName={p.name ?? "Ürün"} />
-                            </div>
-                          </details>
-                        </div>
+                        <Link
+                          href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
+                          className="rounded border border-stone-200 bg-white px-2 py-0.5 text-[10px] font-medium text-stone-800 hover:bg-stone-50"
+                        >
+                          Düzenle
+                        </Link>
+                        <details className="relative">
+                          <summary className="list-none cursor-pointer rounded border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-stone-500 hover:bg-stone-50 [&::-webkit-details-marker]:hidden">
+                            ⋯
+                          </summary>
+                          <div className="absolute right-0 z-20 mt-0.5 w-36 overflow-hidden rounded border border-stone-200 bg-white py-0.5 shadow-md ring-1 ring-stone-900/5">
+                            <Link
+                              href={`/admin/products/${encodeURIComponent(p.id)}/edit#product-section-trendyol`}
+                              className="block px-2 py-1 text-[10px] text-stone-700 hover:bg-stone-50"
+                            >
+                              Trendyol alanı
+                            </Link>
+                            <AdminProductDeleteMenuButton formId={`single-delete-${p.id}`} productName={p.name ?? "Ürün"} />
+                          </div>
+                        </details>
                       </div>
                     </div>
                   </div>
@@ -942,63 +807,29 @@ export default async function AdminProductsPage({
               ) : null}
             </div>
 
-            {totalPages > 1 ? (
-              <div className="mt-2 flex flex-wrap items-center justify-end gap-1 border-t border-stone-100 pt-2">
-                <nav className="flex flex-wrap items-center gap-1" aria-label="Sayfalama alt">
-                  {currentPage > 1 ? (
-                    <Link
-                      href={listQuery({ page: String(currentPage - 1) })}
-                      className="rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] font-semibold text-stone-800 hover:bg-stone-50"
-                    >
-                      Önceki
-                    </Link>
-                  ) : null}
-                  {pageNums.map((n) => (
-                    <Link
-                      key={`b-${n}`}
-                      href={listQuery({ page: String(n) })}
-                      className={`min-w-[2rem] rounded-md border px-2 py-1 text-center text-[11px] font-semibold tabular-nums ${
-                        n === currentPage ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-800 hover:bg-stone-50"
-                      }`}
-                    >
-                      {n}
-                    </Link>
-                  ))}
-                  {currentPage < totalPages ? (
-                    <Link
-                      href={listQuery({ page: String(currentPage + 1) })}
-                      className="rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] font-semibold text-stone-800 hover:bg-stone-50"
-                    >
-                      Sonraki
-                    </Link>
-                  ) : null}
-                </nav>
-              </div>
-            ) : null}
-
             {filteredRows.length > 0 ? (
-              <div className="mt-4 rounded-xl border border-rose-200/90 bg-rose-50/50 p-3">
-                <p className="text-[11px] font-semibold text-rose-950">Toplu silme (onaylı)</p>
-                <p className="mt-0.5 text-[10px] text-rose-900/85">
-                  Önce ürünleri seç; silmek için onay kutusunu işaretle ve SIL yaz.
+              <div className="mt-3 rounded-lg border border-stone-200/80 bg-stone-50/50 p-2.5">
+                <p className="text-[10px] font-semibold text-stone-800">Toplu silme (onaylı)</p>
+                <p className="mt-0.5 text-[9px] text-stone-600">
+                  Ürünleri seç; onay kutusu ve SIL yazarak sil.
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center gap-1.5 text-[11px] text-rose-900">
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-1.5 text-[10px] text-stone-700">
                     <input type="checkbox" name="confirm_delete" />
-                    Silme işlemini onaylıyorum
+                    Onaylıyorum
                   </label>
                   <input
                     name="confirm_text"
-                    placeholder="Onay için SIL yaz"
-                    className="rounded border border-rose-200 bg-white px-2 py-1 text-[11px]"
+                    placeholder="SIL"
+                    className="rounded border border-stone-200 bg-white px-2 py-0.5 text-[10px]"
                   />
                   <button
                     type="submit"
                     name="intent"
                     value="delete"
-                    className="rounded-lg border border-rose-400 bg-white px-3 py-1.5 text-[11px] font-bold text-rose-950 shadow-sm hover:bg-rose-100"
+                    className="rounded border border-rose-300/80 bg-white px-2 py-1 text-[10px] font-semibold text-rose-900 hover:bg-rose-50"
                   >
-                    Seçili ürünleri sil
+                    Seçilileri sil
                   </button>
                 </div>
               </div>
@@ -1038,7 +869,6 @@ export default async function AdminProductsPage({
               <input type="hidden" name="sales" value={salesFilter} />
               <input type="hidden" name="sort" value={sortFilter} />
               {currentPage > 1 ? <input type="hidden" name="page" value={String(currentPage)} /> : null}
-              {focusUrgent ? <input type="hidden" name="focus" value="urgent" /> : null}
             </form>
           ))}
 
@@ -1050,10 +880,8 @@ export default async function AdminProductsPage({
               display: flex;
             }
             .products-bulk-form .product-row:has(input[name="product_ids"]:checked) {
-              box-shadow:
-                inset 0 0 0 2px rgba(245, 158, 11, 0.65),
-                0 4px 18px -6px rgba(28, 25, 23, 0.12);
-              background: linear-gradient(90deg, rgba(255, 251, 235, 0.92), rgba(255, 255, 255, 0.98));
+              box-shadow: inset 0 0 0 1px rgba(180, 160, 120, 0.55);
+              background: rgba(255, 252, 247, 0.95);
             }
           `}</style>
         </section>

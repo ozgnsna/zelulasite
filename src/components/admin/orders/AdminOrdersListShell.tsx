@@ -231,30 +231,34 @@ export function AdminOrdersListShell({
   const searchActive = queryNorm.length > 0;
 
   const gridCols =
-    "sm:grid sm:grid-cols-[1.75rem_6.25rem_minmax(0,1fr)_7.25rem_5.5rem_3.75rem_5.5rem_3.25rem] sm:items-center sm:gap-x-1.5 sm:px-1.5";
+    "sm:grid sm:grid-cols-[1.75rem_6.5rem_minmax(0,1fr)_7.25rem_5.5rem_3.75rem_5.75rem_3.25rem] sm:items-center sm:gap-x-1.5 sm:px-1.5";
 
   return (
     <div className="min-w-0">
       <div className="overflow-hidden rounded-md border border-stone-200/70 bg-white/[0.38] ring-1 ring-stone-950/[0.035]">
         <div className="sticky top-0 z-30 border-b border-stone-300/50 border-l-2 border-l-amber-400/45 bg-[#f1efe9]/96 backdrop-blur-sm supports-[backdrop-filter]:bg-[#f1efe9]/90">
-          <div className="flex flex-col gap-1.5 px-2 py-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1">
-            <div className="relative w-full min-w-0 sm:w-[13.75rem] sm:max-w-[40%] sm:flex-none">
-              <Search
-                className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-stone-400"
-                strokeWidth={2}
-                aria-hidden
-              />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Sipariş no, müşteri, durum…"
-                className="w-full rounded-md border border-stone-200/90 bg-white py-1 pl-8 pr-2 text-[11px] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] placeholder:text-stone-400 focus:border-amber-400/50 focus:outline-none focus:ring-1 focus:ring-amber-300/40"
-                aria-label="Siparişlerde ara"
-              />
+          <div className="flex flex-col gap-1 px-2 py-1 sm:flex-row sm:items-stretch sm:gap-0 sm:py-1">
+            <div className="flex items-center sm:border-r sm:border-stone-300/40 sm:pr-2">
+              <div className="relative flex min-h-[1.75rem] w-full min-w-[10rem] max-w-full items-center rounded-md border border-stone-300/60 bg-white/95 py-0 pl-2 pr-1 shadow-[inset_0_1px_2px_rgba(28,25,23,0.04)] ring-1 ring-stone-950/[0.04] transition-[box-shadow,border-color] focus-within:border-amber-400/55 focus-within:shadow-[0_0_0_2px_rgba(251,191,36,0.22)] sm:w-[14rem] sm:max-w-[min(100%,16rem)] sm:flex-none">
+                <Search
+                  className="pointer-events-none size-3 shrink-0 text-stone-400/85"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Sipariş no, müşteri…"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 border-0 bg-transparent py-1 pl-1.5 text-[11px] text-stone-900 outline-none placeholder:text-stone-400 focus:ring-0"
+                  aria-label="Siparişlerde ara"
+                />
+              </div>
             </div>
-            <div className="hidden h-5 w-px shrink-0 self-stretch bg-stone-300/75 sm:block" aria-hidden />
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:border-r sm:border-stone-300/40 sm:px-2 sm:py-0.5 [&::-webkit-scrollbar]:hidden">
               {FILTERS.map((f) => (
                 <Link
                   key={f.id}
@@ -270,57 +274,58 @@ export function AdminOrdersListShell({
                 </Link>
               ))}
             </div>
-            <div className="hidden h-5 w-px shrink-0 self-stretch bg-stone-300/75 sm:block" aria-hidden />
-            <div
-              className={cn(
-                "flex flex-wrap items-center gap-0.5 rounded-md py-px sm:px-1",
-                count > 0 ? "bg-amber-50/90 ring-1 ring-amber-200/55" : "",
-              )}
-            >
-              <span className="px-0.5 text-[10px] font-bold tabular-nums text-stone-800">{count} seçili</span>
-              <button
-                type="button"
-                disabled={pending || count === 0}
-                onClick={() => runBulk("prepare")}
-                className="rounded border border-amber-700/70 bg-white px-1.5 py-px text-[10px] font-bold text-amber-950 hover:bg-amber-100/80 disabled:opacity-40"
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-stone-300/35 pt-1 sm:flex-nowrap sm:justify-end sm:gap-x-2 sm:border-t-0 sm:pl-2 sm:pt-0">
+              <span className="shrink-0 text-[10px] font-semibold tabular-nums text-stone-500">
+                {searchActive ? (
+                  <>
+                    {displayOrders.length}/{orders.length} kayıt
+                  </>
+                ) : (
+                  <>{orders.length} kayıt</>
+                )}
+              </span>
+              <div
+                className={cn(
+                  "flex flex-wrap items-center gap-0.5 sm:justify-end",
+                  count > 0 ? "rounded-md bg-amber-50/90 px-1 py-px ring-1 ring-amber-200/55" : "",
+                )}
               >
-                Toplu hazırla
-              </button>
-              <button
-                type="button"
-                disabled={pending || count === 0}
-                onClick={() => runBulk("ship")}
-                className="rounded border border-stone-800/20 bg-stone-900 px-1.5 py-px text-[10px] font-bold text-white hover:bg-stone-800 disabled:opacity-40"
-              >
-                Toplu kargola
-              </button>
-              <button
-                type="button"
-                disabled={pending || count === 0}
-                onClick={() => printOrderLabels(selectedRows)}
-                className="rounded border border-stone-300/90 bg-white px-1.5 py-px text-[10px] font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-40"
-              >
-                Barkod yazdır
-              </button>
-              {count > 0 ? (
+                <span className="px-0.5 text-[10px] font-bold tabular-nums text-stone-800">{count} seçili</span>
                 <button
                   type="button"
-                  onClick={() => setSelected(new Set())}
-                  className="px-0.5 text-[10px] font-semibold text-stone-600 underline-offset-2 hover:underline"
+                  disabled={pending || count === 0}
+                  onClick={() => runBulk("prepare")}
+                  className="rounded border border-amber-700/70 bg-white px-1.5 py-px text-[10px] font-bold text-amber-950 hover:bg-amber-100/80 disabled:opacity-40"
                 >
-                  Temizle
+                  Toplu hazırla
                 </button>
-              ) : null}
+                <button
+                  type="button"
+                  disabled={pending || count === 0}
+                  onClick={() => runBulk("ship")}
+                  className="rounded border border-stone-800/20 bg-stone-900 px-1.5 py-px text-[10px] font-bold text-white hover:bg-stone-800 disabled:opacity-40"
+                >
+                  Toplu kargola
+                </button>
+                <button
+                  type="button"
+                  disabled={pending || count === 0}
+                  onClick={() => printOrderLabels(selectedRows)}
+                  className="rounded border border-stone-300/90 bg-white px-1.5 py-px text-[10px] font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-40"
+                >
+                  Etiket yazdır
+                </button>
+                {count > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelected(new Set())}
+                    className="px-0.5 text-[10px] font-semibold text-stone-600 underline-offset-2 hover:underline"
+                  >
+                    Temizle
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <span className="shrink-0 text-[10px] font-semibold tabular-nums text-stone-500 sm:ml-auto">
-              {searchActive ? (
-                <>
-                  {displayOrders.length} / {orders.length} kayıt
-                </>
-              ) : (
-                <>{orders.length} kayıt</>
-              )}
-            </span>
           </div>
         </div>
 
@@ -341,8 +346,8 @@ export function AdminOrdersListShell({
             <span className="hidden lg:inline">Sayfadakiler</span>
             <span className="lg:hidden">Tümü</span>
           </label>
-          <span className="font-bold text-stone-800">Sipariş</span>
-          <span className="font-bold text-stone-800">Müşteri</span>
+          <span className="text-left font-bold text-stone-800">Sipariş</span>
+          <span className="text-left font-bold text-stone-800">Müşteri</span>
           <span className="font-bold text-stone-800">Durum</span>
           <span className="font-bold text-stone-800">Ödeme</span>
           <span className="font-bold text-stone-800">Kargo</span>
@@ -372,10 +377,10 @@ export function AdminOrdersListShell({
 
         <ul className="divide-y divide-stone-200/55">
           {!hasVisibleRows ? (
-            <li className="px-3 py-4 sm:py-5">
-              <div className="mx-auto flex max-w-md flex-col items-center gap-2 text-center sm:flex-row sm:items-center sm:justify-center sm:gap-4 sm:text-left">
-                <Package className="size-7 shrink-0 text-stone-300" strokeWidth={1.5} aria-hidden />
-                <div className="min-w-0 space-y-1">
+            <li className="px-3 py-2.5 sm:py-3">
+              <div className="mx-auto flex max-w-md flex-col items-center gap-1.5 text-center sm:flex-row sm:items-center sm:justify-center sm:gap-3 sm:text-left">
+                <Package className="size-6 shrink-0 text-stone-300" strokeWidth={1.5} aria-hidden />
+                <div className="min-w-0 space-y-0.5">
                   <p className="text-[12px] font-semibold text-stone-800">
                     {!hasServerRows
                       ? activeFilter === "all"
@@ -394,12 +399,12 @@ export function AdminOrdersListShell({
                       <>Arama terimini veya filtreyi değiştirin.</>
                     )}
                   </p>
-                  <div className="flex flex-wrap justify-center gap-2 pt-1 sm:justify-start">
+                  <div className="flex flex-wrap justify-center gap-1.5 pt-0.5 sm:justify-start">
                     {searchActive ? (
                       <button
                         type="button"
                         onClick={() => setSearchQuery("")}
-                        className="rounded-md border border-stone-300/90 bg-white px-2.5 py-1 text-[10px] font-semibold text-stone-800 shadow-sm hover:bg-stone-50"
+                        className="rounded-md border border-stone-300/90 bg-white px-2 py-0.5 text-[10px] font-semibold text-stone-800 shadow-sm hover:bg-stone-50"
                       >
                         Aramayı temizle
                       </button>
@@ -407,7 +412,14 @@ export function AdminOrdersListShell({
                     {activeFilter !== "all" ? (
                       <Link
                         href="/admin/orders"
-                        className="rounded-md border border-amber-600/25 bg-amber-50/95 px-2.5 py-1 text-[10px] font-semibold text-amber-950 shadow-sm hover:bg-amber-100/90"
+                        className="rounded-md border border-amber-600/25 bg-amber-50/95 px-2 py-0.5 text-[10px] font-semibold text-amber-950 shadow-sm hover:bg-amber-100/90"
+                      >
+                        Tüm siparişleri göster
+                      </Link>
+                    ) : !hasServerRows && !searchActive ? (
+                      <Link
+                        href="/admin/orders"
+                        className="rounded-md border border-transparent px-2 py-0.5 text-[10px] font-medium text-stone-500 underline-offset-2 hover:border-stone-200/80 hover:bg-white/60 hover:text-stone-700 hover:underline"
                       >
                         Tüm siparişleri göster
                       </Link>
@@ -439,7 +451,7 @@ export function AdminOrdersListShell({
                           aria-label={`Sipariş seç: ${o.order_number}`}
                         />
                       </div>
-                      <div className="min-w-0 flex-1 sm:block sm:min-w-0">
+                      <div className="min-w-0 flex-1 text-left sm:block sm:min-w-0 sm:justify-self-start">
                         <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:block">
                           <p className="font-mono text-[10.5px] font-semibold tabular-nums tracking-tight text-stone-900 sm:text-[10px]">
                             {shortenOrderNumberDisplay(String(o.order_number ?? ""))}
@@ -449,7 +461,7 @@ export function AdminOrdersListShell({
                         <p className="mt-0 hidden text-[9px] tabular-nums text-stone-500 sm:block">{when}</p>
                       </div>
                     </div>
-                    <div className="min-w-0 pl-6 sm:pl-0">
+                    <div className="min-w-0 pl-6 text-left sm:pl-0 sm:justify-self-start">
                       <p className="truncate text-[11px] font-semibold leading-tight text-stone-900">
                         {o.customer_name || "—"}
                       </p>

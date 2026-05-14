@@ -3,20 +3,17 @@ import {
   AdminOrdersListShell,
   type AdminOrderListRow,
 } from "@/components/admin/orders/AdminOrdersListShell";
+import {
+  ADMIN_ORDERS_LIST_LIMIT_ALL,
+  ADMIN_ORDERS_LIST_LIMIT_NARROW,
+  ADMIN_ORDERS_LIST_SELECT,
+  istanbulDayUtcRange,
+} from "@/lib/admin/admin-orders-list";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-/** Europe/Istanbul takvim günü (hosting UTC iken “bugün” sapmasını önler) */
-function istanbulDayUtcRange(): { start: Date; end: Date } {
-  const ymd = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
-  return {
-    start: new Date(`${ymd}T00:00:00+03:00`),
-    end: new Date(`${ymd}T23:59:59.999+03:00`),
-  };
-}
 
 const FILTER_IDS = new Set([
   "all",
@@ -54,25 +51,27 @@ export default async function AdminOrdersListPage({
   if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
 
   const admin = createAdminClient();
-  let req = admin
-    .from("orders")
-    .select(
-      "id,order_number,total,customer_name,created_at,order_status,payment_status,shipping_status,shipping_provider,shipping_tracking_number",
-    )
-    .order("created_at", { ascending: false })
-    .limit(200);
+  let req = admin.from("orders").select(ADMIN_ORDERS_LIST_SELECT).order("created_at", { ascending: false });
 
   if (activeFilter === "today") {
     const { start, end } = istanbulDayUtcRange();
-    req = req.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+    req = req
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString())
+      .limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
   } else if (activeFilter === "ship_ready") {
-    req = req.eq("payment_status", "paid").in("order_status", ["pending", "confirmed", "processing"]);
+    req = req
+      .eq("payment_status", "paid")
+      .in("order_status", ["pending", "confirmed", "processing"])
+      .limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
   } else if (activeFilter === "payment_pending") {
-    req = req.eq("payment_status", "pending");
+    req = req.eq("payment_status", "pending").limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
   } else if (activeFilter === "processing") {
-    req = req.eq("order_status", "processing");
+    req = req.eq("order_status", "processing").limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
   } else if (activeFilter === "done") {
-    req = req.in("order_status", ["shipped", "hand_delivered"]);
+    req = req.in("order_status", ["shipped", "hand_delivered"]).limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
+  } else {
+    req = req.limit(ADMIN_ORDERS_LIST_LIMIT_ALL);
   }
 
   const { data: rows } = await req;
