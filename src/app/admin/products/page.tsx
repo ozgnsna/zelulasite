@@ -347,41 +347,23 @@ export default async function AdminProductsPage({
                 : "Ürün silme sırasında hata oluştu. İlişkili kayıtlar olabilir."}
           </p>
         ) : null}
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-stone-200/60 pb-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/60 pb-3">
           <div className="min-w-0">
             <h1 className="text-[15px] font-semibold tracking-tight text-stone-900">Ürünler</h1>
             <p className="mt-0.5 text-[11px] text-stone-500">Stok, fiyat, Trendyol — filtre ve toplu işlemler.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex shrink-0 items-center">
             <Link
               href="/admin/products/new"
-              className="rounded-lg bg-stone-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
+              className="rounded-lg bg-stone-900 px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
             >
               Yeni ürün
-            </Link>
-            <Link
-              href="/admin/trendyol"
-              className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-stone-800 hover:bg-stone-50"
-            >
-              Trendyol
-            </Link>
-            <Link
-              href="/admin/orders?queue=ship"
-              className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-stone-800 hover:bg-stone-50"
-            >
-              Siparişler
-            </Link>
-            <Link
-              href="/admin"
-              className="rounded-lg border border-stone-200/90 bg-stone-50 px-2.5 py-1.5 text-[11px] font-medium text-stone-600 hover:bg-stone-100"
-            >
-              Panel
             </Link>
           </div>
         </div>
 
-        <section className="mb-3 rounded-lg border border-stone-200/60 bg-white p-2.5 shadow-sm">
-          <div className="grid grid-cols-3 gap-2">
+        <section className="mb-3 rounded-lg border border-stone-200/60 bg-white p-2 shadow-sm">
+          <div className="grid grid-cols-3 gap-1.5">
             <div className="rounded-md border border-stone-100 bg-stone-50/70 px-2 py-1.5">
               <p className="text-[9px] font-medium text-stone-500">Toplam ürün</p>
               <p className="text-sm font-semibold tabular-nums text-stone-900">{allRows.length}</p>
@@ -395,7 +377,7 @@ export default async function AdminProductsPage({
               <p className="text-sm font-semibold tabular-nums text-amber-950">{missingTrendyolCount}</p>
             </div>
           </div>
-          <p className="mt-2 text-[10px] text-stone-500">
+          <p className="mt-1.5 text-[10px] leading-snug text-stone-500">
             Kritik ürün: <span className="font-semibold text-stone-700">{criticalListCount}</span>
             <span className="mx-1.5 text-stone-300">·</span>
             Uyarı (stok / inceleme / TY): <span className="font-semibold text-stone-700">{totalWarningCount}</span>
@@ -408,9 +390,9 @@ export default async function AdminProductsPage({
               Trendyol paneli
             </Link>
           </p>
-          <form className="mt-2 space-y-2" method="get">
-            <div className="flex flex-wrap items-end gap-1.5">
-              <div className="min-w-[min(100%,14rem)] flex-1">
+          <form className="mt-1.5 space-y-1.5" method="get">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div className="min-w-[min(100%,16rem)] flex-[1.35]">
                 <label className="sr-only" htmlFor="admin-products-q">
                   Ara
                 </label>
@@ -418,14 +400,14 @@ export default async function AdminProductsPage({
                   id="admin-products-q"
                   name="q"
                   defaultValue={sp.q ?? ""}
-                  placeholder="Ad veya SKU…"
-                  className="h-8 w-full rounded-md border border-stone-200/90 bg-stone-50/50 px-2.5 text-xs text-stone-900 placeholder:text-stone-400"
+                  placeholder="Ad veya SKU ara…"
+                  className="h-9 w-full rounded-lg border border-stone-300/90 bg-white px-3 text-[13px] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] placeholder:text-stone-400 focus:border-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-300/60"
                 />
               </div>
               <select
                 name="status"
                 defaultValue={statusFilter}
-                className="h-8 min-w-[7.5rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                className="h-7 min-w-[6.75rem] rounded-md border border-stone-200/80 bg-stone-50/80 px-2 text-[11px] text-stone-600"
               >
                 <option value="all">Durum: Tümü</option>
                 <option value="active">Aktif</option>
@@ -434,7 +416,7 @@ export default async function AdminProductsPage({
               <select
                 name="trendyol"
                 defaultValue={trendyolFilter}
-                className="h-8 min-w-[9rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                className="h-7 min-w-[8.25rem] rounded-md border border-stone-200/80 bg-stone-50/80 px-2 text-[11px] text-stone-600"
               >
                 <option value="all">Trendyol: Tümü</option>
                 <option value="on">TY açık</option>
@@ -443,26 +425,26 @@ export default async function AdminProductsPage({
               </select>
               <button
                 type="submit"
-                className="h-8 rounded-md bg-stone-900 px-3 text-[11px] font-medium text-white hover:bg-stone-800"
+                className="h-7 shrink-0 rounded-md bg-stone-900 px-3 text-[11px] font-medium text-white hover:bg-stone-800"
               >
                 Ara
               </button>
               <Link
                 href="/admin/products"
-                className="inline-flex h-8 items-center rounded-md border border-stone-200 bg-white px-2.5 text-[11px] font-medium text-stone-600 hover:bg-stone-50"
+                className="inline-flex h-7 shrink-0 items-center rounded-md border border-transparent px-2 text-[11px] font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-700"
               >
                 Temizle
               </Link>
             </div>
-            <details className="rounded-md border border-stone-200/60 bg-stone-50/40 px-2 py-1.5">
-              <summary className="cursor-pointer list-none text-[10px] font-medium text-stone-600 [&::-webkit-details-marker]:hidden">
-                <span className="underline decoration-stone-300 underline-offset-2 hover:text-stone-900">Daha fazla filtre</span>
+            <details className="rounded-md border border-stone-100 bg-stone-50/50 px-2 py-1">
+              <summary className="cursor-pointer list-none text-[10px] font-normal text-stone-500 [&::-webkit-details-marker]:hidden">
+                <span className="hover:text-stone-700">Daha fazla filtre</span>
               </summary>
-              <div className="mt-2 flex flex-wrap items-end gap-1.5 border-t border-stone-200/50 pt-2">
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-stone-200/40 pt-1.5">
                 <select
                   name="stock"
                   defaultValue={stockFilter}
-                  className="h-8 min-w-[8.5rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                  className="h-7 min-w-[8rem] rounded-md border border-stone-200/80 bg-white/90 px-2 text-[11px] text-stone-600"
                 >
                   <option value="all">Stok: Tümü</option>
                   <option value="low">Stok: Az (1–3)</option>
@@ -471,7 +453,7 @@ export default async function AdminProductsPage({
                 <select
                   name="review"
                   defaultValue={reviewFilter}
-                  className="h-8 min-w-[9rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                  className="h-7 min-w-[8.5rem] rounded-md border border-stone-200/80 bg-white/90 px-2 text-[11px] text-stone-600"
                 >
                   <option value="all">İnceleme: Tümü</option>
                   <option value="only">İncelenecek</option>
@@ -479,7 +461,7 @@ export default async function AdminProductsPage({
                 <select
                   name="sales"
                   defaultValue={salesFilter}
-                  className="h-8 min-w-[9rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                  className="h-7 min-w-[8.5rem] rounded-md border border-stone-200/80 bg-white/90 px-2 text-[11px] text-stone-600"
                 >
                   <option value="all">Satış: Tümü</option>
                   <option value="no_sales">Satmıyor</option>
@@ -489,14 +471,14 @@ export default async function AdminProductsPage({
                 <select
                   name="sort"
                   defaultValue={sortFilter}
-                  className="h-8 min-w-[8rem] rounded-md border border-stone-200/90 bg-white px-2 text-xs text-stone-800"
+                  className="h-7 min-w-[7.5rem] rounded-md border border-stone-200/80 bg-white/90 px-2 text-[11px] text-stone-600"
                 >
                   <option value="newest">En yeni</option>
                   <option value="oldest">En eski</option>
                 </select>
                 <button
                   type="submit"
-                  className="h-8 rounded-md border border-stone-300 bg-white px-2.5 text-[11px] font-medium text-stone-700 hover:bg-stone-50"
+                  className="h-7 rounded-md border border-stone-200/90 bg-white px-2.5 text-[11px] font-medium text-stone-600 hover:bg-stone-50"
                 >
                   Uygula
                 </button>
@@ -510,8 +492,8 @@ export default async function AdminProductsPage({
           ) : null}
         </section>
 
-        <section className="rounded-lg border border-stone-200/60 bg-white p-2.5 shadow-sm">
-          <div className="mb-2 flex flex-wrap items-end justify-between gap-2 border-b border-stone-100/90 pb-2">
+        <section className="rounded-lg border border-stone-200/60 bg-white p-2 shadow-sm sm:p-2.5">
+          <div className="mb-2 flex flex-wrap items-end justify-between gap-2 border-b border-stone-100/90 pb-2.5">
             <div className="min-w-0">
               <h2 className="text-xs font-semibold text-stone-900">Liste</h2>
               <p className="text-[10px] tabular-nums text-stone-500">{rangeLabel}</p>
@@ -675,46 +657,51 @@ export default async function AdminProductsPage({
                 return (
                   <div
                     key={p.id}
-                    className={`product-row group border-b border-stone-100/80 px-2 py-1 transition-colors last:border-b-0 sm:px-2.5 sm:py-1.5 hover:bg-white/80 ${rowClass}`}
+                    className={`product-row group border-b border-stone-100/80 px-2.5 py-2.5 transition-colors last:border-b-0 sm:px-3 sm:py-3 hover:bg-white/90 ${rowClass}`}
                   >
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                      <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between sm:gap-3">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
                         <input
                           type="checkbox"
                           name="product_ids"
                           value={p.id}
-                          className="mt-1 size-3 shrink-0 rounded border-stone-300 text-stone-900 sm:mt-0.5"
+                          className="mt-2.5 size-3.5 shrink-0 rounded border-stone-300 text-stone-900"
                           aria-label={`${p.name} ürününü seç`}
                         />
                         <Link
                           href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                          className="flex min-w-0 flex-1 gap-2 rounded-md outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/30 sm:items-center"
+                          className="flex min-w-0 flex-1 gap-3 rounded-md outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/30"
                         >
-                          <div className="relative size-8 shrink-0 overflow-hidden rounded border border-stone-200/90 bg-stone-100">
+                          <div className="relative size-11 shrink-0 overflow-hidden rounded-md border border-stone-200/80 bg-stone-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.4)]">
                             {previewImageUrl ? (
-                              <Image src={previewImageUrl} alt="" fill sizes="32px" className="object-cover" />
+                              <Image src={previewImageUrl} alt="" fill sizes="44px" className="object-cover" />
                             ) : (
-                              <span className="flex h-full items-center justify-center text-[8px] text-stone-400">—</span>
+                              <span className="flex h-full items-center justify-center text-[9px] text-stone-400">—</span>
                             )}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-[12px] font-medium leading-tight text-stone-900">{p.name}</p>
-                            <p className="mt-0.5 font-mono text-[10px] text-stone-500">{(p.sku || "—").toUpperCase()}</p>
-                            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px]">
-                              <span className="font-semibold tabular-nums text-stone-900">{formatPrice(Number(p.price ?? 0))}</span>
-                              <span className={`tabular-nums ${stock === 0 ? "text-rose-700" : stockLow ? "text-amber-800" : "text-stone-600"}`}>
-                                Stok {stock}
+                          <div className="min-w-0 flex-1 pt-0.5">
+                            <p className="truncate text-[15px] font-semibold leading-snug tracking-tight text-stone-900">{p.name}</p>
+                            <p className="mt-1 font-mono text-[10px] font-normal uppercase tracking-wider text-stone-400">
+                              {(p.sku || "—").toUpperCase()}
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                              <span className="text-[15px] font-semibold tabular-nums tracking-tight text-stone-900">
+                                {formatPrice(Number(p.price ?? 0))}
                               </span>
-                              <span className="text-stone-400">·</span>
-                              <span className="text-stone-600" title={tyTitle}>
-                                TY: <span className="font-medium text-stone-800">{tyStatusShort}</span>
-                              </span>
-                            </div>
-                            <details className="mt-0.5 group/details">
-                              <summary className="cursor-pointer list-none text-[9px] font-medium text-stone-500 [&::-webkit-details-marker]:hidden">
-                                <span className="underline decoration-stone-300 underline-offset-2 group-open/details:text-stone-800">
-                                  Detay & uyarılar
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-stone-500">
+                                <span className={`tabular-nums ${stock === 0 ? "font-medium text-rose-700" : stockLow ? "font-medium text-amber-800" : "text-stone-500"}`}>
+                                  Stok {stock}
                                 </span>
+                                <span className="hidden h-3 w-px bg-stone-200 sm:inline" aria-hidden />
+                                <span className="tabular-nums text-stone-500" title={tyTitle}>
+                                  Trendyol{" "}
+                                  <span className="font-medium text-stone-700">{tyStatusShort}</span>
+                                </span>
+                              </div>
+                            </div>
+                            <details className="mt-2 group/details">
+                              <summary className="cursor-pointer list-none text-[10px] font-normal text-stone-400 [&::-webkit-details-marker]:hidden">
+                                <span className="hover:text-stone-600 group-open/details:text-stone-500">Detay ve uyarılar</span>
                               </summary>
                               <div className="mt-1 space-y-1 border-t border-stone-100/90 pt-1">
                                 <div className="flex flex-wrap items-center gap-1">
@@ -767,22 +754,22 @@ export default async function AdminProductsPage({
                           </div>
                         </Link>
                       </div>
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 pl-5 sm:pl-0">
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 self-center pl-6 sm:pl-0">
                         <button
                           type="submit"
                           form={`sync-ty-${p.id}`}
-                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-900/90 hover:bg-amber-50/90 hover:underline"
+                          className="rounded px-1 py-0.5 text-[9px] font-normal text-stone-400 hover:text-stone-600"
                         >
                           TY gönder
                         </button>
                         <Link
                           href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                          className="rounded border border-stone-200 bg-white px-2 py-0.5 text-[10px] font-medium text-stone-800 hover:bg-stone-50"
+                          className="rounded-md border border-stone-800 bg-stone-900 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-stone-800"
                         >
                           Düzenle
                         </Link>
                         <details className="relative">
-                          <summary className="list-none cursor-pointer rounded border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-stone-500 hover:bg-stone-50 [&::-webkit-details-marker]:hidden">
+                          <summary className="list-none cursor-pointer rounded-md border border-stone-200/90 bg-white px-1.5 py-1 text-[11px] font-medium text-stone-400 hover:bg-stone-50 hover:text-stone-600 [&::-webkit-details-marker]:hidden">
                             ⋯
                           </summary>
                           <div className="absolute right-0 z-20 mt-0.5 w-36 overflow-hidden rounded border border-stone-200 bg-white py-0.5 shadow-md ring-1 ring-stone-900/5">
