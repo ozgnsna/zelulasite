@@ -5,6 +5,7 @@ import type {
   PaymentInitPayload,
   PaymentInitResult,
 } from "@/lib/payments/types";
+import { QNB_3DPAY_REQUIRED_HIDDEN_KEYS } from "@/lib/payments/qnb-3dpay-guards";
 import { isPaymentFlowDebugEnabled, logPayment } from "@/lib/payments/logger";
 
 /**
@@ -201,8 +202,14 @@ export function getQnbPaymentConfig() {
 }
 
 /**
- * PayFor3D (Laravel örneği) ile uyumlu istek özeti:
- * MbrId + OrderId + PurchAmount + OkUrl + FailUrl + TxnType + InstallmentCount + Rnd + MerchantPass → SHA1 → Base64
+ * QNB / NestPay tarzı 3DPay istek özeti (Laravel örneği ile uyumlu olacak şekilde projede kullanılıyor).
+ * Banka dökümanı farklı sıra veya alan istiyorsa (ör. Currency dahil hash) mutlaka QNB PayFor / vPOS teknik dökümanı ile doğrulayın.
+ *
+ * UTF-8: `createHash("sha1").update(hashtr, "utf8")` — ayırıcı yok, düz birleştirme.
+ * Çıktı: SHA1 digest → Base64 (Node `digest("base64")` = binary digest’in Base64’ü).
+ *
+ * Sıra (MerchantPass hariç tümü POST’taki imzalanan işlem alanlarıyla aynı olmalı):
+ * MbrId + OrderId + PurchAmount + OkUrl + FailUrl + TxnType + InstallmentCount + Rnd + MerchantPass
  */
 export function buildQnbInitHash(params: {
   mbrId: string;
@@ -230,6 +237,44 @@ export function buildQnbInitHash(params: {
 
 export function makeQnbRnd(): string {
   return `${Date.now()}${randomBytes(8).toString("hex")}`;
+}
+
+export type Qnb3DPayOutgoingDebugSummary = {
+  outgoingFieldCount: number;
+  outgoingFieldNamesSorted: string[];
+  hashGenerated: boolean;
+  orderIdPresent: boolean;
+  okUrlPresent: boolean;
+  failUrlPresent: boolean;
+  secureType: string | null;
+  txnType: string | null;
+  currency: string | null;
+  installmentCount: string | null;
+  requiredDocKeysPresent: boolean;
+  missingDocKeys: string[];
+};
+
+/** QNB 3DPay gizli form alanları — `QNB_3DPAY_REQUIRED_HIDDEN_KEYS` ile aynı kümeyi kullanın (qnb-3dpay-guards). */
+export function getQnb3DPayOutgoingDebugSummary(fields: Record<string, string>): Qnb3DPayOutgoingDebugSummary {
+  const names = Object.keys(fields);
+  const missing: string[] = [];
+  for (const k of QNB_3DPAY_REQUIRED_HIDDEN_KEYS) {
+    if (!String(fields[k] ?? "").trim()) missing.push(k);
+  }
+  return {
+    outgoingFieldCount: names.length,
+    outgoingFieldNamesSorted: [...names].sort(),
+    hashGenerated: Boolean(String(fields.Hash ?? "").trim()),
+    orderIdPresent: Boolean(String(fields.OrderId ?? "").trim()),
+    okUrlPresent: Boolean(String(fields.OkUrl ?? "").trim()),
+    failUrlPresent: Boolean(String(fields.FailUrl ?? "").trim()),
+    secureType: String(fields.SecureType ?? "").trim() || null,
+    txnType: String(fields.TxnType ?? "").trim() || null,
+    currency: String(fields.Currency ?? "").trim() || null,
+    installmentCount: String(fields.InstallmentCount ?? "").trim() || null,
+    requiredDocKeysPresent: missing.length === 0,
+    missingDocKeys: missing,
+  };
 }
 
 export type QnbCheckoutFormBuilt =

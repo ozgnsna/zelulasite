@@ -13,6 +13,7 @@ export const QNB_3DPAY_REQUIRED_HIDDEN_KEYS = [
   "FailUrl",
   "TxnType",
   "InstallmentCount",
+  "Currency",
   "SecureType",
   "Rnd",
   "Hash",

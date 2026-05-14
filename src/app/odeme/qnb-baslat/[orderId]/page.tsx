@@ -8,6 +8,7 @@ import {
   buildQnbCheckoutFormFields,
   getMissingQnbCredentialEnvNames,
   getMissingQnbEnvNamesForDiagnostics,
+  getQnb3DPayOutgoingDebugSummary,
   getQnbCredentials,
   getQnbFlowDebugMeta,
   getQnbGatewayRoutingDebug,
@@ -53,6 +54,68 @@ function PrepError({
         </p>
       ) : null}
     </main>
+  );
+}
+
+/** 3DPay POST şekli: sır / hash değeri / kart yok. Yalnızca `QNB_PAY_FLOW_DEBUG=1` (veya dev). */
+function Qnb3DPayPayloadDebugPanel({
+  flowDebug,
+  summary,
+}: {
+  flowDebug: boolean;
+  summary: ReturnType<typeof getQnb3DPayOutgoingDebugSummary> | null;
+}) {
+  if (!flowDebug || !summary) return null;
+  const namesLine = summary.outgoingFieldNamesSorted.join(", ");
+  return (
+    <div
+      className="mx-auto max-w-md rounded-lg border border-sky-200/70 bg-sky-50/50 px-3 py-2.5 text-[11px] text-stone-800"
+      role="status"
+    >
+      <p className="font-semibold text-stone-900">3DPay POST özeti (teşhis)</p>
+      <ul className="mt-1.5 space-y-1 font-mono text-[10px] leading-snug text-stone-700">
+        <li>
+          <span className="font-medium text-stone-800">Hash üretildi:</span> {summary.hashGenerated ? "evet" : "hayır"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">Giden alan sayısı:</span> {summary.outgoingFieldCount}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">SecureType:</span> {summary.secureType ?? "—"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">TxnType:</span> {summary.txnType ?? "—"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">Currency:</span> {summary.currency ?? "—"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">InstallmentCount:</span> {summary.installmentCount ?? "—"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">OrderId alanı var:</span> {summary.orderIdPresent ? "evet" : "hayır"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">OkUrl alanı var:</span> {summary.okUrlPresent ? "evet" : "hayır"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">FailUrl alanı var:</span> {summary.failUrlPresent ? "evet" : "hayır"}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">Döküman zorunlu anahtarlar tam:</span>{" "}
+          {summary.requiredDocKeysPresent ? "evet" : "hayır"}
+          {!summary.requiredDocKeysPresent ? ` (eksik: ${summary.missingDocKeys.join(", ")})` : null}
+        </li>
+      </ul>
+      <p className="mt-2 break-all text-[10px] text-stone-600">
+        <span className="font-medium text-stone-800">Giden alan adları:</span> {namesLine}
+      </p>
+      <p className="mt-2 text-[10px] leading-snug text-stone-600">
+        Gateway doğru olsa bile <code className="rounded bg-white/80 px-0.5">/login</code> genelde hash/alan uyuşmazlığı veya VPOS
+        API kullanıcı yetkisidir. QNB panelinde kullanıcının <strong>3DPay / satış</strong> yetkisini ve Üye İşyeri 3D şifresini
+        doğrulayın.
+      </p>
+    </div>
   );
 }
 
@@ -300,6 +363,25 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
         );
       }
 
+      const threeDPayPayloadDebug = flowDebug ? getQnb3DPayOutgoingDebugSummary(built.hiddenFields) : null;
+      if (flowDebug && threeDPayPayloadDebug) {
+        logPayment("info", "qnb-3dpay-outgoing POST shape (field names only; no secrets, no card data).", {
+          incidentId,
+          outgoingPostFieldNames: threeDPayPayloadDebug.outgoingFieldNamesSorted,
+          outgoingFieldCount: threeDPayPayloadDebug.outgoingFieldCount,
+          SecureType: threeDPayPayloadDebug.secureType,
+          TxnType: threeDPayPayloadDebug.txnType,
+          Currency: threeDPayPayloadDebug.currency,
+          InstallmentCount: threeDPayPayloadDebug.installmentCount,
+          hashPresent: threeDPayPayloadDebug.hashGenerated,
+          orderIdFieldPresent: threeDPayPayloadDebug.orderIdPresent,
+          okUrlFieldPresent: threeDPayPayloadDebug.okUrlPresent,
+          failUrlFieldPresent: threeDPayPayloadDebug.failUrlPresent,
+          requiredDocKeysPresent: threeDPayPayloadDebug.requiredDocKeysPresent,
+          missingDocKeys: threeDPayPayloadDebug.missingDocKeys,
+        });
+      }
+
       const ser = serializeQnbHiddenFieldsJson(built.hiddenFields);
       if (!ser.ok) {
         logPayment("error", "qnb-baslat: imzalı alanlar serileştirilemedi.", {
@@ -321,6 +403,7 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
         <main className="min-h-[50vh] bg-[#f9f6f2]">
           <div className="space-y-2 px-4 pt-4">
             <QnbGatewayRoutingDebugPanel flowDebug={flowDebug} meta={gatewayRoutingDebug} />
+            <Qnb3DPayPayloadDebugPanel flowDebug={flowDebug} summary={threeDPayPayloadDebug} />
             <QnbPayFlowEnvDiagnostics
               flowDebug={flowDebug}
               missing={qnbPayFlowDiagMissing}
