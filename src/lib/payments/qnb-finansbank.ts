@@ -202,15 +202,101 @@ export function getQnbPaymentConfig() {
 }
 
 /**
- * QNB / NestPay tarzı 3DPay istek özeti (Laravel örneği ile uyumlu olacak şekilde projede kullanılıyor).
- * Banka dökümanı farklı sıra veya alan istiyorsa (ör. Currency dahil hash) mutlaka QNB PayFor / vPOS teknik dökümanı ile doğrulayın.
+ * QNB vPOS Help “Generate Hash” aracı ve 3DPay kod örnekleri (vpos.qnb.com.tr/Help) ile aynı sıra.
+ * Currency / SecureType hash’e dahil değildir.
  *
- * UTF-8: `createHash("sha1").update(hashtr, "utf8")` — ayırıcı yok, düz birleştirme.
- * Çıktı: SHA1 digest → Base64 (Node `digest("base64")` = binary digest’in Base64’ü).
- *
- * Sıra (MerchantPass hariç tümü POST’taki imzalanan işlem alanlarıyla aynı olmalı):
- * MbrId + OrderId + PurchAmount + OkUrl + FailUrl + TxnType + InstallmentCount + Rnd + MerchantPass
+ * SHA-1 → Base64 (`digest("base64")`). Node tarafında UTF-8; Help’teki Java örneği charset belirtmez —
+ * OkUrl/FailUrl yalnızca ASCII ise pratikte fark oluşmaz.
  */
+export const QNB_OFFICIAL_INIT_HASH_FIELD_ORDER =
+  "MbrId+OrderId+PurchAmount+OkUrl+FailUrl+TxnType+InstallmentCount+Rnd+MerchantPass" as const;
+
+export type QnbPurchAmountFormatAudit = {
+  formatted: string;
+  decimalSeparator: "." | ",";
+  fractionDigits: number;
+  hadCommaInput: boolean;
+};
+
+/** QNB Help: tutar 99.50 veya 99,50; en fazla 2 ondalık. */
+export function formatQnbPurchAmountForGateway(raw: string): QnbPurchAmountFormatAudit {
+  const hadCommaInput = raw.includes(",");
+  const normalized = raw.replace(",", ".").replace(/[^\d.]/g, "");
+  const n = Number(normalized);
+  const formatted = Number.isFinite(n) && n > 0 ? n.toFixed(2) : normalized;
+  const fractionDigits = formatted.includes(".") ? (formatted.split(".")[1]?.length ?? 0) : 0;
+  return {
+    formatted,
+    decimalSeparator: ".",
+    fractionDigits,
+    hadCommaInput,
+  };
+}
+
+export type QnbInitHashAudit = {
+  hashFieldOrder: typeof QNB_OFFICIAL_INIT_HASH_FIELD_ORDER;
+  hashConcatLengthExcludingMerchantPass: number;
+  merchantPassLength: number;
+  hashConcatLengthIncludingMerchantPass: number;
+  purchAmountFormatted: string;
+  purchAmountDecimalSeparator: "." | ",";
+  purchAmountFractionDigits: number;
+  txnType: string;
+  installmentCount: string;
+  currencyInHash: false;
+  encoding: "utf8";
+  orderIdLength: number;
+  orderIdHasHyphens: boolean;
+  okUrlLength: number;
+  failUrlLength: number;
+  rndLength: number;
+  mbrIdLength: number;
+};
+
+/** Hash kaynağı uzunlukları — MerchantPass yalnızca uzunluk; değer loglanmaz. */
+export function getQnbInitHashAudit(params: {
+  mbrId: string;
+  orderId: string;
+  purchAmount: string;
+  okUrl: string;
+  failUrl: string;
+  txnType: string;
+  installmentCount: string;
+  rnd: string;
+  merchantPass: string;
+}): QnbInitHashAudit {
+  const publicPart =
+    params.mbrId +
+    params.orderId +
+    params.purchAmount +
+    params.okUrl +
+    params.failUrl +
+    params.txnType +
+    params.installmentCount +
+    params.rnd;
+  const passLen = params.merchantPass.length;
+  const amountAudit = formatQnbPurchAmountForGateway(params.purchAmount);
+  return {
+    hashFieldOrder: QNB_OFFICIAL_INIT_HASH_FIELD_ORDER,
+    hashConcatLengthExcludingMerchantPass: publicPart.length,
+    merchantPassLength: passLen,
+    hashConcatLengthIncludingMerchantPass: publicPart.length + passLen,
+    purchAmountFormatted: amountAudit.formatted,
+    purchAmountDecimalSeparator: amountAudit.decimalSeparator,
+    purchAmountFractionDigits: amountAudit.fractionDigits,
+    txnType: params.txnType,
+    installmentCount: params.installmentCount,
+    currencyInHash: false,
+    encoding: "utf8",
+    orderIdLength: params.orderId.length,
+    orderIdHasHyphens: params.orderId.includes("-"),
+    okUrlLength: params.okUrl.length,
+    failUrlLength: params.failUrl.length,
+    rndLength: params.rnd.length,
+    mbrIdLength: params.mbrId.length,
+  };
+}
+
 export function buildQnbInitHash(params: {
   mbrId: string;
   orderId: string;
@@ -239,6 +325,29 @@ export function makeQnbRnd(): string {
   return `${Date.now()}${randomBytes(8).toString("hex")}`;
 }
 
+/** QNB Help — 3DPay Gateway/Default.aspx örnek POST alanları (Pan/Expiry/Cvv2 dahil). */
+export const QNB_HELP_3DPAY_DOC_FIELD_NAMES = [
+  "MbrId",
+  "MerchantID",
+  "MerchantPass",
+  "UserCode",
+  "UserPass",
+  "SecureType",
+  "TxnType",
+  "InstallmentCount",
+  "Currency",
+  "OkUrl",
+  "FailUrl",
+  "OrderId",
+  "PurchAmount",
+  "Lang",
+  "Rnd",
+  "Hash",
+  "Pan",
+  "Expiry",
+  "Cvv2",
+] as const;
+
 export type Qnb3DPayOutgoingDebugSummary = {
   outgoingFieldCount: number;
   outgoingFieldNamesSorted: string[];
@@ -252,6 +361,9 @@ export type Qnb3DPayOutgoingDebugSummary = {
   installmentCount: string | null;
   requiredDocKeysPresent: boolean;
   missingDocKeys: string[];
+  merchantPassFieldInPost: boolean;
+  extraFieldNamesBeyondHelpDoc: string[];
+  helpDocFieldNamesMissingFromPost: string[];
 };
 
 /** QNB 3DPay gizli form alanları — `QNB_3DPAY_REQUIRED_HIDDEN_KEYS` ile aynı kümeyi kullanın (qnb-3dpay-guards). */
@@ -261,6 +373,11 @@ export function getQnb3DPayOutgoingDebugSummary(fields: Record<string, string>):
   for (const k of QNB_3DPAY_REQUIRED_HIDDEN_KEYS) {
     if (!String(fields[k] ?? "").trim()) missing.push(k);
   }
+  const helpSet = new Set<string>(QNB_HELP_3DPAY_DOC_FIELD_NAMES);
+  const extraFieldNamesBeyondHelpDoc = names.filter((n) => !helpSet.has(n)).sort();
+  const helpDocFieldNamesMissingFromPost = QNB_HELP_3DPAY_DOC_FIELD_NAMES.filter(
+    (n) => !names.includes(n) || !String(fields[n] ?? "").trim(),
+  );
   return {
     outgoingFieldCount: names.length,
     outgoingFieldNamesSorted: [...names].sort(),
@@ -274,6 +391,38 @@ export function getQnb3DPayOutgoingDebugSummary(fields: Record<string, string>):
     installmentCount: String(fields.InstallmentCount ?? "").trim() || null,
     requiredDocKeysPresent: missing.length === 0,
     missingDocKeys: missing,
+    merchantPassFieldInPost: Boolean(String(fields.MerchantPass ?? "").trim()),
+    extraFieldNamesBeyondHelpDoc,
+    helpDocFieldNamesMissingFromPost: [...helpDocFieldNamesMissingFromPost],
+  };
+}
+
+export type Qnb3DPayPayloadAudit = Qnb3DPayOutgoingDebugSummary & {
+  hashAudit: QnbInitHashAudit;
+  secureTypeSelected: string;
+};
+
+/** Sunucu teşhisi: alan adları + tutar/hash meta; sırlar ve kart yok. */
+export function getQnb3DPayPayloadAudit(
+  postFields: Record<string, string>,
+  cred: { mbrId: string; merchantPass: string },
+): Qnb3DPayPayloadAudit {
+  const summary = getQnb3DPayOutgoingDebugSummary(postFields);
+  const hashAudit = getQnbInitHashAudit({
+    mbrId: cred.mbrId,
+    orderId: String(postFields.OrderId ?? ""),
+    purchAmount: String(postFields.PurchAmount ?? ""),
+    okUrl: String(postFields.OkUrl ?? ""),
+    failUrl: String(postFields.FailUrl ?? ""),
+    txnType: String(postFields.TxnType ?? ""),
+    installmentCount: String(postFields.InstallmentCount ?? ""),
+    rnd: String(postFields.Rnd ?? ""),
+    merchantPass: cred.merchantPass,
+  });
+  return {
+    ...summary,
+    hashAudit,
+    secureTypeSelected: String(postFields.SecureType ?? "").trim() || "(empty)",
   };
 }
 
@@ -300,7 +449,7 @@ export function buildQnbCheckoutFormFields(input: {
   const rnd = makeQnbRnd();
   const txnType = "Auth";
   const installmentCount = "0";
-  const purchAmount = input.purchAmount.replace(",", ".").replace(/[^\d.]/g, "");
+  const purchAmount = formatQnbPurchAmountForGateway(input.purchAmount).formatted;
   const hash = buildQnbInitHash({
     mbrId: cred.mbrId,
     orderId: input.orderId,

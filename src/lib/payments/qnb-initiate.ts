@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildQnbCheckoutFormFields,
+  getQnb3DPayPayloadAudit,
   getQnbCredentials,
   getQnbGatewayUrl,
   getQnbSecureType,
@@ -49,7 +50,7 @@ function parseCardFromFormData(fd: FormData): QnbInitiateCardInput | { error: st
     return { error: "Geçersiz kart numarası." };
   }
   if (expiry.length !== 4) {
-    return { error: "Son kullanma tarihi AAYY formatında olmalıdır." };
+    return { error: "Son kullanma tarihi MMYY formatında olmalıdır (QNB: ay + yıl)." };
   }
   if (cvv2.length < 3 || cvv2.length > 4) {
     return { error: "Geçersiz güvenlik kodu." };
@@ -88,7 +89,8 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
     };
   }
 
-  if (!getQnbCredentials().ok) {
+  const cred = getQnbCredentials();
+  if (!cred.ok) {
     return {
       ok: false,
       status: 500,
@@ -184,6 +186,39 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
   const body = new URLSearchParams();
   for (const [k, v] of Object.entries(postFields)) {
     body.append(k, v);
+  }
+
+  if (isPaymentFlowDebugEnabled()) {
+    const audit = getQnb3DPayPayloadAudit(postFields, {
+      mbrId: cred.mbrId,
+      merchantPass: cred.merchantPass,
+    });
+    logPayment("info", "qnb-initiate: 3DPay POST özeti (QNB Help uyum teşhisi, sırlar yok).", {
+      orderId,
+      gatewayUrl: urlVal.url,
+      initiateStatus: "posting",
+      outgoingFieldNamesOnly: safeFieldNamesForLog(postFields),
+      outgoingFieldCount: audit.outgoingFieldCount,
+      secureTypeSelected: audit.secureTypeSelected,
+      txnType: audit.txnType,
+      installmentCount: audit.installmentCount,
+      currency: audit.currency,
+      purchAmountFormatted: audit.hashAudit.purchAmountFormatted,
+      purchAmountFractionDigits: audit.hashAudit.purchAmountFractionDigits,
+      purchAmountDecimalSeparator: audit.hashAudit.purchAmountDecimalSeparator,
+      hashFieldOrder: audit.hashAudit.hashFieldOrder,
+      hashConcatLengthExcludingMerchantPass: audit.hashAudit.hashConcatLengthExcludingMerchantPass,
+      hashConcatLengthIncludingMerchantPass: audit.hashAudit.hashConcatLengthIncludingMerchantPass,
+      merchantPassLength: audit.hashAudit.merchantPassLength,
+      currencyInHash: audit.hashAudit.currencyInHash,
+      hashEncoding: audit.hashAudit.encoding,
+      orderIdLength: audit.hashAudit.orderIdLength,
+      orderIdHasHyphens: audit.hashAudit.orderIdHasHyphens,
+      merchantPassFieldInPost: audit.merchantPassFieldInPost,
+      helpDocFieldNamesMissingFromPost: audit.helpDocFieldNamesMissingFromPost,
+      extraFieldNamesBeyondHelpDoc: audit.extraFieldNamesBeyondHelpDoc,
+      hashGenerated: audit.hashGenerated,
+    });
   }
 
   let qnbResponse: Response;

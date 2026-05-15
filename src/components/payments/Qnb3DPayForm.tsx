@@ -61,7 +61,7 @@ export function Qnb3DPayForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="qnb-exp" className="block text-xs font-medium uppercase tracking-wide text-stone-500">
-              Son kullanma (AAYY)
+              Son kullanma (MMYY)
             </label>
             <input
               id="qnb-exp"
@@ -72,7 +72,7 @@ export function Qnb3DPayForm({
               required
               pattern="[0-9]{4}"
               className={fieldClass}
-              placeholder="Örn. 1228"
+              placeholder="Örn. 0228"
             />
           </div>
           <div>
