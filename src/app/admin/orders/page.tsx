@@ -1,14 +1,6 @@
 import { redirect } from "next/navigation";
-import {
-  AdminOrdersListShell,
-  type AdminOrderListRow,
-} from "@/components/admin/orders/AdminOrdersListShell";
-import {
-  ADMIN_ORDERS_LIST_LIMIT_ALL,
-  ADMIN_ORDERS_LIST_LIMIT_NARROW,
-  ADMIN_ORDERS_LIST_SELECT,
-  istanbulDayUtcRange,
-} from "@/lib/admin/admin-orders-list";
+import { AdminOrdersListShell } from "@/components/admin/orders/AdminOrdersListShell";
+import { fetchAdminOrdersList } from "@/lib/admin/fetch-admin-orders-list";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -51,31 +43,7 @@ export default async function AdminOrdersListPage({
   if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
 
   const admin = createAdminClient();
-  let req = admin.from("orders").select(ADMIN_ORDERS_LIST_SELECT).order("created_at", { ascending: false });
-
-  if (activeFilter === "today") {
-    const { start, end } = istanbulDayUtcRange();
-    req = req
-      .gte("created_at", start.toISOString())
-      .lte("created_at", end.toISOString())
-      .limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
-  } else if (activeFilter === "ship_ready") {
-    req = req
-      .eq("payment_status", "paid")
-      .in("order_status", ["pending", "confirmed", "processing"])
-      .limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
-  } else if (activeFilter === "payment_pending") {
-    req = req.eq("payment_status", "pending").limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
-  } else if (activeFilter === "processing") {
-    req = req.eq("order_status", "processing").limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
-  } else if (activeFilter === "done") {
-    req = req.in("order_status", ["shipped", "hand_delivered"]).limit(ADMIN_ORDERS_LIST_LIMIT_NARROW);
-  } else {
-    req = req.limit(ADMIN_ORDERS_LIST_LIMIT_ALL);
-  }
-
-  const { data: rows } = await req;
-  const orders = (rows ?? []) as AdminOrderListRow[];
+  const { orders, loadError } = await fetchAdminOrdersList(admin, activeFilter);
 
   return (
     <main className={`${ADMIN_OPERATIONS_MAIN} pb-3 pt-2 sm:pb-4 sm:pt-2.5`}>
@@ -90,6 +58,14 @@ export default async function AdminOrdersListPage({
           </p>
         </div>
       </header>
+
+      {loadError ? (
+        <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          Sipariş listesi yüklenemedi: {loadError}. Supabase migration’larını (özellikle{" "}
+          <code className="text-[10px]">orders</code> kargo kolonları) kontrol edin veya Vercel{" "}
+          <code className="text-[10px]">SUPABASE_SERVICE_ROLE_KEY</code> değerini doğrulayın.
+        </p>
+      ) : null}
 
       <AdminOrdersListShell orders={orders} activeFilter={activeFilter} />
     </main>
