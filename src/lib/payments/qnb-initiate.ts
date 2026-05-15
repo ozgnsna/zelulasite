@@ -1,10 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildQnbCheckoutFormFields,
+  buildQnb3DPayPostBody,
   getQnb3DPayPayloadAudit,
   getQnbCredentials,
   getQnbGatewayUrl,
   getQnbSecureType,
+  isQnbVposMerchantLoginResponse,
 } from "@/lib/payments/qnb-finansbank";
 import { isPaymentFlowDebugEnabled, logPayment } from "@/lib/payments/logger";
 import { validateQnb3DPayHiddenFields, validateQnbGatewayPostUrl } from "@/lib/payments/qnb-3dpay-guards";
@@ -183,10 +185,7 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
     };
   }
 
-  const body = new URLSearchParams();
-  for (const [k, v] of Object.entries(postFields)) {
-    body.append(k, v);
-  }
+  const bodyString = buildQnb3DPayPostBody(postFields);
 
   if (isPaymentFlowDebugEnabled()) {
     const audit = getQnb3DPayPayloadAudit(postFields, {
@@ -229,7 +228,7 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "text/html,application/xhtml+xml,*/*",
       },
-      body: body.toString(),
+      body: bodyString,
       redirect: "follow",
       cache: "no-store",
     });
@@ -251,18 +250,38 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
 
   const html = await qnbResponse.text();
   const contentType = qnbResponse.headers.get("content-type") ?? "text/html; charset=utf-8";
+  const responseUrl = qnbResponse.url;
+  const looksLikeVposLogin = isQnbVposMerchantLoginResponse(html, responseUrl);
 
   if (isPaymentFlowDebugEnabled()) {
     logPayment("info", "qnb-initiate: banka yanıtı alındı (kart/sır loglanmaz).", {
       orderId,
       gatewayUrl: urlVal.url,
-      initiateStatus: "completed",
+      initiateStatus: looksLikeVposLogin ? "vpos_login_html" : "completed",
       qnbResponseStatus: qnbResponse.status,
+      responseUrl,
+      responseLooksLikeVposLogin: looksLikeVposLogin,
       outgoingFieldNamesOnly: safeFieldNamesForLog(postFields),
       outgoingFieldCount: Object.keys(postFields).length,
       responseContentType: contentType.split(";")[0]?.trim() ?? null,
       responseBodyLength: html.length,
     });
+  }
+
+  if (looksLikeVposLogin) {
+    logPayment("error", "qnb-initiate: banka VPOS giriş sayfası döndü (3DS değil).", {
+      orderId,
+      gatewayUrl: urlVal.url,
+      responseUrl,
+      merchantPassInPost: Boolean(postFields.MerchantPass),
+    });
+    return {
+      ok: false,
+      status: 502,
+      error:
+        "Banka ödeme ekranı yerine üye işyeri giriş sayfası döndü. QNB_USER_CODE, QNB_USER_PASS ve QNB_MERCHANT_PASS (3D şifre) değerlerini ve canlı/test ortam eşleşmesini kontrol edin.",
+      errorCode: "GATEWAY_VPOS_LOGIN_PAGE",
+    };
   }
 
   if (!qnbResponse.ok && qnbResponse.status >= 400 && html.length < 64) {

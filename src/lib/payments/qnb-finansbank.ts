@@ -348,6 +348,70 @@ export const QNB_HELP_3DPAY_DOC_FIELD_NAMES = [
   "Cvv2",
 ] as const;
 
+/** QNB Help 3DPay ASP örneğindeki POST alan sırası (Gateway/Default.aspx). */
+export const QNB_3DPAY_POST_FIELD_ORDER: readonly string[] = [
+  "MbrId",
+  "MerchantID",
+  "MerchantPass",
+  "UserCode",
+  "UserPass",
+  "SecureType",
+  "TxnType",
+  "InstallmentCount",
+  "Currency",
+  "OkUrl",
+  "FailUrl",
+  "OrderId",
+  "PurchAmount",
+  "Lang",
+  "Rnd",
+  "Hash",
+  "Pan",
+  "Expiry",
+  "Cvv2",
+];
+
+/**
+ * QNB Help 3DPay örneği POST’ta MerchantPass içerir (sunucu→banka; tarayıcıya verilmez).
+ * `QNB_OMIT_MERCHANT_PASS_IN_POST=true` ile kapatılabilir (yalnızca banka “göndermeyin” derse).
+ */
+export function shouldPostMerchantPassIn3DPay(): boolean {
+  const raw = process.env.QNB_OMIT_MERCHANT_PASS_IN_POST?.trim().toLowerCase();
+  return raw !== "true" && raw !== "1" && raw !== "yes";
+}
+
+export function buildQnb3DPayPostBody(fields: Record<string, string>): string {
+  const params = new URLSearchParams();
+  const used = new Set<string>();
+  for (const key of QNB_3DPAY_POST_FIELD_ORDER) {
+    const v = fields[key];
+    if (v == null || String(v).trim() === "") continue;
+    params.append(key, String(v));
+    used.add(key);
+  }
+  for (const [k, v] of Object.entries(fields)) {
+    if (used.has(k) || v == null || String(v).trim() === "") continue;
+    params.append(k, String(v));
+  }
+  return params.toString();
+}
+
+/** Banka VPOS yönetim girişi (3DS değil) — müşteriye bu HTML gösterilmemeli. */
+export function isQnbVposMerchantLoginResponse(html: string, responseUrl: string): boolean {
+  const url = responseUrl.toLowerCase();
+  if (url.includes("/login")) return true;
+  const h = html.toLowerCase();
+  if (h.includes("sifremi unuttum") || h.includes("şifremi unuttum")) return true;
+  const hasUserField =
+    h.includes("kullanici adi") ||
+    h.includes("kullanıcı adı") ||
+    h.includes("kullan&#305;c&#305; ad&#305;");
+  const hasPassword = h.includes("type=\"password\"") || h.includes("type='password'");
+  const hasCaptcha = h.includes("doğrulama") || h.includes("dogrulama");
+  if (hasUserField && hasPassword && (hasCaptcha || h.includes("sanalpos@qnb.com.tr"))) return true;
+  return false;
+}
+
 export type Qnb3DPayOutgoingDebugSummary = {
   outgoingFieldCount: number;
   outgoingFieldNamesSorted: string[];
@@ -462,7 +526,33 @@ export function buildQnbCheckoutFormFields(input: {
     merchantPass: cred.merchantPass,
   });
 
-  const baseFields: Record<string, string> = {
+  const gatewayUrl = getQnbGatewayUrl(secureType);
+
+  if (secureType === "3DPay") {
+    const hiddenFields: Record<string, string> = {
+      MbrId: cred.mbrId,
+      MerchantID: cred.merchantId,
+      UserCode: cred.userCode,
+      UserPass: cred.userPass,
+      SecureType: "3DPay",
+      TxnType: txnType,
+      InstallmentCount: installmentCount,
+      Currency: "949",
+      OkUrl: input.okUrl,
+      FailUrl: input.failUrl,
+      OrderId: input.orderId,
+      PurchAmount: purchAmount,
+      Lang: "TR",
+      Rnd: rnd,
+      Hash: hash,
+    };
+    if (shouldPostMerchantPassIn3DPay()) {
+      hiddenFields.MerchantPass = cred.merchantPass;
+    }
+    return { secureType: "3DPay", gatewayUrl, hiddenFields };
+  }
+
+  const fields: Record<string, string> = {
     MbrId: cred.mbrId,
     MerchantID: cred.merchantId,
     UserCode: cred.userCode,
@@ -474,7 +564,7 @@ export function buildQnbCheckoutFormFields(input: {
     FailUrl: input.failUrl,
     TxnType: txnType,
     InstallmentCount: installmentCount,
-    SecureType: secureType === "3DPay" ? "3DPay" : "3DHost",
+    SecureType: "3DHost",
     Lang: "TR",
     Rnd: rnd,
     Hash: hash,
@@ -482,12 +572,7 @@ export function buildQnbCheckoutFormFields(input: {
     PurchaserEmail: input.customerEmail.trim().slice(0, 128),
     PurchaserPhone: input.customerPhone.replace(/\s/g, "").slice(0, 20),
   };
-
-  const gatewayUrl = getQnbGatewayUrl(secureType);
-  if (secureType === "3DPay") {
-    return { secureType: "3DPay", gatewayUrl, hiddenFields: baseFields };
-  }
-  return { secureType: "3DHost", gatewayUrl, fields: baseFields };
+  return { secureType: "3DHost", gatewayUrl, fields };
 }
 
 export async function initializeQnbPayment(payload: PaymentInitPayload): Promise<PaymentInitResult> {
