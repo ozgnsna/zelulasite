@@ -1,83 +1,35 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
   "mt-1.5 w-full rounded-xl border border-[#e7ded2] bg-white px-3.5 py-3 text-sm text-stone-900 shadow-sm outline-none transition focus:border-[#c9a06e] focus:ring-2 focus:ring-[#c9a06e]/25";
 
 /**
- * QNB 3DPay: kart alanları üye işyeri sayfasında; gönderim bankanın Gateway/Default.aspx adresine POST ile yapılır.
- * `postUrl` / `hiddenFieldsJson`: Next.js sınırında `action` adlı prop ve büyük nesne serileştirmesinden kaçınmak için.
+ * QNB 3DPay: kart müşteri sayfasında; gönderim Zelula sunucusuna (`/api/payments/qnb-initiate`).
+ * Sunucu bankaya POST eder — tarayıcı doğrudan QNB gateway'e POST etmez.
  */
 export function Qnb3DPayForm({
-  postUrl,
-  hiddenFieldsJson,
-  flowDebug,
+  orderId,
+  initiatePath = "/api/payments/qnb-initiate",
   incidentId,
 }: {
-  postUrl: string;
-  hiddenFieldsJson: string;
-  /** Sunucu `QNB_PAY_FLOW_DEBUG=1` veya geliştirme ortamında açılır. */
-  flowDebug?: boolean;
-  /** Destek korelasyonu (hata ekranında). */
+  orderId: string;
+  initiatePath?: string;
   incidentId?: string;
 }) {
-  const parsed = useMemo(() => {
-    try {
-      const raw = JSON.parse(hiddenFieldsJson) as unknown;
-      if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-        return { ok: false as const, fields: null as Record<string, string> | null };
-      }
-      const fields: Record<string, string> = {};
-      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-        if (typeof k !== "string" || !k.trim()) continue;
-        fields[k] = v == null ? "" : String(v);
-      }
-      return { ok: true as const, fields };
-    } catch {
-      return { ok: false as const, fields: null as Record<string, string> | null };
-    }
-  }, [hiddenFieldsJson]);
-
-  const postUrlOk = typeof postUrl === "string" && postUrl.trim().length > 0;
-
-  useEffect(() => {
-    if (flowDebug) {
-      console.info("[payments] Qnb3DPayForm mounted (3DPay kart formu).", {
-        postUrl,
-        postUrlOk,
-        parseOk: parsed.ok,
-        fieldCount: parsed.fields ? Object.keys(parsed.fields).length : 0,
-      });
-    }
-  }, [flowDebug, postUrl, postUrlOk, parsed.fields, parsed.ok]);
-
-  if (!postUrlOk || !parsed.ok || !parsed.fields) {
-    return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <p className="font-medium text-stone-900">Ödeme formu hazırlanamadı</p>
-        <p className="mt-2 text-sm text-stone-600">
-          {!postUrlOk
-            ? "Banka gönderim adresi eksik veya geçersiz."
-            : "İmzalı alanlar okunamadı. Sayfayı yenileyin veya destek ile iletişime geçin."}
-        </p>
-        {incidentId ? <p className="mt-4 font-mono text-xs text-stone-500">Kod: {incidentId}</p> : null}
-      </div>
-    );
-  }
-
-  const hiddenFields = parsed.fields;
+  const action = initiatePath.startsWith("/") ? initiatePath : `/${initiatePath}`;
 
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:py-14">
       <h1 className="font-serif text-2xl font-light text-stone-900">Kredi kartı ile ödeme</h1>
       <p className="mt-2 text-sm text-stone-600">
-        Bilgileriniz yalnızca bankanın güvenli altyapısına iletilir; Zelula kart numaranızı saklamaz.
+        Kart bilgileriniz yalnızca ödeme işlemi için güvenli sunucu üzerinden bankaya iletilir; Zelula kart
+        numaranızı saklamaz.
       </p>
       <form
         method="POST"
-        action={postUrl}
+        action={action}
         className="mt-8 space-y-5"
         onSubmit={(e) => {
           const f = e.currentTarget;
@@ -89,9 +41,7 @@ export function Qnb3DPayForm({
           if (cvv instanceof HTMLInputElement) cvv.value = cvv.value.replace(/\D/g, "").slice(0, 4);
         }}
       >
-        {Object.entries(hiddenFields).map(([name, value]) => (
-          <input key={name} type="hidden" name={name} value={value} />
-        ))}
+        <input type="hidden" name="orderId" value={orderId} />
         <div>
           <label htmlFor="qnb-pan" className="block text-xs font-medium uppercase tracking-wide text-stone-500">
             Kart numarası
@@ -153,6 +103,7 @@ export function Qnb3DPayForm({
           Bankanın güvenli ödeme ekranına devam et
         </button>
       </form>
+      {incidentId ? <p className="mt-4 text-center font-mono text-[10px] text-stone-400">Ref: {incidentId}</p> : null}
     </div>
   );
 }

@@ -7,6 +7,14 @@ export function isPaymentFlowDebugEnabled(): boolean {
   return process.env.NODE_ENV === "development";
 }
 
+/** Müşteriye gösterilen QNB debug panelleri — canlıda kapalı (sunucu logları ayrı). */
+export function isQnbCustomerFacingDebugVisible(): boolean {
+  const vercelEnv = process.env.VERCEL_ENV ?? "";
+  if (vercelEnv === "production") return false;
+  if (process.env.NODE_ENV === "production" && vercelEnv !== "preview") return false;
+  return isPaymentFlowDebugEnabled();
+}
+
 /** Sunucu: checkout yanıtı / redirectUrl teşhisi (`CHECKOUT_HANDOFF_DEBUG=1` veya ödeme debug). */
 export function isCheckoutHandoffDebugEnabled(): boolean {
   const raw = process.env.CHECKOUT_HANDOFF_DEBUG?.trim().toLowerCase();

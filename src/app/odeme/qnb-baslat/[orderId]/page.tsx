@@ -2,13 +2,11 @@ import { randomBytes } from "node:crypto";
 import { notFound } from "next/navigation";
 import { BankReviewDemoCardPage } from "@/components/payments/BankReviewDemoCardPage";
 import { Qnb3DPayForm } from "@/components/payments/Qnb3DPayForm";
-import { QnbGatewayAutoPost } from "@/components/payments/QnbGatewayAutoPost";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildQnbCheckoutFormFields,
   getMissingQnbCredentialEnvNames,
   getMissingQnbEnvNamesForDiagnostics,
-  getQnb3DPayOutgoingDebugSummary,
   getQnbCredentials,
   getQnbFlowDebugMeta,
   getQnbGatewayRoutingDebug,
@@ -16,13 +14,8 @@ import {
   getQnbPaymentConfig,
   isBankReviewMode,
 } from "@/lib/payments/qnb-finansbank";
-import {
-  serializeQnbHiddenFieldsJson,
-  validateGatewayUrlMatchesSecureType,
-  validateQnb3DPayHiddenFields,
-  validateQnbGatewayPostUrl,
-} from "@/lib/payments/qnb-3dpay-guards";
-import { isPaymentFlowDebugEnabled, logPayment } from "@/lib/payments/logger";
+import { qnbInitiateApiPath } from "@/lib/payments/qnb-initiate";
+import { isPaymentFlowDebugEnabled, isQnbCustomerFacingDebugVisible, logPayment } from "@/lib/payments/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -57,69 +50,7 @@ function PrepError({
   );
 }
 
-/** 3DPay POST şekli: sır / hash değeri / kart yok. Yalnızca `QNB_PAY_FLOW_DEBUG=1` (veya dev). */
-function Qnb3DPayPayloadDebugPanel({
-  flowDebug,
-  summary,
-}: {
-  flowDebug: boolean;
-  summary: ReturnType<typeof getQnb3DPayOutgoingDebugSummary> | null;
-}) {
-  if (!flowDebug || !summary) return null;
-  const namesLine = summary.outgoingFieldNamesSorted.join(", ");
-  return (
-    <div
-      className="mx-auto max-w-md rounded-lg border border-sky-200/70 bg-sky-50/50 px-3 py-2.5 text-[11px] text-stone-800"
-      role="status"
-    >
-      <p className="font-semibold text-stone-900">3DPay POST özeti (teşhis)</p>
-      <ul className="mt-1.5 space-y-1 font-mono text-[10px] leading-snug text-stone-700">
-        <li>
-          <span className="font-medium text-stone-800">Hash üretildi:</span> {summary.hashGenerated ? "evet" : "hayır"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">Giden alan sayısı:</span> {summary.outgoingFieldCount}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">SecureType:</span> {summary.secureType ?? "—"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">TxnType:</span> {summary.txnType ?? "—"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">Currency:</span> {summary.currency ?? "—"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">InstallmentCount:</span> {summary.installmentCount ?? "—"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">OrderId alanı var:</span> {summary.orderIdPresent ? "evet" : "hayır"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">OkUrl alanı var:</span> {summary.okUrlPresent ? "evet" : "hayır"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">FailUrl alanı var:</span> {summary.failUrlPresent ? "evet" : "hayır"}
-        </li>
-        <li>
-          <span className="font-medium text-stone-800">Döküman zorunlu anahtarlar tam:</span>{" "}
-          {summary.requiredDocKeysPresent ? "evet" : "hayır"}
-          {!summary.requiredDocKeysPresent ? ` (eksik: ${summary.missingDocKeys.join(", ")})` : null}
-        </li>
-      </ul>
-      <p className="mt-2 break-all text-[10px] text-stone-600">
-        <span className="font-medium text-stone-800">Giden alan adları:</span> {namesLine}
-      </p>
-      <p className="mt-2 text-[10px] leading-snug text-stone-600">
-        Gateway doğru olsa bile <code className="rounded bg-white/80 px-0.5">/login</code> genelde hash/alan uyuşmazlığı veya VPOS
-        API kullanıcı yetkisidir. QNB panelinde kullanıcının <strong>3DPay / satış</strong> yetkisini ve Üye İşyeri 3D şifresini
-        doğrulayın.
-      </p>
-    </div>
-  );
-}
-
-/** Yalnızca `QNB_PAY_FLOW_DEBUG=1` (veya dev) iken; URL / mod bilgisi, sır yok. */
+/** Yalnızca geliştirme / önizleme — canlıda müşteriye gösterilmez. */
 function QnbGatewayRoutingDebugPanel({
   flowDebug,
   meta,
@@ -150,14 +81,16 @@ function QnbGatewayRoutingDebugPanel({
           {meta.qnbGatewayUrlOverrideSet ? "evet" : "hayır"}
         </li>
         <li>
-          <span className="font-medium text-stone-800">Çözülen form action (POST):</span> {meta.gatewayUrlResolved}
+          <span className="font-medium text-stone-800">Sunucu POST hedefi:</span> {meta.gatewayUrlResolved}
+        </li>
+        <li>
+          <span className="font-medium text-stone-800">Müşteri formu:</span> {qnbInitiateApiPath()} (sunucu üzerinden)
         </li>
       </ul>
     </div>
   );
 }
 
-/** Yalnızca isimler; değer yok. `QNB_PAY_FLOW_DEBUG` veya geliştirme ortamında gösterilir. */
 function QnbPayFlowEnvDiagnostics({
   flowDebug,
   missing,
@@ -171,8 +104,7 @@ function QnbPayFlowEnvDiagnostics({
   if (missing.length === 0 && hints.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 pt-4 text-[11px] leading-relaxed text-stone-500" role="status">
-        QNB yapılandırma özeti: tanımlı zorunlu anahtarlar tam (değerler gösterilmez).{" "}
-        <span className="text-stone-400">Yalnızca ödeme akışı teşhisi açıkken görünür.</span>
+        QNB yapılandırma özeti: tanımlı zorunlu anahtarlar tam (değerler gösterilmez).
       </div>
     );
   }
@@ -198,7 +130,7 @@ function QnbPayFlowEnvDiagnostics({
 export default async function QnbPaymentStartPage({ params }: { params: Promise<{ orderId: string }> }) {
   const incidentId = `PF-${randomBytes(5).toString("hex")}`;
   const flowDebug = isPaymentFlowDebugEnabled();
-  const allowHttpGateway = process.env.NODE_ENV === "development";
+  const showCustomerDebug = isQnbCustomerFacingDebugVisible();
 
   try {
     const { orderId } = await params;
@@ -256,13 +188,11 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
     }
 
     const okUrl = `${siteUrl}/api/payments/qnb-return`;
-    const failUrl = okUrl;
-    const purchAmount = Number(order.total ?? 0).toFixed(2);
     const built = buildQnbCheckoutFormFields({
       orderId: String(order.id),
-      purchAmount,
+      purchAmount: Number(order.total ?? 0).toFixed(2),
       okUrl,
-      failUrl,
+      failUrl: okUrl,
       customerName: String(order.customer_name ?? ""),
       customerEmail: String(order.email ?? ""),
       customerPhone: String(order.phone ?? ""),
@@ -285,9 +215,7 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
       );
     }
 
-    const hasCustomGateway = Boolean(process.env.QNB_GATEWAY_URL?.trim());
-
-    const gatewayRoutingDebug = flowDebug ? getQnbGatewayRoutingDebug(built.secureType) : null;
+    const gatewayRoutingDebug = showCustomerDebug ? getQnbGatewayRoutingDebug(built.secureType) : null;
 
     if (flowDebug) {
       logPayment("info", "qnb-baslat: ödeme ekranı seçimi.", {
@@ -295,177 +223,39 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
         incidentId,
         ...getQnbFlowDebugMeta(),
         ...getQnbPaymentConfig(),
-        uiBranch: built.secureType === "3DPay" ? "Qnb3DPayForm" : "QnbGatewayAutoPost",
+        uiBranch: built.secureType === "3DPay" ? "Qnb3DPayForm" : "unsupported",
         gatewayUrl: built.gatewayUrl,
+        initiatePath: qnbInitiateApiPath(),
         missingEnvNamesOnly: qnbPayFlowDiagMissing,
         liveConfigHintEnvNamesOnly: qnbPayFlowDiagHints,
       });
     }
 
     if (built.secureType === "3DPay") {
-      const urlVal = validateQnbGatewayPostUrl(built.gatewayUrl, { allowHttp: allowHttpGateway });
-      if (!urlVal.ok) {
-        logPayment("error", "qnb-baslat: gateway URL geçersiz (3DPay).", {
-          incidentId,
-          reason: urlVal.reason,
-          gatewayUrl: built.gatewayUrl,
-          ...getQnbPaymentConfig(),
-        });
-        return (
-          <PrepError
-            title="Ödeme formu hazırlanamadı"
-            detail={
-              flowDebug
-                ? `Geçersiz banka adresi (${urlVal.reason}). Gateway URL’sini ve QNB_TEST_MODE değerini kontrol edin.`
-                : "Ödeme sayfası hazırlanırken bir sorun oluştu. Lütfen tekrar deneyin."
-            }
-            incidentId={incidentId}
-            showTechnical={flowDebug}
-          />
-        );
-      }
-
-      const typeOk = validateGatewayUrlMatchesSecureType(urlVal.url, "3DPay", hasCustomGateway);
-      if (!typeOk.ok) {
-        logPayment("error", "qnb-baslat: gateway / SecureType uyumsuz (3DPay).", {
-          incidentId,
-          reason: typeOk.reason,
-          ...getQnbPaymentConfig(),
-        });
-        return (
-          <PrepError
-            title="Ödeme formu hazırlanamadı"
-            detail={typeOk.reason}
-            incidentId={incidentId}
-            showTechnical={flowDebug}
-          />
-        );
-      }
-
-      const hfOk = validateQnb3DPayHiddenFields(built.hiddenFields);
-      if (!hfOk.ok) {
-        logPayment("error", "qnb-baslat: imzalı alanlar eksik (3DPay).", {
-          incidentId,
-          missingKeys: hfOk.missingKeys,
-          ...getQnbPaymentConfig(),
-        });
-        return (
-          <PrepError
-            title="Ödeme formu hazırlanamadı"
-            detail={
-              flowDebug
-                ? `Eksik alanlar: ${hfOk.missingKeys.join(", ")}`
-                : "Ödeme imzası oluşturulamadı. Yapılandırmayı kontrol edin."
-            }
-            incidentId={incidentId}
-            showTechnical={flowDebug}
-          />
-        );
-      }
-
-      const threeDPayPayloadDebug = flowDebug ? getQnb3DPayOutgoingDebugSummary(built.hiddenFields) : null;
-      if (flowDebug && threeDPayPayloadDebug) {
-        logPayment("info", "qnb-3dpay-outgoing POST shape (field names only; no secrets, no card data).", {
-          incidentId,
-          outgoingPostFieldNames: threeDPayPayloadDebug.outgoingFieldNamesSorted,
-          outgoingFieldCount: threeDPayPayloadDebug.outgoingFieldCount,
-          SecureType: threeDPayPayloadDebug.secureType,
-          TxnType: threeDPayPayloadDebug.txnType,
-          Currency: threeDPayPayloadDebug.currency,
-          InstallmentCount: threeDPayPayloadDebug.installmentCount,
-          hashPresent: threeDPayPayloadDebug.hashGenerated,
-          orderIdFieldPresent: threeDPayPayloadDebug.orderIdPresent,
-          okUrlFieldPresent: threeDPayPayloadDebug.okUrlPresent,
-          failUrlFieldPresent: threeDPayPayloadDebug.failUrlPresent,
-          requiredDocKeysPresent: threeDPayPayloadDebug.requiredDocKeysPresent,
-          missingDocKeys: threeDPayPayloadDebug.missingDocKeys,
-        });
-      }
-
-      const ser = serializeQnbHiddenFieldsJson(built.hiddenFields);
-      if (!ser.ok) {
-        logPayment("error", "qnb-baslat: imzalı alanlar serileştirilemedi.", {
-          incidentId,
-          error: ser.error,
-          ...getQnbPaymentConfig(),
-        });
-        return (
-          <PrepError
-            title="Ödeme formu hazırlanamadı"
-            detail={flowDebug ? ser.error : "Lütfen tekrar deneyin."}
-            incidentId={incidentId}
-            showTechnical={flowDebug}
-          />
-        );
-      }
-
       return (
         <main className="min-h-[50vh] bg-[#f9f6f2]">
-          <div className="space-y-2 px-4 pt-4">
-            <QnbGatewayRoutingDebugPanel flowDebug={flowDebug} meta={gatewayRoutingDebug} />
-            <Qnb3DPayPayloadDebugPanel flowDebug={flowDebug} summary={threeDPayPayloadDebug} />
-            <QnbPayFlowEnvDiagnostics
-              flowDebug={flowDebug}
-              missing={qnbPayFlowDiagMissing}
-              hints={qnbPayFlowDiagHints}
-            />
-          </div>
-          <Qnb3DPayForm
-            postUrl={urlVal.url}
-            hiddenFieldsJson={ser.json}
-            flowDebug={flowDebug}
-            incidentId={incidentId}
-          />
+          {showCustomerDebug ? (
+            <div className="space-y-2 px-4 pt-4">
+              <QnbGatewayRoutingDebugPanel flowDebug={showCustomerDebug} meta={gatewayRoutingDebug} />
+              <QnbPayFlowEnvDiagnostics
+                flowDebug={showCustomerDebug}
+                missing={qnbPayFlowDiagMissing}
+                hints={qnbPayFlowDiagHints}
+              />
+            </div>
+          ) : null}
+          <Qnb3DPayForm orderId={String(order.id)} initiatePath={qnbInitiateApiPath()} incidentId={incidentId} />
         </main>
       );
     }
 
-    const urlVal = validateQnbGatewayPostUrl(built.gatewayUrl, { allowHttp: allowHttpGateway });
-    if (!urlVal.ok) {
-      logPayment("error", "qnb-baslat: gateway URL geçersiz (3DHost).", {
-        incidentId,
-        reason: urlVal.reason,
-        ...getQnbPaymentConfig(),
-      });
-      return (
-        <PrepError
-          title="Ödeme yönlendirmesi hazırlanamadı"
-          detail={flowDebug ? `Geçersiz banka adresi (${urlVal.reason}).` : "Lütfen tekrar deneyin."}
-          incidentId={incidentId}
-          showTechnical={flowDebug}
-        />
-      );
-    }
-
-    const hostTypeOk = validateGatewayUrlMatchesSecureType(urlVal.url, "3DHost", hasCustomGateway);
-    if (!hostTypeOk.ok) {
-      logPayment("error", "qnb-baslat: gateway / SecureType uyumsuz (3DHost).", {
-        incidentId,
-        reason: hostTypeOk.reason,
-        ...getQnbPaymentConfig(),
-      });
-      return (
-        <PrepError
-          title="Ödeme yönlendirmesi hazırlanamadı"
-          detail={hostTypeOk.reason}
-          incidentId={incidentId}
-          showTechnical={flowDebug}
-        />
-      );
-    }
-
     return (
-      <main className="min-h-[40vh]">
-        <div className="space-y-2 px-4 pt-4">
-          <QnbGatewayRoutingDebugPanel flowDebug={flowDebug} meta={gatewayRoutingDebug} />
-          <QnbPayFlowEnvDiagnostics
-            flowDebug={flowDebug}
-            missing={qnbPayFlowDiagMissing}
-            hints={qnbPayFlowDiagHints}
-          />
-        </div>
-        <QnbGatewayAutoPost postUrl={urlVal.url} fields={built.fields} flowDebug={flowDebug} />
-      </main>
+      <PrepError
+        title="Ödeme yöntemi yapılandırılmamış"
+        detail="Canlı ödeme için QNB_SECURE_TYPE=3DPay kullanın. 3DHost şu an devre dışıdır."
+        incidentId={incidentId}
+        showTechnical={flowDebug}
+      />
     );
   } catch (e) {
     if (isNextNotFound(e)) throw e;
