@@ -677,6 +677,24 @@ function str(fd: FormData, key: string): string {
   return v == null ? "" : String(v).trim();
 }
 
+/** Banka dönüşü — sırlar hariç (log / müşteri mesajı). */
+export function getQnbReturnCallbackDiagnostics(fd: FormData): {
+  procReturnCode: string;
+  errMsg: string;
+  authCode: string;
+  transId: string;
+  responseFieldNames: string[];
+} {
+  const errMsg = str(fd, "ErrMsg") || str(fd, "ErrorMessage") || str(fd, "ERRORMSG") || "";
+  return {
+    procReturnCode: str(fd, "ProcReturnCode"),
+    errMsg: errMsg.slice(0, 240),
+    authCode: str(fd, "AuthCode"),
+    transId: str(fd, "TransId") || str(fd, "HostRefNum"),
+    responseFieldNames: Array.from(new Set(Array.from(fd.keys()).map(String))).sort(),
+  };
+}
+
 /**
  * Dönüş hash’i: banka dökümanına göre değişebilir. Yaygın bir NestPay varyantı.
  * Eşleşmezse `QNB_RELAX_RETURN_HASH=true` ile yalnızca ProcReturnCode kontrolü (geliştirme / geçiş).
@@ -731,10 +749,21 @@ export async function parseQnbReturnForm(fd: FormData): Promise<PaymentCallbackR
     return { ok: false, error: "OrderId eksik.", errorCode: "CALLBACK_INVALID" };
   }
 
-  const procReturnCode = str(fd, "ProcReturnCode");
+  const diag = getQnbReturnCallbackDiagnostics(fd);
+  const procReturnCode = diag.procReturnCode;
   const claimedOk = procReturnCode === "00";
   const relax = process.env.QNB_RELAX_RETURN_HASH === "true";
   const hashOk = verifyQnbReturnHash(fd, cred.merchantPass);
+  logPayment(claimedOk ? "info" : "warn", "QNB return callback alındı.", {
+    orderId,
+    procReturnCode: procReturnCode || "(boş)",
+    errMsg: diag.errMsg || null,
+    authCodePresent: Boolean(diag.authCode),
+    transIdPresent: Boolean(diag.transId),
+    hashVerified: hashOk,
+    hashRelaxed: relax,
+    responseFieldNames: diag.responseFieldNames,
+  });
   if (claimedOk && !hashOk && !relax) {
     logPayment("warn", "QNB return hash doğrulanamadı (başarılı işlem).", { orderId, procReturnCode });
     return { ok: false, error: "Hash doğrulanamadı.", errorCode: "CALLBACK_SIGNATURE_INVALID" };
