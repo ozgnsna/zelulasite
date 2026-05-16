@@ -1,10 +1,10 @@
 "use client";
 
+import { QnbCardPreview } from "@/components/payments/QnbCardPreview";
+import { detectQnbCardBrand, type QnbCardBrand } from "@/components/payments/qnb-card-preview-utils";
 import { Lock, ShieldCheck } from "lucide-react";
 import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-
-type CardBrand = "visa" | "mastercard" | "troy" | null;
 
 type FieldErrors = {
   pan?: string;
@@ -24,14 +24,6 @@ function formatExpiryDisplay(digits: string): string {
   const d = digits.slice(0, 4);
   if (d.length <= 2) return d;
   return `${d.slice(0, 2)}/${d.slice(2)}`;
-}
-
-function detectCardBrand(digits: string): CardBrand {
-  if (!digits) return null;
-  if (digits.startsWith("4")) return "visa";
-  if (/^5[1-5]/.test(digits) || /^2[2-7]\d{2}/.test(digits)) return "mastercard";
-  if (digits.startsWith("9792") || digits.startsWith("65")) return "troy";
-  return null;
 }
 
 function parseExpiry(digits: string): { month: number; year: number } | null {
@@ -83,7 +75,7 @@ function inputClass(hasError: boolean, extra?: string) {
   );
 }
 
-function CardBrandBadge({ brand }: { brand: CardBrand }) {
+function CardBrandBadge({ brand }: { brand: QnbCardBrand }) {
   if (!brand) return null;
 
   const base =
@@ -147,10 +139,13 @@ export function Qnb3DPayForm({
   orderId,
   initiatePath = "/api/payments/qnb-initiate",
   incidentId,
+  cardholderName,
 }: {
   orderId: string;
   initiatePath?: string;
   incidentId?: string;
+  /** Boşsa önizlemede ZELULA gösterilir. */
+  cardholderName?: string;
 }) {
   const uid = useId();
   const panId = `qnb-pan-${uid}`;
@@ -165,10 +160,11 @@ export function Qnb3DPayForm({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cvvFocused, setCvvFocused] = useState(false);
 
   const panDisplay = useMemo(() => formatPanDisplay(panDigits), [panDigits]);
   const expDisplay = useMemo(() => formatExpiryDisplay(expDigits), [expDigits]);
-  const cardBrand = useMemo(() => detectCardBrand(panDigits), [panDigits]);
+  const cardBrand = useMemo(() => detectQnbCardBrand(panDigits), [panDigits]);
 
   const showPanError = Boolean(errors.pan && (submitted || panDigits.length > 0));
   const showExpError = Boolean(errors.expiry && (submitted || expDigits.length > 0));
@@ -251,6 +247,16 @@ export function Qnb3DPayForm({
           <input type="hidden" name="Expiry" value={expDigits} readOnly aria-hidden tabIndex={-1} />
           <input type="hidden" name="Cvv2" value={cvvDigits} readOnly aria-hidden tabIndex={-1} />
 
+          <QnbCardPreview
+            panDigits={panDigits}
+            expDigits={expDigits}
+            cvvLength={cvvDigits.length}
+            brand={cardBrand}
+            cardholderName={cardholderName}
+            flipped={cvvFocused}
+            className="pb-1 sm:pb-2"
+          />
+
           <FieldShell id={panId} label="Kart numarası" error={showPanError ? errors.pan : undefined}>
             <div className="relative">
               <input
@@ -295,7 +301,11 @@ export function Qnb3DPayForm({
                 autoComplete="cc-csc"
                 value={cvvDigits}
                 onChange={(e) => handleCvvChange(e.target.value)}
-                onBlur={() => validateField("cvv")}
+                onFocus={() => setCvvFocused(true)}
+                onBlur={() => {
+                  setCvvFocused(false);
+                  validateField("cvv");
+                }}
                 placeholder="•••"
                 maxLength={4}
                 aria-invalid={showCvvError}
