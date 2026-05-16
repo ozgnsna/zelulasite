@@ -8,32 +8,28 @@ import {
   type QnbCardBrand,
 } from "@/components/payments/qnb-card-preview-utils";
 
-function PreviewBrandMark({ brand }: { brand: QnbCardBrand }) {
+function PreviewBrandMark({ brand }: { brand: NonNullable<QnbCardBrand> }) {
   if (brand === "visa") {
     return (
-      <span className="text-sm font-bold italic tracking-tight text-white/95" aria-hidden>
-        VISA
+      <span
+        className="block font-serif text-[13px] font-light italic tracking-[0.06em] text-white/75"
+        aria-hidden
+      >
+        visa
       </span>
     );
   }
   if (brand === "mastercard") {
     return (
-      <span className="flex items-center -space-x-2.5" aria-hidden>
-        <span className="h-7 w-7 rounded-full bg-[#eb001b]/95 shadow-sm" />
-        <span className="h-7 w-7 rounded-full bg-[#f79e1b]/95 shadow-sm" />
-      </span>
-    );
-  }
-  if (brand === "troy") {
-    return (
-      <span className="text-xs font-bold tracking-[0.12em] text-[#7dd3f0]" aria-hidden>
-        TROY
+      <span className="flex items-center -space-x-2" aria-hidden>
+        <span className="h-5 w-5 rounded-full border border-white/25 bg-white/10" />
+        <span className="h-5 w-5 rounded-full border border-white/20 bg-white/5" />
       </span>
     );
   }
   return (
-    <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/35" aria-hidden>
-      ••••
+    <span className="block text-[10px] font-medium uppercase tracking-[0.18em] text-white/55" aria-hidden>
+      troy
     </span>
   );
 }
@@ -65,64 +61,78 @@ export function QnbCardPreview({
     <div
       aria-hidden
       className={cn("mx-auto w-full max-w-[340px] select-none", className)}
-      style={{ perspective: "1000px" }}
+      style={{ perspective: "1400px" }}
     >
       <div
         className={cn(
-          "relative aspect-[1.586/1] w-full transition-transform duration-500 ease-out",
+          "relative aspect-[1.586/1] w-full transition-transform duration-[620ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
           flipped && "[transform:rotateY(180deg)]",
         )}
         style={{ transformStyle: "preserve-3d" }}
       >
         <div
-          className="absolute inset-0 overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_-16px_rgba(20,16,12,0.55)]"
+          className="absolute inset-0 overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_16px_44px_-14px_rgba(20,16,12,0.5)]"
           style={{ backfaceVisibility: "hidden" }}
         >
-          <div className="relative flex h-full flex-col justify-between bg-[linear-gradient(135deg,#3a332c_0%,#1f1b17_48%,#14110f_100%)] p-5 sm:p-6">
+          <div className="relative flex h-full flex-col bg-[linear-gradient(148deg,#38312a_0%,#1e1a16_52%,#13100e_100%)] p-5 sm:p-6">
             <div
-              className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[#c9a06e]/12 blur-2xl"
+              className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#c9a06e]/10 blur-2xl"
               aria-hidden
             />
-            <div className="relative flex items-start justify-between gap-3">
+
+            <span className="pointer-events-none absolute right-3.5 top-3 font-serif text-[8px] font-light tracking-[0.34em] text-[#c9a06e]/65 sm:right-4 sm:top-3.5">
+              ZELULA
+            </span>
+
+            <div className="relative pt-0.5">
               <div
-                className="h-9 w-11 rounded-md bg-[linear-gradient(145deg,#d4b896_0%,#a8865c_100%)] opacity-90 shadow-inner"
+                className="h-8 w-10 rounded-[5px] bg-[linear-gradient(145deg,#d9c4a8_0%,#a8865c_88%)] opacity-[0.88] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]"
                 aria-hidden
               />
-              <span className="font-serif text-[11px] font-light tracking-[0.28em] text-[#c9a06e]/80">ZELULA</span>
             </div>
 
-            <p className="relative mt-6 font-mono text-[15px] leading-none tracking-[0.12em] text-white/95 sm:text-base">
+            <p className="relative mt-7 font-mono text-[14px] leading-snug tracking-[0.035em] text-white/[0.92] tabular-nums sm:mt-8 sm:text-[15px]">
               {panLine}
             </p>
 
-            <div className="relative mt-auto flex items-end justify-between gap-3 pt-4">
+            <div className="relative mt-auto flex items-end gap-6 pt-5 pr-14 sm:pr-16">
               <div>
-                <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-white/40">Son kullanma</p>
-                <p className="mt-0.5 font-mono text-sm tracking-wider text-white/90">{expiryLine}</p>
+                <p className="text-[7px] font-medium uppercase tracking-[0.22em] text-white/35">Son kullanma</p>
+                <p className="mt-1 font-mono text-[13px] tracking-[0.06em] text-white/88">{expiryLine}</p>
               </div>
-              <div className="min-w-0 flex-1 text-right">
-                <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-white/40">Kart sahibi</p>
-                <p className="mt-0.5 truncate font-mono text-xs tracking-wide text-white/85">{holder}</p>
+              <div className="min-w-0">
+                <p className="text-[7px] font-medium uppercase tracking-[0.22em] text-white/35">Kart sahibi</p>
+                <p className="mt-1 truncate font-serif text-[13px] font-light tracking-[0.12em] text-white/88">
+                  {holder}
+                </p>
               </div>
-              <PreviewBrandMark brand={brand} />
             </div>
+
+            {brand ? (
+              <div
+                key={brand}
+                className="pointer-events-none absolute bottom-5 right-5 animate-in fade-in duration-700 ease-out sm:bottom-6 sm:right-6"
+              >
+                <PreviewBrandMark brand={brand} />
+              </div>
+            ) : null}
           </div>
         </div>
 
         <div
-          className="absolute inset-0 overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_-16px_rgba(20,16,12,0.55)]"
+          className="absolute inset-0 overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_16px_44px_-14px_rgba(20,16,12,0.5)]"
           style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
         >
-          <div className="relative flex h-full flex-col bg-[linear-gradient(135deg,#2a2520_0%,#12100e_100%)]">
-            <div className="mt-6 h-10 w-full bg-stone-950/85" aria-hidden />
+          <div className="relative flex h-full flex-col bg-[linear-gradient(148deg,#2a2520_0%,#12100e_100%)]">
+            <div className="mt-6 h-9 w-full bg-stone-950/80" aria-hidden />
             <div className="flex flex-1 flex-col justify-end px-5 pb-5 sm:px-6 sm:pb-6">
-              <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-white/40">Güvenlik kodu</p>
+              <p className="text-[7px] font-medium uppercase tracking-[0.22em] text-white/35">Güvenlik kodu</p>
               <div className="mt-2 flex items-center justify-end">
-                <span className="rounded-md bg-[#faf6f0] px-4 py-2 font-mono text-sm tracking-[0.35em] text-stone-800">
+                <span className="rounded-md bg-[#faf6f0]/95 px-3.5 py-1.5 font-mono text-[13px] tracking-[0.28em] text-stone-700/90">
                   {cvvMask}
                 </span>
               </div>
-              <p className="mt-4 text-right text-[9px] text-white/30">Bu önizleme yalnızca görseldir.</p>
+              <p className="mt-3.5 text-right text-[8px] text-white/25">Bu önizleme yalnızca görseldir.</p>
             </div>
           </div>
         </div>

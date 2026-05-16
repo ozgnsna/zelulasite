@@ -327,13 +327,13 @@ export function Qnb3DPayForm({
               {submitting ? "Yönlendiriliyor…" : "Güvenli ödeme ekranına devam et"}
             </button>
 
-            <ul className="mt-4 flex flex-col items-center gap-2 text-center">
-              <li className="flex items-center gap-1.5 text-[11px] text-stone-500">
-                <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" strokeWidth={2} aria-hidden />
+            <ul className="mt-3.5 flex flex-col items-center gap-1.5 text-center">
+              <li className="flex items-center gap-1 text-[10px] leading-snug text-stone-500/60">
+                <Lock className="h-3 w-3 shrink-0 text-stone-400/50" strokeWidth={1.5} aria-hidden />
                 <span>256-bit SSL Güvenli Ödeme</span>
               </li>
-              <li className="flex items-center gap-1.5 text-[11px] text-stone-500">
-                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-stone-400" strokeWidth={2} aria-hidden />
+              <li className="flex items-center gap-1 text-[10px] leading-snug text-stone-500/60">
+                <ShieldCheck className="h-3 w-3 shrink-0 text-stone-400/50" strokeWidth={1.5} aria-hidden />
                 <span>QNB Finansbank Altyapısı ile Korunmaktadır</span>
               </li>
             </ul>
