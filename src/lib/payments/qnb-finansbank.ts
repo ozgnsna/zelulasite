@@ -127,6 +127,16 @@ export function isBankReviewMode(): boolean {
   return n === "true" || n === "1" || n === "yes" || n === "on";
 }
 
+/** Vercel panelinden gelen BOM / tırnak sarmalayıcıları temizle (hash’i bozar). */
+export function normalizeQnbEnvValue(raw: string | undefined | null): string {
+  if (raw == null) return "";
+  let v = raw.replace(/^\uFEFF+/, "").trim();
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 export function getQnbCredentials():
   | {
       ok: true;
@@ -137,11 +147,12 @@ export function getQnbCredentials():
       merchantPass: string;
     }
   | { ok: false } {
-  const mbrId = process.env.QNB_MBR_ID?.trim() ?? "";
-  const merchantId = process.env.QNB_MERCHANT_ID?.trim() ?? "";
-  const userCode = process.env.QNB_USER_CODE?.trim() ?? "";
-  const userPass = process.env.QNB_USER_PASS?.trim() ?? "";
-  const merchantPass = process.env.QNB_MERCHANT_PASS?.trim() ?? "";
+  const mbrId = normalizeQnbEnvValue(process.env.QNB_MBR_ID);
+  const merchantId = normalizeQnbEnvValue(process.env.QNB_MERCHANT_ID);
+  const userCode = normalizeQnbEnvValue(process.env.QNB_USER_CODE);
+  const userPass = normalizeQnbEnvValue(process.env.QNB_USER_PASS);
+  /** NestPay/Wix “StoreKey” = QNB “Üye İşyeri 3D Şifresi” (API şifresi DEĞİL). */
+  const merchantPass = normalizeQnbEnvValue(process.env.QNB_MERCHANT_PASS);
   if (!mbrId || !merchantId || !userCode || !userPass || !merchantPass) {
     return { ok: false };
   }
@@ -218,19 +229,125 @@ export type QnbPurchAmountFormatAudit = {
   hadCommaInput: boolean;
 };
 
-/** QNB Help: tutar 99.50 veya 99,50; en fazla 2 ondalık. */
+/**
+ * QNB 3DPay init hash + POST PurchAmount: her zaman nokta ve 2 ondalık (örn. `350.00`).
+ * Tam sayı (`350`) veya virgül (`350,00`) burada normalize edilir.
+ */
+export function formatQnbPurchAmountStrictDot(raw: string | number): string {
+  const normalized = String(raw).replace(",", ".").replace(/[^\d.]/g, "");
+  const n = Number(normalized);
+  if (!Number.isFinite(n) || n <= 0) {
+    return normalized.includes(".") ? Number(normalized).toFixed(2) : "0.00";
+  }
+  return n.toFixed(2);
+}
+
+/** QNB Help: tutar hash ile POST’ta aynı string — zorunlu `NNN.NN` (nokta). */
 export function formatQnbPurchAmountForGateway(raw: string): QnbPurchAmountFormatAudit {
   const hadCommaInput = raw.includes(",");
-  const normalized = raw.replace(",", ".").replace(/[^\d.]/g, "");
-  const n = Number(normalized);
-  const formatted = Number.isFinite(n) && n > 0 ? n.toFixed(2) : normalized;
-  const fractionDigits = formatted.includes(".") ? (formatted.split(".")[1]?.length ?? 0) : 0;
+  const formatted = formatQnbPurchAmountStrictDot(raw);
   return {
     formatted,
     decimalSeparator: ".",
-    fractionDigits,
+    fractionDigits: 2,
     hadCommaInput,
   };
+}
+
+/** Init hash girdileri — POST hidden alanları ile birebir aynı referans kullanılmalı. */
+export type QnbInitHashInputs = {
+  mbrId: string;
+  orderId: string;
+  purchAmount: string;
+  okUrl: string;
+  failUrl: string;
+  txnType: string;
+  installmentCount: string;
+  rnd: string;
+  merchantPass: string;
+};
+
+/** MerchantPass hariç hash düz metni (log / Help aracı karşılaştırması). */
+export function qnbInitHashPublicPlainText(
+  inputs: Omit<QnbInitHashInputs, "merchantPass">,
+): string {
+  return (
+    inputs.mbrId +
+    inputs.orderId +
+    inputs.purchAmount +
+    inputs.okUrl +
+    inputs.failUrl +
+    inputs.txnType +
+    inputs.installmentCount +
+    inputs.rnd
+  );
+}
+
+/**
+ * Hash öncesi teşhis — Vercel function loglarında görünür (console.info).
+ * MerchantPass değeri asla yazılmaz; yalnızca uzunluk + MerchantPass öncesi düz metin.
+ */
+export function logQnbInitHashPreDigest(inputs: QnbInitHashInputs, hashBase64: string): void {
+  const publicPlain = qnbInitHashPublicPlainText(inputs);
+  logPayment("info", "qnb-init-hash: hash öncesi düz metin ve alanlar (MerchantPass değeri yok).", {
+    hashFieldOrder: QNB_OFFICIAL_INIT_HASH_FIELD_ORDER,
+    MbrId: inputs.mbrId,
+    OrderId: inputs.orderId,
+    PurchAmount: inputs.purchAmount,
+    OkUrl: inputs.okUrl,
+    FailUrl: inputs.failUrl,
+    TxnType: inputs.txnType,
+    InstallmentCount: inputs.installmentCount,
+    Rnd: inputs.rnd,
+    merchantPassLength: inputs.merchantPass.length,
+    hashPlainTextPublic: publicPlain,
+    hashPlainTextPublicLength: publicPlain.length,
+    hashPlainTextFullLength: publicPlain.length + inputs.merchantPass.length,
+    hashBase64,
+  });
+}
+
+/** POST hidden alanları ile hash girdilerinin karakter karakter aynı olduğunu doğrula. */
+export function verifyQnbPostMatchesHashInputs(
+  post: Record<string, string>,
+  inputs: QnbInitHashInputs,
+  hashBase64: string,
+): { ok: boolean; mismatches: string[] } {
+  const mismatches: string[] = [];
+  const checks: [string, string, string][] = [
+    ["MbrId", post.MbrId ?? "", inputs.mbrId],
+    ["OrderId", post.OrderId ?? "", inputs.orderId],
+    ["PurchAmount", post.PurchAmount ?? "", inputs.purchAmount],
+    ["OkUrl", post.OkUrl ?? "", inputs.okUrl],
+    ["FailUrl", post.FailUrl ?? "", inputs.failUrl],
+    ["TxnType", post.TxnType ?? "", inputs.txnType],
+    ["InstallmentCount", post.InstallmentCount ?? "", inputs.installmentCount],
+    ["Rnd", post.Rnd ?? "", inputs.rnd],
+    ["Hash", post.Hash ?? "", hashBase64],
+  ];
+  for (const [name, postVal, hashVal] of checks) {
+    if (postVal !== hashVal) {
+      mismatches.push(`${name}: post="${postVal}" hash="${hashVal}"`);
+    }
+  }
+  if (mismatches.length > 0) {
+    logPayment("error", "qnb-init-hash: POST alanları hash girdileri ile uyuşmuyor.", {
+      orderId: inputs.orderId,
+      mismatches,
+    });
+  } else {
+    logPayment("info", "qnb-init-hash: POST PurchAmount/OrderId/Rnd/Hash hash girdileri ile birebir eşleşti.", {
+      orderId: inputs.orderId,
+      PurchAmount: inputs.purchAmount,
+      Rnd: inputs.rnd,
+    });
+  }
+  return { ok: mismatches.length === 0, mismatches };
+}
+
+/** PayFor / QNB Help: SHA-1 (binary) → Base64 — PHP `base64_encode(pack('H*', sha1($s)))` ile aynı. */
+export function digestQnbSha1Base64(hashtr: string): string {
+  return createHash("sha1").update(hashtr, "utf8").digest("base64");
 }
 
 export type QnbInitHashAudit = {
@@ -297,28 +414,12 @@ export function getQnbInitHashAudit(params: {
   };
 }
 
-export function buildQnbInitHash(params: {
-  mbrId: string;
-  orderId: string;
-  purchAmount: string;
-  okUrl: string;
-  failUrl: string;
-  txnType: string;
-  installmentCount: string;
-  rnd: string;
-  merchantPass: string;
-}): string {
-  const hashtr =
-    params.mbrId +
-    params.orderId +
-    params.purchAmount +
-    params.okUrl +
-    params.failUrl +
-    params.txnType +
-    params.installmentCount +
-    params.rnd +
-    params.merchantPass;
-  return createHash("sha1").update(hashtr, "utf8").digest("base64");
+export function buildQnbInitHash(params: QnbInitHashInputs): string {
+  const publicPlain = qnbInitHashPublicPlainText(params);
+  const hashtr = publicPlain + params.merchantPass;
+  const hash = digestQnbSha1Base64(hashtr);
+  logQnbInitHashPreDigest(params, hash);
+  return hash;
 }
 
 export function makeQnbRnd(): string {
@@ -513,18 +614,23 @@ export function buildQnbCheckoutFormFields(input: {
   const rnd = makeQnbRnd();
   const txnType = "Auth";
   const installmentCount = "0";
-  const purchAmount = formatQnbPurchAmountForGateway(input.purchAmount).formatted;
-  const hash = buildQnbInitHash({
+  const purchAmount = formatQnbPurchAmountStrictDot(input.purchAmount);
+  const okUrl = input.okUrl.trim();
+  const failUrl = input.failUrl.trim();
+  const orderId = String(input.orderId).trim();
+
+  const hashInputs: QnbInitHashInputs = {
     mbrId: cred.mbrId,
-    orderId: input.orderId,
+    orderId,
     purchAmount,
-    okUrl: input.okUrl,
-    failUrl: input.failUrl,
+    okUrl,
+    failUrl,
     txnType,
     installmentCount,
     rnd,
     merchantPass: cred.merchantPass,
-  });
+  };
+  const hash = buildQnbInitHash(hashInputs);
 
   const gatewayUrl = getQnbGatewayUrl(secureType);
 
@@ -538,9 +644,9 @@ export function buildQnbCheckoutFormFields(input: {
       TxnType: txnType,
       InstallmentCount: installmentCount,
       Currency: "949",
-      OkUrl: input.okUrl,
-      FailUrl: input.failUrl,
-      OrderId: input.orderId,
+      OkUrl: okUrl,
+      FailUrl: failUrl,
+      OrderId: orderId,
       PurchAmount: purchAmount,
       Lang: "TR",
       Rnd: rnd,
@@ -549,6 +655,7 @@ export function buildQnbCheckoutFormFields(input: {
     if (shouldPostMerchantPassIn3DPay()) {
       hiddenFields.MerchantPass = cred.merchantPass;
     }
+    verifyQnbPostMatchesHashInputs(hiddenFields, hashInputs, hash);
     return { secureType: "3DPay", gatewayUrl, hiddenFields };
   }
 
@@ -557,11 +664,11 @@ export function buildQnbCheckoutFormFields(input: {
     MerchantID: cred.merchantId,
     UserCode: cred.userCode,
     UserPass: cred.userPass,
-    OrderId: input.orderId,
+    OrderId: orderId,
     PurchAmount: purchAmount,
     Currency: "949",
-    OkUrl: input.okUrl,
-    FailUrl: input.failUrl,
+    OkUrl: okUrl,
+    FailUrl: failUrl,
     TxnType: txnType,
     InstallmentCount: installmentCount,
     SecureType: "3DHost",
@@ -695,44 +802,63 @@ export function getQnbReturnCallbackDiagnostics(fd: FormData): {
   };
 }
 
+function qnbReturnHashMatches(received: string, hashtr: string): boolean {
+  const expected = digestQnbSha1Base64(hashtr);
+  try {
+    const a = Buffer.from(expected);
+    const b = Buffer.from(received);
+    return a.length === b.length && timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Dönüş hash’i: banka dökümanına göre değişebilir. Yaygın bir NestPay varyantı.
- * Eşleşmezse `QNB_RELAX_RETURN_HASH=true` ile yalnızca ProcReturnCode kontrolü (geliştirme / geçiş).
+ * Dönüş hash’i (PayFor 3DPay): ResponseHash = Base64(SHA1(
+ *   MerchantID + MerchantPass + OrderId + AuthCode + ProcReturnCode + 3DStatus + ResponseRnd + UserCode
+ * )).
+ * Eşleşmezse `QNB_RELAX_RETURN_HASH=true` (yalnızca geliştirme).
  */
-function verifyQnbReturnHash(fd: FormData, merchantPass: string): boolean {
+function verifyQnbReturnHash(
+  fd: FormData,
+  cred: { mbrId: string; merchantId: string; merchantPass: string; userCode: string },
+): boolean {
   const relax = process.env.QNB_RELAX_RETURN_HASH === "true";
   if (relax) {
     logPayment("warn", "QNB return hash verification skipped (QNB_RELAX_RETURN_HASH).");
     return true;
   }
-  const mbrId = str(fd, "MbrId");
   const orderId = str(fd, "OrderId");
-  const purchAmount = str(fd, "PurchAmount").replace(",", ".");
+  const received =
+    str(fd, "ResponseHash") ||
+    str(fd, "Response_Hash") ||
+    str(fd, "Hash") ||
+    str(fd, "HASH");
+
+  if (!received || !orderId) return false;
+
   const authCode = str(fd, "AuthCode");
   const procReturnCode = str(fd, "ProcReturnCode");
+  const threeDStatus = str(fd, "3DStatus");
+  const responseRnd = str(fd, "ResponseRnd") || str(fd, "Rnd");
+  const purchAmount = str(fd, "PurchAmount");
+  const purchAmountDot = purchAmount.replace(",", ".");
+  const purchAmountComma = purchAmount.includes(",")
+    ? purchAmount
+    : purchAmountDot.replace(".", ",");
   const txnType = str(fd, "TxnType") || "Auth";
-  const rnd = str(fd, "Rnd");
-  const received =
-    str(fd, "Hash") ||
-    str(fd, "HASH") ||
-    str(fd, "ResponseHash") ||
-    str(fd, "Response_Hash");
-
-  if (!received || !mbrId || !orderId) return false;
+  const mbrId = str(fd, "MbrId") || cred.mbrId;
 
   const candidates = [
-    `${mbrId}${orderId}${purchAmount}${authCode}${procReturnCode}${txnType}${rnd}${merchantPass}`,
-    `${mbrId}${orderId}${authCode}${procReturnCode}${txnType}${rnd}${merchantPass}`,
+    `${cred.merchantId}${cred.merchantPass}${orderId}${authCode}${procReturnCode}${threeDStatus}${responseRnd}${cred.userCode}`,
+    `${mbrId}${orderId}${purchAmount}${authCode}${procReturnCode}${txnType}${responseRnd}${cred.merchantPass}`,
+    `${mbrId}${orderId}${purchAmountComma}${authCode}${procReturnCode}${txnType}${responseRnd}${cred.merchantPass}`,
+    `${mbrId}${orderId}${purchAmountDot}${authCode}${procReturnCode}${txnType}${responseRnd}${cred.merchantPass}`,
+    `${mbrId}${orderId}${authCode}${procReturnCode}${txnType}${responseRnd}${cred.merchantPass}`,
   ];
+
   for (const hashtr of candidates) {
-    const expected = createHash("sha1").update(hashtr, "utf8").digest("base64");
-    try {
-      const a = Buffer.from(expected);
-      const b = Buffer.from(received);
-      if (a.length === b.length && timingSafeEqual(a, b)) return true;
-    } catch {
-      /* ignore */
-    }
+    if (qnbReturnHashMatches(received, hashtr)) return true;
   }
   return false;
 }
@@ -753,7 +879,12 @@ export async function parseQnbReturnForm(fd: FormData): Promise<PaymentCallbackR
   const procReturnCode = diag.procReturnCode;
   const claimedOk = procReturnCode === "00";
   const relax = process.env.QNB_RELAX_RETURN_HASH === "true";
-  const hashOk = verifyQnbReturnHash(fd, cred.merchantPass);
+  const hashOk = verifyQnbReturnHash(fd, {
+    mbrId: cred.mbrId,
+    merchantId: cred.merchantId,
+    merchantPass: cred.merchantPass,
+    userCode: cred.userCode,
+  });
   logPayment(claimedOk ? "info" : "warn", "QNB return callback alındı.", {
     orderId,
     procReturnCode: procReturnCode || "(boş)",

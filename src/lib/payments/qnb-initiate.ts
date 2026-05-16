@@ -132,13 +132,13 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
   }
 
   const purchAmount = Number(order.total ?? 0).toFixed(2);
-  if (!purchAmount || Number(purchAmount) <= 0) {
+  if (!purchAmount || Number(purchAmount) <= 0 || !/^\d+\.\d{2}$/.test(purchAmount)) {
     return { ok: false, status: 400, error: "Geçersiz sipariş tutarı.", errorCode: "AMOUNT_INVALID" };
   }
 
   const okUrl = `${siteUrl}/api/payments/qnb-return`;
   const built = buildQnbCheckoutFormFields({
-    orderId: String(order.id),
+    orderId: String(order.id).trim(),
     purchAmount,
     okUrl,
     failUrl: okUrl,
@@ -174,6 +174,14 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
     Expiry: cardParsed.expiry,
     Cvv2: cardParsed.cvv2,
   };
+
+  if (built.hiddenFields.PurchAmount !== purchAmount) {
+    logPayment("error", "qnb-initiate: PurchAmount drift (sipariş vs form).", {
+      orderId,
+      orderTotalFormatted: purchAmount,
+      formPurchAmount: built.hiddenFields.PurchAmount,
+    });
+  }
 
   const hfOk = validateQnb3DPayHiddenFields(built.hiddenFields);
   if (!hfOk.ok) {
@@ -252,12 +260,18 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
   const contentType = qnbResponse.headers.get("content-type") ?? "text/html; charset=utf-8";
   const responseUrl = qnbResponse.url;
   const looksLikeVposLogin = isQnbVposMerchantLoginResponse(html, responseUrl);
+  const looksLikeHashRejected =
+    /hash\s*do[gğ]rulanamad[ıi]/i.test(html) || /hash\s*mismatch/i.test(html);
 
   if (isPaymentFlowDebugEnabled()) {
     logPayment("info", "qnb-initiate: banka yanıtı alındı (kart/sır loglanmaz).", {
       orderId,
       gatewayUrl: urlVal.url,
-      initiateStatus: looksLikeVposLogin ? "vpos_login_html" : "completed",
+      initiateStatus: looksLikeVposLogin
+        ? "vpos_login_html"
+        : looksLikeHashRejected
+          ? "hash_rejected"
+          : "completed",
       qnbResponseStatus: qnbResponse.status,
       responseUrl,
       responseLooksLikeVposLogin: looksLikeVposLogin,
@@ -266,6 +280,21 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
       responseContentType: contentType.split(";")[0]?.trim() ?? null,
       responseBodyLength: html.length,
     });
+  }
+
+  if (looksLikeHashRejected) {
+    logPayment("error", "qnb-initiate: banka hash doğrulaması reddetti (init Hash).", {
+      orderId,
+      gatewayUrl: urlVal.url,
+      hint: "QNB_MERCHANT_PASS=3D şifre (StoreKey), QNB_PURCH_AMOUNT_DECIMAL, OkUrl/FailUrl birebir eşleşmesi",
+    });
+    return {
+      ok: false,
+      status: 502,
+      error:
+        "Banka ödeme imzasını (Hash) doğrulayamadı. QNB_MERCHANT_PASS (3D şifre, API şifresi değil) ve tutar formatını kontrol edin.",
+      errorCode: "GATEWAY_HASH_REJECTED",
+    };
   }
 
   if (looksLikeVposLogin) {
