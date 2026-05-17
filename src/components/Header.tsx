@@ -16,9 +16,10 @@ function greetingFirstNameFromProfile(fullName: string | null | undefined): stri
 export async function Header() {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const [{ data: { user } }, { lines }] = await Promise.all([
+      supabase.auth.getUser(),
+      getDetailedCart(),
+    ]);
 
     let greetingFirstName: string | null = null;
     if (user) {
@@ -29,8 +30,6 @@ export async function Header() {
         .maybeSingle();
       greetingFirstName = greetingFirstNameFromProfile(profile?.full_name);
     }
-
-    const { lines } = await getDetailedCart();
     const count = lines.reduce((sum, x) => sum + x.quantity, 0);
     const drawerLines = lines.map((line) => ({
       productId: line.product.id,

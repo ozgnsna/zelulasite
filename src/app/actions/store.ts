@@ -141,7 +141,7 @@ const checkoutSchema = z.object({
   customer_name: z.string().min(2, "Lütfen ad soyad bilgisi girin."),
   email: z.string().email("Geçerli bir e-posta adresi girin."),
   phone: z.string().min(10, "Telefon numarası en az 10 haneli olmalı."),
-  address_line: z.string().min(5, "Lütfen açık adresinizi yazın."),
+  address_line: z.string().min(5, "Lütfen açık adresinizi yazın.").max(500),
   city: z.string().min(2, "İl bilgisi gerekli."),
   district: z.string().min(2, "İlçe bilgisi gerekli."),
   postal_code: z.string().min(4, "Posta kodu en az 4 karakter olmalı."),

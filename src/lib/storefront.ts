@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { Category, Collection, Product } from "@/lib/types";
 import {
   childrenOf,
@@ -7,35 +9,54 @@ import {
   type CategoryTaxon,
 } from "@/lib/categories/taxonomy";
 
+function createStorefrontReadClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+async function fetchHomeDataFromDb() {
+  const supabase = createStorefrontReadClient();
+  if (!supabase) {
+    return { categories: [], collections: [], bestSellers: [], newArrivals: [] as Product[] };
+  }
+  const [categoriesRes, collectionsRes, bestRes, newRes] = await Promise.all([
+    supabase.from("categories").select("*").order("name"),
+    supabase.from("collections").select("*").order("name"),
+    supabase
+      .from("products")
+      .select("*, category:categories(*), collection:collections(*), product_images(*)")
+      .eq("is_active", true)
+      .gt("stock_quantity", 0)
+      .eq("featured", true)
+      .limit(8),
+    supabase
+      .from("products")
+      .select("*, category:categories(*), collection:collections(*), product_images(*)")
+      .eq("is_active", true)
+      .gt("stock_quantity", 0)
+      .eq("new_arrival", true)
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  return {
+    categories: categoriesRes.data ?? [],
+    collections: collectionsRes.data ?? [],
+    bestSellers: (bestRes.data ?? []) as Product[],
+    newArrivals: (newRes.data ?? []) as Product[],
+  };
+}
+
+const getHomeDataCached = unstable_cache(fetchHomeDataFromDb, ["storefront-home-data"], {
+  revalidate: 60,
+});
+
+/** Ana sayfa vitrin verisi — 60 sn önbellek (kullanıcı oturumundan bağımsız). */
 export async function getHomeData() {
   try {
-    const supabase = await createClient();
-    const [categoriesRes, collectionsRes, bestRes, newRes] = await Promise.all([
-      supabase.from("categories").select("*").order("name"),
-      supabase.from("collections").select("*").order("name"),
-      supabase
-        .from("products")
-        .select("*, category:categories(*), collection:collections(*), product_images(*)")
-        .eq("is_active", true)
-        .gt("stock_quantity", 0)
-        .eq("featured", true)
-        .limit(8),
-      supabase
-        .from("products")
-        .select("*, category:categories(*), collection:collections(*), product_images(*)")
-        .eq("is_active", true)
-        .gt("stock_quantity", 0)
-        .eq("new_arrival", true)
-        .order("created_at", { ascending: false })
-        .limit(8),
-    ]);
-
-    return {
-      categories: categoriesRes.data ?? [],
-      collections: collectionsRes.data ?? [],
-      bestSellers: (bestRes.data ?? []) as Product[],
-      newArrivals: (newRes.data ?? []) as Product[],
-    };
+    return await getHomeDataCached();
   } catch {
     return { categories: [], collections: [], bestSellers: [], newArrivals: [] as Product[] };
   }
@@ -60,7 +81,7 @@ export async function getProducts(params: {
   featuredOnly?: boolean;
 }) {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const [categoriesRes, collectionsRes] = await Promise.all([
       supabase.from("categories").select("*").order("name"),
       supabase.from("collections").select("*").order("name"),
@@ -294,7 +315,7 @@ function clamp(value: number, min = 0, max = 1) {
 /** Curated cart upsell picks with harmony scoring + premium fallback. */
 export async function getCartUpsellProducts(cartItems: CartUpsellContextItem[], limit = 3): Promise<Product[]> {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { data } = await supabase
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
@@ -465,7 +486,7 @@ export async function getProductBySlug(slug: string) {
       .filter((t) => t.length >= 2);
 
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const decodedSlug = (() => {
       try {
         return decodeURIComponent(slug);

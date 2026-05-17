@@ -25,6 +25,9 @@ export async function middleware(request: NextRequest) {
     });
   }
 
+  const pathname = request.nextUrl.pathname;
+  const needsAuthGuard = pathname.startsWith("/hesabim");
+
   let user: { id: string } | null = null;
   try {
     const supabase = createServerClient(url, anon, {
@@ -42,17 +45,19 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    const {
-      data: { user: u },
-    } = await supabase.auth.getUser();
-    user = u ?? null;
+    if (needsAuthGuard) {
+      const {
+        data: { user: u },
+      } = await supabase.auth.getUser();
+      user = u ?? null;
+    } else {
+      await supabase.auth.getSession();
+    }
   } catch {
-    // Ağ / Supabase kesintisinde tüm siteyi kilitleme; korumalı rotalar aşağıda yine kontrol edilir.
     user = null;
   }
 
-  const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith("/hesabim") && !user) {
+  if (needsAuthGuard && !user) {
     const returnTo = pathname + request.nextUrl.search;
     const login = new URL("/giris", request.url);
     login.searchParams.set("next", returnTo);

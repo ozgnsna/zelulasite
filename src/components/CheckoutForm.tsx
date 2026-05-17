@@ -9,6 +9,12 @@ import { ZELULA_PUAN_PER_100_TRY } from "@/lib/loyalty/constants";
 import type { SavedAddress } from "@/lib/types";
 import { getDistrictOptions, TURKIYE_CITIES } from "@/lib/turkiye-addresses";
 import Link from "next/link";
+import { CheckoutLegalModal } from "@/components/checkout/CheckoutLegalModal";
+import {
+  getDistanceSalesContractText,
+  getPreContractInfoText,
+  getPrivacyPolicyText,
+} from "@/lib/legal/legal-content";
 
 const EMPTY_SAVED_ADDRESSES: SavedAddress[] = [];
 
@@ -98,6 +104,20 @@ export function CheckoutForm({
   const [invoiceDistrict, setInvoiceDistrict] = useState("");
   const legalSectionRef = useRef<HTMLElement | null>(null);
   const formRootRef = useRef<HTMLFormElement | null>(null);
+  const [legalModal, setLegalModal] = useState<"distance" | "pre" | "privacy" | null>(null);
+
+  const legalModalConfig = useMemo(() => {
+    if (legalModal === "distance") {
+      return { title: "Mesafeli Satış Sözleşmesi", text: getDistanceSalesContractText() };
+    }
+    if (legalModal === "pre") {
+      return { title: "Ön Bilgilendirme Formu", text: getPreContractInfoText() };
+    }
+    if (legalModal === "privacy") {
+      return { title: "Gizlilik Politikası", text: getPrivacyPolicyText() };
+    }
+    return null;
+  }, [legalModal]);
 
   const applySavedAddressPick = useCallback(
     (nextId: string) => {
@@ -461,15 +481,18 @@ export function CheckoutForm({
           </p>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-stone-600">Açık Adres</label>
-            <input
+            <textarea
               name="address_line"
               autoComplete="street-address"
-              placeholder="Açık Adres"
+              placeholder="Mahalle, sokak, bina no, daire vb."
               required
+              rows={3}
+              maxLength={500}
               value={dLine}
               onChange={(e) => setDLine(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm transition focus:border-[#C6A15B] focus:outline-none focus:ring-2 focus:ring-[#e8c98b]/35"
+              className="min-h-[96px] w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm leading-relaxed text-stone-900 placeholder:text-stone-400 transition focus:border-[#C6A15B] focus:outline-none focus:ring-2 focus:ring-[#e8c98b]/35"
             />
+            <p className="mt-1 text-[11px] text-stone-500">Yazdığın adresi burada görebilirsin (maks. 500 karakter).</p>
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-stone-600">Teslimat Notu (Opsiyonel)</label>
@@ -630,21 +653,6 @@ export function CheckoutForm({
                       className="h-12 w-full rounded-xl border border-stone-200/90 bg-stone-50/90 px-4 text-stone-900 outline-none transition focus:border-[#C6A15B] focus:ring-2 focus:ring-[#e8c98b]/35"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-stone-600">T.C. Kimlik No</label>
-                    <input
-                      name="invoice_tc_identity_no"
-                      inputMode="numeric"
-                      value={tcIdentityNo}
-                      onChange={(e) => setTcIdentityNo(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                      required
-                      pattern="^[0-9]{11}$"
-                      className="h-12 w-full rounded-xl border border-stone-200/90 bg-stone-50/90 px-4 text-stone-900 outline-none transition focus:border-[#C6A15B] focus:ring-2 focus:ring-[#e8c98b]/35"
-                      onInvalid={(e) => e.currentTarget.setCustomValidity("Lütfen geçerli bir T.C. kimlik numarası giriniz.")}
-                      onInput={(e) => e.currentTarget.setCustomValidity("")}
-                    />
-                    <p className="mt-1.5 text-xs font-light text-stone-500">11 haneli kimlik numarası</p>
-                  </div>
                 </div>
               )}
 
@@ -697,10 +705,12 @@ export function CheckoutForm({
                     </a>{" "}
                     sayfasını aç.
                   </p>
-                  <input
+                  <textarea
                     name="invoice_address_line"
-                    placeholder="Açık Adres"
-                    className="h-12 sm:col-span-3 rounded-xl border border-stone-200/90 bg-stone-50/90 px-4 text-stone-900 outline-none transition focus:border-[#C6A15B] focus:ring-2 focus:ring-[#e8c98b]/35"
+                    placeholder="Mahalle, sokak, bina no, daire vb."
+                    rows={3}
+                    maxLength={500}
+                    className="min-h-[96px] sm:col-span-3 w-full resize-y rounded-xl border border-stone-200/90 bg-stone-50/90 px-4 py-2.5 text-sm leading-relaxed text-stone-900 placeholder:text-stone-400 outline-none transition focus:border-[#C6A15B] focus:ring-2 focus:ring-[#e8c98b]/35"
                   />
                 </div>
               ) : null}
@@ -888,15 +898,17 @@ export function CheckoutForm({
                   />
                   <span>
                     Mesafeli satış sözleşmesi{" "}
-                    <Link
-                      href="/mesafeli-satis-sozlesmesi"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
                       className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/75 underline-offset-2 transition hover:text-[#5c482c]"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setLegalModal("distance");
+                      }}
                     >
                       (görüntüle)
-                    </Link>
+                    </button>
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[#e5ddd1]/90 bg-white/80 px-2.5 py-2 text-[13px] leading-snug text-stone-800">
@@ -913,15 +925,17 @@ export function CheckoutForm({
                   />
                   <span>
                     Ön bilgilendirme formu{" "}
-                    <Link
-                      href="/on-bilgilendirme-formu"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
                       className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/75 underline-offset-2 transition hover:text-[#5c482c]"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setLegalModal("pre");
+                      }}
                     >
                       (görüntüle)
-                    </Link>
+                    </button>
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[#e5ddd1]/90 bg-white/80 px-2.5 py-2 text-[13px] leading-snug text-stone-800">
@@ -938,15 +952,17 @@ export function CheckoutForm({
                   />
                   <span>
                     Gizlilik politikası{" "}
-                    <Link
-                      href="/gizlilik-politikasi"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
                       className="font-medium text-[#7a5f38] underline decoration-[#c6a15b]/75 underline-offset-2 transition hover:text-[#5c482c]"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setLegalModal("privacy");
+                      }}
                     >
                       (görüntüle)
-                    </Link>{" "}
+                    </button>{" "}
                     için onay veriyorum.
                   </span>
                 </label>
@@ -1063,6 +1079,15 @@ export function CheckoutForm({
           </p>
         ) : null}
       </div>
+
+      {legalModalConfig ? (
+        <CheckoutLegalModal
+          open
+          title={legalModalConfig.title}
+          text={legalModalConfig.text}
+          onClose={() => setLegalModal(null)}
+        />
+      ) : null}
     </>
   );
 }
