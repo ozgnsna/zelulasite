@@ -32,6 +32,7 @@ export type Product = {
   material: string | null;
   color: string | null;
   is_active: boolean;
+  product_kind?: "physical" | "gift_card";
   trendyol_barcode?: string | null;
   trendyol_stock_code?: string | null;
   trendyol_brand?: string | null;
@@ -51,9 +52,15 @@ export type Product = {
   categorySlug?: string;
 };
 
+import type { GiftCardCartMeta } from "@/lib/gift-cards/types";
+
+export type { GiftCardCartMeta };
+
 export type CartItem = {
   productId: string;
   quantity: number;
+  /** Dijital hediye kartı satın alımı — checkout / fulfillment için */
+  giftCard?: GiftCardCartMeta;
 };
 
 /** `customer_saved_addresses` — checkout ve Hesabım */

@@ -29,6 +29,15 @@ export const CATEGORY_TAXONOMY: CategoryTaxon[] = [
 
   { id: "bros", name: "Broş", slug: "bros", parentId: "aksesuar", dbCategorySlug: "bros", kind: "leaf" },
   { id: "sapka", name: "Şapka", slug: "sapka", parentId: "aksesuar", dbCategorySlug: "sapka", kind: "leaf" },
+
+  {
+    id: "hediye-karti",
+    name: "Hediye Kartı",
+    slug: "hediye-karti",
+    parentId: null,
+    dbCategorySlug: "hediye-karti",
+    kind: "leaf",
+  },
 ];
 
 const bySlug = new Map(CATEGORY_TAXONOMY.map((t) => [t.slug, t]));
@@ -46,11 +55,21 @@ export function childrenOf(parentId: string): CategoryTaxon[] {
 }
 
 /** Desktop üst şerit: yaprak takılar + setler (sıra sabit) */
-export const HEADER_PRIMARY_LEAF_SLUGS = ["kolye", "kupe", "bileklik", "yuzuk", "setler"] as const;
+export const HEADER_PRIMARY_LEAF_SLUGS = [
+  "kolye",
+  "kupe",
+  "bileklik",
+  "yuzuk",
+  "setler",
+  "hediye-karti",
+] as const;
 
 /** Mega menü grupları (üst başlık + çocuk slug’lar) */
 export const MEGA_MENU_GROUPS: { title: string; slugs: readonly string[] }[] = [
-  { title: "Takılar", slugs: ["kolye", "kupe", "bileklik", "yuzuk", "setler"] },
+  {
+    title: "Takılar",
+    slugs: ["kolye", "kupe", "bileklik", "yuzuk", "setler", "hediye-karti"],
+  },
   { title: "Aksesuar", slugs: ["bros", "sapka"] },
 ];
 

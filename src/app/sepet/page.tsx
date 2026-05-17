@@ -112,6 +112,7 @@ export default async function CartPage({
                     line={{
                       id: line.product.id,
                       quantity: line.quantity,
+                      giftCard: line.giftCard,
                       product: {
                         id: line.product.id,
                         name: line.product.name,

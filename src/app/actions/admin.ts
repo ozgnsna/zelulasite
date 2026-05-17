@@ -10,6 +10,8 @@ import { redirect } from "next/navigation";
 import { normalizeEmailInput } from "@/lib/account/email-input";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
+import { captureGiftCardRedemptionForOrder } from "@/lib/gift-cards/redeem";
 import { syncLoyaltyLedgersForOrder } from "@/lib/loyalty/sync-order-ledger";
 import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
@@ -71,11 +73,6 @@ export async function signInAdmin(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return;
   redirect("/admin");
-}
-
-export async function signOutAdmin() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
 }
 
 function adminProductsListSearchParamsFromForm(formData: FormData): URLSearchParams {
@@ -945,6 +942,8 @@ export async function markOrderPaidManually(formData: FormData) {
   });
 
   await syncLoyaltyLedgersForOrder(supabase, id);
+  await captureGiftCardRedemptionForOrder(supabase, id);
+  await issueGiftCardsForPaidOrder(supabase, id);
 
   revalidateAdminOrderPaths(id);
 }

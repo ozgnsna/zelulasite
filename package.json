@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "seed:supabase": "node scripts/seed-supabase.mjs"
+    "seed:supabase": "node scripts/seed-supabase.mjs",
+    "upload:gift-card-image": "node scripts/upload-gift-card-image.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

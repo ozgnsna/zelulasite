@@ -11,6 +11,7 @@ import { trackRemoveFromCart } from "@/lib/analytics";
 export type CartLineRow = {
   id: string;
   quantity: number;
+  giftCard?: { recipientEmail: string; recipientName?: string | null };
   product: {
     id: string;
     name: string;
@@ -27,7 +28,8 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [draftQty, setDraftQty] = useState(String(line.quantity));
-  const maxQ = Math.max(0, Math.floor(Number(line.product.stock ?? 0)));
+  const isGiftCardLine = Boolean(line.giftCard);
+  const maxQ = isGiftCardLine ? 1 : Math.max(0, Math.floor(Number(line.product.stock ?? 0)));
   const lineTotal = line.product.price * line.quantity;
 
   useEffect(() => {
@@ -81,6 +83,16 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
             <p className="text-[15px] text-stone-500">
               Birim {formatTry(line.product.price)}
             </p>
+            {line.giftCard ? (
+              <p className="mt-1 text-xs text-stone-600">
+                Alıcı:{" "}
+                <span className="font-medium text-stone-800">
+                  {line.giftCard.recipientName ? `${line.giftCard.recipientName} · ` : ""}
+                  {line.giftCard.recipientEmail}
+                </span>
+                <span className="text-stone-400"> · Dijital hediye kartı</span>
+              </p>
+            ) : null}
             {maxQ > 0 ? (
               <p className="mt-0.5 text-xs text-stone-500">Stok: {maxQ}</p>
             ) : (

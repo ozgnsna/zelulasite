@@ -4,6 +4,18 @@ import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inven
 import type { PaymentCallbackPayload } from "@/lib/payments/types";
 import { logPayment } from "@/lib/payments/logger";
 import { notifyAdminOrderEventWithResult } from "@/lib/notifications/order-admin";
+import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
+import {
+  captureGiftCardRedemptionForOrder,
+  releaseGiftCardHoldsForOrder,
+} from "@/lib/gift-cards/redeem";
+
+type LockedOrderRow = {
+  id: string;
+  payment_status: string;
+  order_status: string;
+  payment_reference: string | null;
+};
 
 async function applyLocalOrderStockDelta(admin: ReturnType<typeof createAdminClient>, orderId: string) {
   const { data: rows } = await admin
@@ -25,20 +37,22 @@ async function applyLocalOrderStockDelta(admin: ReturnType<typeof createAdminCli
 
   const { data: products } = await admin
     .from("products")
-    .select("id,stock_quantity")
+    .select("id,stock_quantity,product_kind")
     .in("id", productIds);
 
-  const updates = (products ?? []).map((p) => {
-    const id = String(p.id ?? "");
-    const current = Number(p.stock_quantity ?? 0);
-    const delta = qtyByProduct.get(id) ?? 0;
-    const next = Math.max(0, current - delta);
-    return {
-      id,
-      stock_quantity: next,
-      is_active: next > 0,
-    };
-  });
+  const updates = (products ?? [])
+    .filter((p) => p.product_kind !== "gift_card")
+    .map((p) => {
+      const id = String(p.id ?? "");
+      const current = Number(p.stock_quantity ?? 0);
+      const delta = qtyByProduct.get(id) ?? 0;
+      const next = Math.max(0, current - delta);
+      return {
+        id,
+        stock_quantity: next,
+        is_active: next > 0,
+      };
+    });
 
   for (const u of updates) {
     await admin.from("products").update({ stock_quantity: u.stock_quantity, is_active: u.is_active }).eq("id", u.id);
@@ -47,8 +61,107 @@ async function applyLocalOrderStockDelta(admin: ReturnType<typeof createAdminCli
   await syncPriceInventoryForProducts(admin, updates.map((u) => u.id), "payment_paid_stock_delta");
 }
 
+async function insertPaymentCallbackLog(
+  admin: ReturnType<typeof createAdminClient>,
+  row: {
+    order_id: string | null;
+    provider: string;
+    status: string;
+    callback_payload: Record<string, string>;
+    callback_hash: string;
+    reference?: string | null;
+  },
+): Promise<boolean> {
+  const { error } = await admin.from("payment_logs").insert({
+    order_id: row.order_id,
+    provider: row.provider,
+    event_type: "callback",
+    status: row.status,
+    callback_payload: row.callback_payload,
+    callback_hash: row.callback_hash,
+    reference: row.reference ?? null,
+    verification_status: "passed",
+    verification_error: null,
+    processed_at: new Date().toISOString(),
+  });
+  if (error?.code === "23505") return false;
+  if (error) {
+    logPayment("warn", "payment_logs callback insert failed.", {
+      orderId: row.order_id,
+      error: error.message,
+    });
+    return false;
+  }
+  return true;
+}
+
+async function lockOrderForPaymentCallback(
+  admin: ReturnType<typeof createAdminClient>,
+  orderId: string,
+): Promise<{ order: LockedOrderRow | null; lockFailed: boolean }> {
+  const { data: lockedRows, error: lockError } = await admin.rpc("lock_order_for_payment_callback", {
+    p_order_id: orderId,
+  });
+
+  if (lockError) {
+    logPayment("error", "lock_order_for_payment_callback failed.", {
+      orderId,
+      error: lockError.message,
+    });
+    return { order: null, lockFailed: true };
+  }
+
+  const order = ((lockedRows as LockedOrderRow[] | null) ?? [])[0] ?? null;
+  return { order, lockFailed: false };
+}
+
 export async function applyPaymentResult(payload: PaymentCallbackPayload) {
   const admin = createAdminClient();
+
+  const { order, lockFailed } = await lockOrderForPaymentCallback(admin, payload.orderId);
+  if (lockFailed) {
+    return { ok: false, reason: "lock_failed" as const };
+  }
+
+  const runGiftCardRepair = async () => {
+    if (payload.status === "success") {
+      await captureGiftCardRedemptionForOrder(admin, payload.orderId);
+    } else {
+      await releaseGiftCardHoldsForOrder(admin, payload.orderId);
+    }
+  };
+
+  if (!order) {
+    logPayment("warn", "Callback received for missing order.", { orderId: payload.orderId });
+    await insertPaymentCallbackLog(admin, {
+      order_id: null,
+      provider: payload.provider,
+      status: "orphaned",
+      callback_payload: payload.raw,
+      callback_hash: payload.callbackHash,
+      reference: payload.reference ?? null,
+    });
+    return { ok: false, reason: "order_not_found" as const };
+  }
+
+  /** Birincil koruma: ödeme zaten alındıysa stok / bildirim / yeni kart üretimi yok. */
+  if (order.payment_status === "paid") {
+    logPayment("info", "Order already paid; skipping payment side effects (repair only).", {
+      orderId: payload.orderId,
+      callbackHash: payload.callbackHash,
+      callbackStatus: payload.status,
+    });
+    await insertPaymentCallbackLog(admin, {
+      order_id: payload.orderId,
+      provider: payload.provider,
+      status: "duplicate_paid_order",
+      callback_payload: payload.raw,
+      callback_hash: payload.callbackHash,
+      reference: payload.reference ?? order.payment_reference,
+    });
+    await runGiftCardRepair();
+    return { ok: true, duplicate: true as const };
+  }
 
   const { data: existingLog } = await admin
     .from("payment_logs")
@@ -60,63 +173,17 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
       orderId: payload.orderId,
       callbackHash: payload.callbackHash,
     });
+    await runGiftCardRepair();
     return { ok: true, duplicate: true as const };
   }
 
-  const { data: order } = await admin
-    .from("orders")
-    .select("id,payment_status,order_status,payment_reference")
-    .eq("id", payload.orderId)
-    .maybeSingle();
-
-  if (!order) {
-    logPayment("warn", "Callback received for missing order.", { orderId: payload.orderId });
-    await admin.from("payment_logs").insert({
-      order_id: null,
-      provider: payload.provider,
-      event_type: "callback",
-      status: "orphaned",
-      callback_payload: payload.raw,
-      callback_hash: payload.callbackHash,
-      reference: payload.reference ?? null,
-      verification_status: "passed",
-      verification_error: null,
-      processed_at: new Date().toISOString(),
-    });
-    return { ok: false, reason: "order_not_found" as const };
-  }
-
-  if (order.payment_status === "paid" && payload.status === "success") {
-    logPayment("info", "Already paid order received duplicate success callback.", {
-      orderId: payload.orderId,
-      callbackHash: payload.callbackHash,
-    });
-    await admin.from("payment_logs").insert({
-      order_id: payload.orderId,
-      provider: payload.provider,
-      event_type: "callback",
-      status: "duplicate_success",
-      callback_payload: payload.raw,
-      callback_hash: payload.callbackHash,
-      reference: payload.reference ?? order.payment_reference ?? null,
-      verification_status: "passed",
-      verification_error: null,
-      processed_at: new Date().toISOString(),
-    });
-    return { ok: true, duplicate: true as const };
-  }
-
-  await admin.from("payment_logs").insert({
+  await insertPaymentCallbackLog(admin, {
     order_id: payload.orderId,
     provider: payload.provider,
-    event_type: "callback",
     status: payload.status,
     callback_payload: payload.raw,
     callback_hash: payload.callbackHash,
-    reference: payload.reference ?? order.payment_reference ?? null,
-    verification_status: "passed",
-    verification_error: null,
-    processed_at: new Date().toISOString(),
+    reference: payload.reference ?? order.payment_reference,
   });
 
   await admin
@@ -130,6 +197,24 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
 
   if (payload.status === "success") {
     await applyLocalOrderStockDelta(admin, payload.orderId);
+    await captureGiftCardRedemptionForOrder(admin, payload.orderId);
+
+    const giftIssue = await issueGiftCardsForPaidOrder(admin, payload.orderId);
+    if (giftIssue.issued > 0 || giftIssue.errors.length > 0) {
+      await admin.from("payment_logs").insert({
+        order_id: payload.orderId,
+        provider: "internal_gift_card",
+        event_type: "gift_card_issue",
+        status: giftIssue.errors.length > 0 ? "partial" : "issued",
+        response_payload: giftIssue,
+        callback_payload: null,
+        callback_hash: null,
+        reference: null,
+        verification_status: giftIssue.errors.length > 0 ? "failed" : "passed",
+        verification_error: giftIssue.errors.length > 0 ? giftIssue.errors.join("; ") : null,
+        processed_at: new Date().toISOString(),
+      });
+    }
 
     const { data: orderForNotify } = await admin
       .from("orders")
@@ -178,6 +263,8 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
         processed_at: new Date().toISOString(),
       });
     }
+  } else {
+    await releaseGiftCardHoldsForOrder(admin, payload.orderId);
   }
 
   await syncLoyaltyLedgersForOrder(admin, payload.orderId);

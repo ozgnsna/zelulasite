@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { previewGiftCard } from "@/app/actions/gift-card-redeem";
 import { createCheckout, previewPromoDiscount } from "@/app/actions/store";
 import type { AnalyticsItem } from "@/lib/analytics";
 import { trackBeginCheckout, trackCouponUsage, trackInstagramClick } from "@/lib/analytics";
@@ -69,6 +70,7 @@ export function CheckoutForm({
 
   const [pending, start] = useTransition();
   const [previewing, startPreview] = useTransition();
+  const [giftPreviewing, startGiftPreview] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [legalAcceptWarning, setLegalAcceptWarning] = useState<string | null>(null);
   const [acceptDistanceSales, setAcceptDistanceSales] = useState(false);
@@ -84,6 +86,13 @@ export function CheckoutForm({
     code: string;
     discountAmount: number;
     percent: number;
+  } | null>(null);
+  const [giftDraft, setGiftDraft] = useState("");
+  const [giftError, setGiftError] = useState<string | null>(null);
+  const [appliedGift, setAppliedGift] = useState<{
+    amountApplied: number;
+    last4: string;
+    balanceRemaining: number;
   } | null>(null);
   const [useLoyaltyRedeem, setUseLoyaltyRedeem] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "bank_transfer">("card");
@@ -158,8 +167,10 @@ export function CheckoutForm({
   const loyaltyCartCap = Math.max(0, subtotal * 0.5);
   const loyaltyDiscount = useLoyaltyRedeem && isSignedIn ? Math.min(loyaltyTryValue, loyaltyCartCap, subtotal) : 0;
   const subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
-  const discount = appliedPromo?.discountAmount ?? 0;
-  const payable = Math.max(0, subtotalAfterLoyalty - discount);
+  const promoDiscount = appliedPromo?.discountAmount ?? 0;
+  const orderTotalBeforeGift = Math.max(0, subtotalAfterLoyalty - promoDiscount);
+  const giftDiscount = appliedGift?.amountApplied ?? 0;
+  const payable = Math.max(0, orderTotalBeforeGift - giftDiscount);
   const earnedPointsPreview = Math.floor(payable / 100) * ZELULA_PUAN_PER_100_TRY;
   const hasLoyaltyPoints = isSignedIn && loyaltyAvailablePoints > 0;
   const resolvedAccountName = (accountFullName ?? "").trim();
@@ -275,10 +286,16 @@ export function CheckoutForm({
                   <dd className="tabular-nums">-{formatTry(loyaltyDiscount)}</dd>
                 </div>
               ) : null}
-              {discount > 0 ? (
+              {promoDiscount > 0 ? (
                 <div className="flex justify-between text-stone-600">
                   <dt>Promo indirimi</dt>
-                  <dd className="tabular-nums">-{formatTry(discount)}</dd>
+                  <dd className="tabular-nums">-{formatTry(promoDiscount)}</dd>
+                </div>
+              ) : null}
+              {giftDiscount > 0 ? (
+                <div className="flex justify-between text-stone-600">
+                  <dt>Hediye kartı{appliedGift?.last4 ? ` ····${appliedGift.last4}` : ""}</dt>
+                  <dd className="tabular-nums">-{formatTry(giftDiscount)}</dd>
                 </div>
               ) : null}
               <div className="flex justify-between text-stone-600">
@@ -755,6 +772,8 @@ export function CheckoutForm({
                         setUseLoyaltyRedeem(e.target.checked && hasLoyaltyPoints);
                         setAppliedPromo(null);
                         setPromoError(null);
+                        setAppliedGift(null);
+                        setGiftError(null);
                       }}
                       className="mt-0.5 h-4 w-4 rounded border-[#c9b8a4] text-[#b8945f] focus:ring-[#c6a15b]/35"
                     />
@@ -777,6 +796,83 @@ export function CheckoutForm({
                 </div>
               )}
             </section>
+
+            <section className="rounded-xl border border-[#e8dccb]/90 bg-white/80 p-3.5">
+              <h3 className="text-sm font-semibold text-stone-800">Hediye kartı kodu</h3>
+              <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
+                Dijital hediye kartı kodunuzu girin; bakiye sipariş tutarından düşülür.
+              </p>
+              <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                <input
+                  id="checkout-gift-card"
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={giftDraft}
+                  onChange={(e) => {
+                    setGiftDraft(e.target.value);
+                    setGiftError(null);
+                  }}
+                  placeholder="Hediye kartı kodu"
+                  disabled={pending || giftPreviewing}
+                  className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-[#C6A15B] focus:ring-2 focus:ring-[#e8c98b]/35"
+                />
+                <div className="flex gap-2 sm:w-auto">
+                  <button
+                    type="button"
+                    disabled={pending || giftPreviewing || !giftDraft.trim()}
+                    onClick={() => {
+                      setGiftError(null);
+                      startGiftPreview(async () => {
+                        const r = await previewGiftCard(giftDraft, orderTotalBeforeGift);
+                        if (r.ok) {
+                          setAppliedGift({
+                            amountApplied: r.amountApplied,
+                            last4: r.last4,
+                            balanceRemaining: r.balanceRemaining,
+                          });
+                        } else {
+                          setAppliedGift(null);
+                          setGiftError(r.error);
+                        }
+                      });
+                    }}
+                    className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-800 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {giftPreviewing ? "…" : "Uygula"}
+                  </button>
+                  {appliedGift ? (
+                    <button
+                      type="button"
+                      disabled={pending || giftPreviewing}
+                      onClick={() => {
+                        setAppliedGift(null);
+                        setGiftError(null);
+                      }}
+                      className="shrink-0 rounded-xl border border-transparent px-3 py-2 text-sm text-stone-600 underline-offset-2 hover:underline"
+                    >
+                      Kaldır
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {giftError ? (
+                <p className="mt-2 text-xs font-light text-stone-800" role="alert">
+                  {giftError}
+                </p>
+              ) : null}
+              {appliedGift ? (
+                <p className="mt-2 text-xs font-medium text-stone-700">
+                  −{formatTry(appliedGift.amountApplied)} uygulandı
+                  {appliedGift.last4 ? ` (····${appliedGift.last4})` : ""}. Kalan bakiye:{" "}
+                  {formatTry(appliedGift.balanceRemaining)}.
+                </p>
+              ) : null}
+              {appliedGift && giftDraft.trim() ? (
+                <input type="hidden" name="gift_card_code" value={giftDraft.trim()} />
+              ) : null}
+            </section>
+
             <section className="space-y-2.5">
               <h3 className="text-sm font-semibold text-stone-800">🎁 İndirim kodun var mı?</h3>
             </section>
@@ -837,6 +933,8 @@ export function CheckoutForm({
                             discountAmount: r.discountAmount,
                             percent: r.percent,
                           });
+                          setAppliedGift(null);
+                          setGiftError(null);
                         } else {
                           setAppliedPromo(null);
                           setPromoError(r.error);
@@ -977,7 +1075,7 @@ export function CheckoutForm({
               ) : null}
             </section>
 
-            {discount > 0 || loyaltyDiscount > 0 ? (
+            {promoDiscount > 0 || giftDiscount > 0 || loyaltyDiscount > 0 ? (
               <div className="mt-4 rounded-xl border border-[#e8dfd3] bg-[#f4f1ec] px-3 py-2 text-sm font-light text-stone-800">
                 <div className="space-y-1.5">
                   {loyaltyDiscount > 0 ? (
@@ -986,10 +1084,16 @@ export function CheckoutForm({
                       <span className="font-medium">-{formatTry(loyaltyDiscount)}</span>
                     </div>
                   ) : null}
-                  {discount > 0 ? (
+                  {promoDiscount > 0 ? (
                     <div className="flex justify-between">
                       <span>Promo indirimi</span>
-                      <span className="font-medium">-{formatTry(discount)}</span>
+                      <span className="font-medium">-{formatTry(promoDiscount)}</span>
+                    </div>
+                  ) : null}
+                  {giftDiscount > 0 ? (
+                    <div className="flex justify-between">
+                      <span>Hediye kartı</span>
+                      <span className="font-medium">-{formatTry(giftDiscount)}</span>
                     </div>
                   ) : null}
                   <div className="flex justify-between border-t border-[#e6ddd2] pt-1.5">
@@ -1060,7 +1164,7 @@ export function CheckoutForm({
           <div>
             <p className="text-xs text-stone-500">{lineCount} ürün</p>
             <p className="font-semibold text-stone-900">{formatTry(payable)}</p>
-            {discount > 0 || loyaltyDiscount > 0 ? (
+            {promoDiscount > 0 || giftDiscount > 0 || loyaltyDiscount > 0 ? (
               <p className="text-[10px] font-light text-stone-600">İndirim dahil</p>
             ) : null}
           </div>

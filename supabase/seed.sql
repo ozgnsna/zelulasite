@@ -7,7 +7,8 @@ insert into categories (name, slug) values
 ('Şahmeran', 'sahmeran'),
 ('Aksesuar', 'aksesuar'),
 ('Broş', 'bros'),
-('Şapka', 'sapka')
+('Şapka', 'sapka'),
+('Hediye Kartı', 'hediye-karti')
 on conflict (slug) do nothing;
 
 insert into collections (name, slug, description) values

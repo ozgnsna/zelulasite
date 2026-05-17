@@ -8,6 +8,7 @@ import {
   BarChart3,
   Boxes,
   LayoutDashboard,
+  Gift,
   Megaphone,
   Menu,
   Package,
@@ -16,7 +17,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { signOutAdmin } from "@/app/actions/admin";
+const ADMIN_SIGN_OUT = "/auth/signout?next=%2Fadmin%2Flogin";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -24,6 +25,7 @@ const nav = [
   { href: "/admin/orders", label: "Siparişler", icon: Package, match: (p: string) => p.startsWith("/admin/orders") },
   { href: "/admin/products", label: "Ürünler", icon: Boxes, match: (p: string) => p.startsWith("/admin/products") },
   { href: "/admin/customers", label: "Müşteriler", icon: Users, match: (p: string) => p.startsWith("/admin/customers") },
+  { href: "/admin/gift-cards", label: "Hediye kartları", icon: Gift, match: (p: string) => p.startsWith("/admin/gift-cards") },
   { href: "/admin/campaigns", label: "Kampanyalar", icon: Megaphone, match: (p: string) => p.startsWith("/admin/campaigns") },
   { href: "/admin/trendyol", label: "Trendyol", icon: Store, match: (p: string) => p.startsWith("/admin/trendyol") },
   { href: "/admin/reports", label: "Raporlar", icon: BarChart3, match: (p: string) => p.startsWith("/admin/reports") },
@@ -112,7 +114,7 @@ export function AdminSidebar() {
         </nav>
 
         <div className="border-t border-white/[0.06] p-3">
-          <form action={signOutAdmin}>
+          <form action={ADMIN_SIGN_OUT} method="post">
             <button
               type="submit"
               className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-left text-[13px] font-medium text-zinc-300 transition hover:border-[#c9a06e]/40 hover:bg-[#c9a06e]/10 hover:text-[#f0e6d4]"

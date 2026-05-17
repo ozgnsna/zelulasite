@@ -19,7 +19,13 @@ async function handleQnbReturn(fd: FormData) {
 
   const result = await applyPaymentResult(parsed.payload);
   if (!result.ok) {
-    return new NextResponse("order not found", { status: 404 });
+    const status =
+      "reason" in result && result.reason === "lock_failed" ? 503 : 404;
+    const message =
+      "reason" in result && result.reason === "lock_failed"
+        ? "payment processing unavailable"
+        : "order not found";
+    return new NextResponse(message, { status });
   }
 
   const base = siteBase();

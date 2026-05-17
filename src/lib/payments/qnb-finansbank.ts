@@ -863,6 +863,18 @@ function verifyQnbReturnHash(
   return false;
 }
 
+/**
+ * Banka Hash alanı yoksa: aynı dakika içindeki tekrarlayan callback'leri tek anahtarda toplar.
+ */
+export function buildQnbFallbackCallbackHash(
+  orderId: string,
+  procReturnCode: string,
+  now: Date = new Date(),
+): string {
+  const minuteBucket = Math.floor(now.getTime() / 60_000);
+  return `qnb_${orderId}_${procReturnCode || "none"}_${minuteBucket}`;
+}
+
 export async function parseQnbReturnForm(fd: FormData): Promise<PaymentCallbackResult> {
   const cred = getQnbCredentials();
   if (!cred.ok) {
@@ -904,8 +916,9 @@ export async function parseQnbReturnForm(fd: FormData): Promise<PaymentCallbackR
   const amountRaw = str(fd, "PurchAmount") || str(fd, "Amount");
   const amount = amountRaw ? Number(amountRaw.replace(",", ".")) : null;
   const reference = str(fd, "TransId") || str(fd, "HostRefNum") || str(fd, "AuthCode") || null;
-  const callbackHash =
-    str(fd, "Hash") || str(fd, "HASH") || str(fd, "ResponseHash") || str(fd, "Response_Hash") || `qnb_${orderId}_${procReturnCode}`;
+  const bankHash =
+    str(fd, "Hash") || str(fd, "HASH") || str(fd, "ResponseHash") || str(fd, "Response_Hash") || "";
+  const callbackHash = bankHash || buildQnbFallbackCallbackHash(orderId, procReturnCode);
 
   const payload: PaymentCallbackPayload = {
     orderId,

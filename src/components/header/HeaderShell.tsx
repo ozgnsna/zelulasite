@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, Menu, UserRound, X } from "lucide-react";
-import { signOut } from "@/app/actions/auth";
+const SIGN_OUT_ACTION = "/auth/signout";
 import {
   categoryHref,
   getTaxonBySlug,
@@ -246,7 +246,7 @@ export function HeaderShell({
                       Favorilerim
                     </Link>
                     <div className="my-1 border-t border-[#ebe6df]" />
-                    <form action={signOut}>
+                    <form action={SIGN_OUT_ACTION} method="post">
                       <button
                         type="submit"
                         role="menuitem"
@@ -418,7 +418,7 @@ export function HeaderShell({
                     </Link>
                   </li>
                   <li className="pt-2">
-                    <form action={signOut}>
+                    <form action={SIGN_OUT_ACTION} method="post">
                       <button
                         type="submit"
                         className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-stone-600 hover:bg-stone-50"

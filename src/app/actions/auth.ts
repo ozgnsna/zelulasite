@@ -205,13 +205,6 @@ export async function updatePassword(_prev: AuthFormState, formData: FormData): 
   redirect("/giris?reset=ok");
 }
 
-export async function signOut() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  revalidatePath("/", "layout");
-  redirect("/");
-}
-
 const profileSchema = z.object({
   full_name: z
     .string()

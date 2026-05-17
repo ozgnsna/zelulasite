@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import type { GiftCardCartMeta } from "@/lib/gift-cards/types";
 import type { CartItem, Product } from "@/lib/types";
 
 const CART_KEY = "zelula_cart";
@@ -34,17 +35,32 @@ export async function reconcileCartCookie(): Promise<CartItem[]> {
   try {
     const supabase = await createClient();
     const ids = [...new Set(items.map((x) => x.productId))];
-    const { data, error } = await supabase.from("products").select("id,stock_quantity,is_active").in("id", ids);
+    const { data, error } = await supabase
+      .from("products")
+      .select("id,stock_quantity,is_active,product_kind")
+      .in("id", ids);
     if (error || !data) return items;
-    const byId = new Map(data.map((r) => [r.id, r as { id: string; stock_quantity: number | null; is_active: boolean | null }]));
+    const byId = new Map(
+      data.map((r) => [
+        r.id,
+        r as { id: string; stock_quantity: number | null; is_active: boolean | null; product_kind?: string | null },
+      ]),
+    );
     const next: CartItem[] = [];
     for (const item of items) {
       const p = byId.get(item.productId);
       if (!p) continue;
+      if (!p.is_active) continue;
+      if (p.product_kind === "gift_card" || item.giftCard) {
+        if (item.giftCard) {
+          next.push({ ...item, productId: item.productId, quantity: 1 });
+        }
+        continue;
+      }
       const stock = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
-      const maxBuy = p.is_active ? stock : 0;
+      const maxBuy = stock;
       const qty = maxBuy <= 0 ? 0 : Math.min(item.quantity, maxBuy);
-      if (qty > 0) next.push({ productId: item.productId, quantity: qty });
+      if (qty > 0) next.push({ productId: item.productId, quantity: qty, giftCard: item.giftCard });
     }
     const same =
       items.length === next.length && items.every((it, i) => it.productId === next[i]?.productId && it.quantity === next[i]?.quantity);
@@ -71,9 +87,19 @@ export async function getDetailedCart() {
       .map((item) => {
         const product = byId.get(item.productId);
         if (!product) return null;
-        return { product, quantity: item.quantity, lineTotal: product.price * item.quantity };
+        return {
+          product,
+          quantity: item.quantity,
+          lineTotal: product.price * item.quantity,
+          giftCard: item.giftCard,
+        };
       })
-      .filter(Boolean) as { product: Product; quantity: number; lineTotal: number }[];
+      .filter(Boolean) as {
+        product: Product;
+        quantity: number;
+        lineTotal: number;
+        giftCard?: GiftCardCartMeta;
+      }[];
     const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
     return { lines, subtotal };
   } catch {

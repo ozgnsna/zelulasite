@@ -15,6 +15,7 @@ import {
   isBankReviewMode,
 } from "@/lib/payments/qnb-finansbank";
 import { isCheckoutHandoffDebugEnabled, isPaymentFlowDebugEnabled, logPayment } from "@/lib/payments/logger";
+import { applyGiftCardToOrder, releaseGiftCardHoldsForOrder } from "@/lib/gift-cards/redeem";
 import { computeInstagramFollowerDiscount } from "@/lib/promo-instagram";
 import { getUserLoyaltyBalance } from "@/lib/loyalty/balance";
 import { pickCheckoutReferrer, ZELULA_REFERRAL_COOKIE } from "@/lib/referral/server";
@@ -82,13 +83,18 @@ export async function addToCart(productId: string): Promise<AddToCartResult> {
   const supabase = await createClient();
   const { data: p, error } = await supabase
     .from("products")
-    .select("id,stock_quantity,is_active")
+    .select("id,stock_quantity,is_active,product_kind")
     .eq("id", productId)
     .maybeSingle();
   if (error || !p || !p.is_active) {
     revalidatePath("/sepet");
     revalidatePath("/");
     return { ok: false, error: "Ürün bulunamadı veya satışta değil." };
+  }
+  if (p.product_kind === "gift_card") {
+    revalidatePath("/sepet");
+    revalidatePath("/");
+    return { ok: false, error: "Hediye kartı için lütfen hediye kartı sayfasını kullanın." };
   }
   const stock = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
   if (stock < 1) {
@@ -185,7 +191,7 @@ export async function createCheckout(formData: FormData) {
   const admin = createAdminClient();
   const { data: productRows, error: productsError } = await admin
     .from("products")
-    .select("id,name,price,is_active,stock_quantity")
+    .select("id,name,price,is_active,stock_quantity,product_kind")
     .in("id", ids);
   if (productsError || !productRows) {
     return { ok: false, error: "Ürün bilgileri alınamadı. Sayfayı yenileyip tekrar deneyin." };
@@ -205,6 +211,21 @@ export async function createCheckout(formData: FormData) {
         ok: false,
         error: "Sepetinizde satışa kapalı ürünler var. Sepet sayfasından kaldırıp tekrar deneyin.",
       };
+    }
+    if (p.product_kind === "gift_card") {
+      if (!line.giftCard?.recipientEmail) {
+        return {
+          ok: false,
+          error: "Hediye kartı alıcı e-postası eksik. Lütfen hediye kartı sayfasından tekrar ekleyin.",
+        };
+      }
+      if (line.quantity > 1) {
+        return {
+          ok: false,
+          error: "Hediye kartı satırlarında adet 1 olmalıdır.",
+        };
+      }
+      continue;
     }
     const available = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
     if (available < line.quantity) {
@@ -226,6 +247,14 @@ export async function createCheckout(formData: FormData) {
       quantity: line.quantity,
       unit_price: unit,
       total_price: lineTotal,
+      gift_card_meta: line.giftCard
+        ? {
+            denominationId: line.giftCard.denominationId,
+            recipientEmail: line.giftCard.recipientEmail,
+            recipientName: line.giftCard.recipientName ?? null,
+            personalMessage: line.giftCard.personalMessage ?? null,
+          }
+        : null,
     };
   });
   const cookieStore = await cookies();
@@ -428,7 +457,32 @@ export async function createCheckout(formData: FormData) {
     });
   }
 
-  await admin.from("order_items").insert(orderItems.map((i) => ({ ...i!, order_id: order.id })));
+  const orderItemsPayload = orderItems.map((i) => ({ ...i!, order_id: order.id }));
+  const itemsInsert = await admin.from("order_items").insert(orderItemsPayload);
+  if (itemsInsert.error && isMissingColumnError(itemsInsert.error.message ?? "")) {
+    const slimItems = orderItemsPayload.map(({ gift_card_meta: _g, ...rest }) => rest);
+    await admin.from("order_items").insert(slimItems);
+  }
+
+  const giftCardCode = String(formData.get("gift_card_code") ?? "").trim();
+  let paymentTotal = Number(order.total ?? total);
+  if (giftCardCode) {
+    const giftResult = await applyGiftCardToOrder(admin, giftCardCode, order.id);
+    if (!giftResult.ok) {
+      await releaseGiftCardHoldsForOrder(admin, order.id);
+      return { ok: false, error: giftResult.error };
+    }
+    const { data: refreshedOrder } = await admin
+      .from("orders")
+      .select("total,gift_card_redeem_amount")
+      .eq("id", order.id)
+      .maybeSingle();
+    if (refreshedOrder) {
+      paymentTotal = Number(refreshedOrder.total ?? paymentTotal);
+      order.total = refreshedOrder.total;
+    }
+  }
+
   const siteUrl = resolveSiteUrl(requestHeaders);
 
   if (isBankTransfer) {
@@ -439,7 +493,7 @@ export async function createCheckout(formData: FormData) {
       customerName: order.customer_name,
       customerEmail: order.email,
       customerPhone: order.phone,
-      total: Number(order.total ?? 0),
+      total: paymentTotal,
       currency: String(order.currency ?? "TRY"),
       paymentStatus: String(order.payment_status ?? "pending"),
       paymentProvider: String(order.payment_provider ?? "bank_transfer"),
@@ -516,7 +570,7 @@ export async function createCheckout(formData: FormData) {
   const payment = await initializePayment({
     orderId: order.id,
     orderNumber: order.order_number,
-    amount: total,
+    amount: paymentTotal,
     currency: "TRY",
     customer: {
       name: parsed.data.customer_name,

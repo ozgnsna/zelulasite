@@ -1,0 +1,180 @@
+// Zelula — hediye kartı veri modeli (referans / dokümantasyon).
+// Canlı şema: supabase/migrations/*_gift_cards.sql ve supabase/schema.sql
+// Bu projede Prisma migrate kullanılmıyor; değişiklikler Supabase migration ile uygulanır.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Satılabilir yüz değerleri (500 / 750 / 1000 TRY). Admin’den yönetilir.
+model GiftCardDenomination {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  amount    Decimal  @db.Decimal(10, 2)
+  currency  String   @default("TRY")
+  label     String
+  slug      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  imageUrl  String?  @map("image_url")
+  /// Sepet / QNB ödemesi için bağlı ürün (product_kind = gift_card)
+  productId String?  @unique @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  giftCards GiftCard[]
+
+  @@unique([amount, currency])
+  @@map("gift_card_denominations")
+}
+
+/// Ödeme sonrası üretilen tekil hediye kartı (kod hash’lenir; düz metin saklanmaz).
+model GiftCard {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  denominationId   String           @map("denomination_id") @db.Uuid
+  codeHash         String           @unique @map("code_hash")
+  codeLast4        String           @map("code_last4") @db.VarChar(4)
+  initialBalance   Decimal          @map("initial_balance") @db.Decimal(10, 2)
+  balanceRemaining Decimal          @map("balance_remaining") @db.Decimal(10, 2)
+  currency         String           @default("TRY")
+  status           GiftCardStatus   @default(active)
+
+  purchaseOrderId   String? @map("purchase_order_id") @db.Uuid
+  purchaseOrderItemId String? @map("purchase_order_item_id") @db.Uuid
+  purchasedByUserId String? @map("purchased_by_user_id") @db.Uuid
+  purchaserEmail    String? @map("purchaser_email")
+
+  recipientEmail   String  @map("recipient_email")
+  recipientName    String? @map("recipient_name")
+  personalMessage  String? @map("personal_message")
+
+  deliveredAt      DateTime? @map("delivered_at") @db.Timestamptz(6)
+  deliveryAttempts Int       @default(0) @map("delivery_attempts")
+  expiresAt        DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  denomination GiftCardDenomination @relation(fields: [denominationId], references: [id])
+  purchaseOrder Order?              @relation("GiftCardPurchase", fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  purchaseOrderItem OrderItem?    @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
+  ledgerEntries GiftCardLedgerEntry[]
+  holds         GiftCardHold[]
+  redeemOrders  Order[]           @relation("GiftCardRedeem")
+
+  @@index([status])
+  @@index([recipientEmail])
+  @@index([purchaseOrderId])
+  @@map("gift_cards")
+}
+
+/// Kısmi kullanım geçmişi (loyalty_points_ledger ile aynı fikir).
+model GiftCardLedgerEntry {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  giftCardId    String              @map("gift_card_id") @db.Uuid
+  orderId       String?             @map("order_id") @db.Uuid
+  amount        Decimal             @db.Decimal(10, 2)
+  entryType     GiftCardLedgerType  @map("entry_type")
+  balanceAfter  Decimal             @map("balance_after") @db.Decimal(10, 2)
+  note          String?
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  giftCard GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([orderId, entryType], map: "uq_gift_card_ledger_redeem_per_order")
+  @@index([giftCardId, createdAt(sort: Desc)])
+  @@map("gift_card_ledger")
+}
+
+/// Ödeme beklerken bakiye kilidi (çift harcamayı önler).
+model GiftCardHold {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  giftCardId String          @map("gift_card_id") @db.Uuid
+  orderId    String          @map("order_id") @db.Uuid
+  amountHeld Decimal         @map("amount_held") @db.Decimal(10, 2)
+  status     GiftCardHoldStatus @default(pending)
+  expiresAt  DateTime        @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  releasedAt DateTime?       @map("released_at") @db.Timestamptz(6)
+
+  giftCard GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId], map: "uq_gift_card_hold_per_order")
+  @@index([giftCardId, status])
+  @@map("gift_card_holds")
+}
+
+enum GiftCardStatus {
+  active
+  depleted
+  expired
+  revoked
+
+  @@map("gift_card_status")
+}
+
+enum GiftCardLedgerType {
+  issue
+  redeem
+  release
+  refund
+  adjust
+
+  @@map("gift_card_ledger_type")
+}
+
+enum GiftCardHoldStatus {
+  pending
+  captured
+  released
+  expired
+
+  @@map("gift_card_hold_status")
+}
+
+enum ProductKind {
+  physical
+  gift_card
+
+  @@map("product_kind")
+}
+
+// --- Mevcut tablolar (ilişkiler için minimal) ---
+
+model Product {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String
+  slug                 String       @unique
+  price                Decimal      @db.Decimal(10, 2)
+  productKind          ProductKind  @default(physical) @map("product_kind")
+  giftCardDenomination GiftCardDenomination?
+
+  @@map("products")
+}
+
+model Order {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  giftCardRedeemAmount Decimal?  @default(0) @map("gift_card_redeem_amount") @db.Decimal(10, 2)
+  giftCardId           String?   @map("gift_card_id") @db.Uuid
+
+  purchasedGiftCards GiftCard[]        @relation("GiftCardPurchase")
+  redeemedGiftCard   GiftCard?         @relation("GiftCardRedeem", fields: [giftCardId], references: [id], onDelete: SetNull)
+  giftCardLedger     GiftCardLedgerEntry[]
+  giftCardHolds      GiftCardHold[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  giftCards GiftCard[]
+
+  @@map("order_items")
+}
