@@ -14,8 +14,15 @@ export function mapAuthError(error: AuthError | { message: string }): string {
   if (code === "user_already_registered" || msg.includes("user already registered")) {
     return "Bu e-posta ile zaten bir hesap var. Giriş yapmayı deneyin.";
   }
-  if (code === "weak_password" || msg.includes("password")) {
+  if (code === "weak_password" || (msg.includes("password") && !msg.includes("reset"))) {
     return "Şifre yeterince güçlü değil. En az 8 karakter ve harf ile rakam kullanın.";
+  }
+  if (
+    code === "otp_expired" ||
+    msg.includes("expired") ||
+    (msg.includes("invalid") && msg.includes("token"))
+  ) {
+    return "Şifre sıfırlama bağlantısının süresi dolmuş veya geçersiz. Lütfen yeniden bağlantı isteyin.";
   }
   if (msg.includes("rate limit") || msg.includes("too many")) {
     return "Çok fazla deneme yapıldı. Lütfen bir süre sonra tekrar deneyin.";

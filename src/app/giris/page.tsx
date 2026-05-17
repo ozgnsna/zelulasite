@@ -10,12 +10,17 @@ export const metadata: Metadata = {
   description: "Zelula hesabınıza giriş yapın.",
 };
 
-type Props = { searchParams: Promise<{ next?: string | string[] }> };
+type Props = {
+  searchParams: Promise<{ next?: string | string[]; reset?: string | string[]; error?: string | string[] }>;
+};
 
 export default async function GirisPage({ searchParams }: Props) {
   const sp = await searchParams;
   const rawNext = typeof sp.next === "string" ? sp.next : Array.isArray(sp.next) ? sp.next[0] : undefined;
   const safeNext = getSafeReturnPath(rawNext);
+  const resetOk = (typeof sp.reset === "string" ? sp.reset : sp.reset?.[0]) === "ok";
+  const authCallbackError =
+    (typeof sp.error === "string" ? sp.error : sp.error?.[0]) === "auth_callback";
 
   const supabase = await createClient();
   const {
@@ -32,6 +37,22 @@ export default async function GirisPage({ searchParams }: Props) {
           Siparişlerinizi takip edin ve profilinizi yönetin.
         </p>
         <div className="mt-10 rounded-2xl border border-[#e8dfd3] bg-[color:var(--surface)] p-8 shadow-sm">
+          {resetOk ? (
+            <p
+              className="mb-5 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-2.5 text-sm text-emerald-900"
+              role="status"
+            >
+              Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
+            </p>
+          ) : null}
+          {authCallbackError ? (
+            <p
+              className="mb-5 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3.5 py-2.5 text-sm text-amber-950"
+              role="alert"
+            >
+              Giriş bağlantısı geçersiz veya süresi dolmuş. Lütfen tekrar deneyin veya şifre sıfırlama isteyin.
+            </p>
+          ) : null}
           <LoginForm defaultNext={safeNext} />
         </div>
         <p className="mt-8 text-center text-xs text-stone-500">

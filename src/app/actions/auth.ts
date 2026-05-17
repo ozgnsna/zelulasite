@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { mapAuthError } from "@/lib/account/auth-errors";
 import { normalizeEmailInput } from "@/lib/account/email-input";
 import { normalizeTurkishFullName } from "@/lib/account/turkish-full-name";
+import { buildAuthCallbackUrl } from "@/lib/account/site-url";
 import { getSafeReturnPath } from "@/lib/account/safe-return-path";
 
 export type AuthFormState = { ok: false; error: string } | { ok: true; message?: string } | undefined;
@@ -129,6 +130,79 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
 
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .transform((s) => normalizeEmailInput(s))
+    .pipe(z.string().email("Geçerli bir e-posta adresi girin.")),
+});
+
+const newPasswordSchema = z.object({
+  password: z.string().min(8, "Şifren en az 8 karakter olmalı."),
+});
+
+/** Şifre sıfırlama e-postası gönderir (e-posta yoksa da aynı başarı mesajı — enumeration önlemi). */
+export async function requestPasswordReset(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = forgotPasswordSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "E-posta adresinizi kontrol edin." };
+  }
+
+  const redirectTo = buildAuthCallbackUrl("/sifre-yenile");
+  if (!redirectTo) {
+    return {
+      ok: false,
+      error: "Şifre sıfırlama şu an yapılandırılamıyor. Lütfen daha sonra tekrar deneyin.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo,
+  });
+
+  if (error && process.env.NODE_ENV === "development") {
+    console.warn("[requestPasswordReset]", error.message);
+  }
+
+  return {
+    ok: true,
+    message:
+      "Bu e-posta adresi kayıtlıysa, şifre sıfırlama bağlantısı gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin (birkaç dakika sürebilir).",
+  };
+}
+
+export async function updatePassword(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const parsed = newPasswordSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Şifrenizi kontrol edin." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      ok: false,
+      error:
+        "Oturum bulunamadı. Şifre sıfırlama bağlantısının süresi dolmuş olabilir; lütfen yeniden bağlantı isteyin.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    return { ok: false, error: mapAuthError(error) };
+  }
+
+  await supabase.auth.signOut();
+  revalidatePath("/", "layout");
+  redirect("/giris?reset=ok");
 }
 
 export async function signOut() {

@@ -2,18 +2,22 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { signIn } from "@/app/actions/auth";
+import { requestPasswordReset } from "@/app/actions/auth";
 import { EmailField } from "@/components/account/EmailField";
-import { PasswordField } from "@/components/account/PasswordField";
 import { isBasicValidEmail, normalizeEmailInput } from "@/lib/account/email-input";
-import { cn } from "@/lib/utils";
 
-const loginFieldClass =
+const fieldClass =
   "w-full rounded-xl border border-[#e8dfd3] bg-[color:var(--surface)] pl-4 pr-4 py-2.5 text-stone-900 outline-none transition duration-200 placeholder:text-stone-400 focus:border-[color:var(--brand-gold)]/45 focus:ring-2 focus:ring-[color:var(--brand-gold)]/18 disabled:opacity-60";
 
-export function LoginForm({ defaultNext = "/" }: { defaultNext?: string }) {
-  const [state, formAction, pending] = useActionState(signIn, undefined);
+export function ForgotPasswordForm() {
+  const [state, formAction, pending] = useActionState(requestPasswordReset, undefined);
   const [emailSubmitBlocked, setEmailSubmitBlocked] = useState(false);
+
+  if (state?.ok && state.message) {
+    return (
+      <ForgotPasswordSent message={state.message} />
+    );
+  }
 
   return (
     <form
@@ -28,37 +32,17 @@ export function LoginForm({ defaultNext = "/" }: { defaultNext?: string }) {
         }
       }}
     >
-      <input type="hidden" name="next" value={defaultNext} />
       <div>
-        <label htmlFor="login-email" className="mb-1 block text-sm font-medium text-stone-700">
+        <label htmlFor="forgot-email" className="mb-1 block text-sm font-medium text-stone-700">
           E-posta
         </label>
         <EmailField
-          id="login-email"
+          id="forgot-email"
           disabled={pending}
-          inputClassName={loginFieldClass}
+          inputClassName={fieldClass}
           submitBlocked={emailSubmitBlocked}
           onClearSubmitBlocked={() => setEmailSubmitBlocked(false)}
         />
-      </div>
-      <div>
-        <label htmlFor="login-password" className="mb-1 block text-sm font-medium text-stone-700">
-          Şifre
-        </label>
-        <PasswordField
-          id="login-password"
-          autoComplete="current-password"
-          disabled={pending}
-          inputClassName={cn(loginFieldClass, "!pr-12")}
-        />
-        <p className="mt-2 text-right text-sm">
-          <Link
-            href="/sifremi-unuttum"
-            className="text-[color:var(--brand-gold)] underline-offset-2 hover:underline"
-          >
-            Şifremi unuttum
-          </Link>
-        </p>
       </div>
       {state && !state.ok ? (
         <p
@@ -73,14 +57,31 @@ export function LoginForm({ defaultNext = "/" }: { defaultNext?: string }) {
         disabled={pending}
         className="w-full rounded-full bg-[color:var(--brand-gold)] px-6 py-3 text-sm font-medium text-stone-900 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {pending ? "Giriş yapılıyor…" : "Giriş yap"}
+        {pending ? "Gönderiliyor…" : "Sıfırlama bağlantısı gönder"}
       </button>
       <p className="text-center text-sm text-stone-600">
-        Hesabınız yok mu?{" "}
-        <Link href="/kayit" className="font-medium text-[color:var(--brand-gold)] underline-offset-2 hover:underline">
-          Kayıt ol
+        <Link href="/giris" className="font-medium text-[color:var(--brand-gold)] underline-offset-2 hover:underline">
+          Giriş sayfasına dön
         </Link>
       </p>
     </form>
+  );
+}
+
+function ForgotPasswordSent({ message }: { message: string }) {
+  return (
+    <div className="space-y-5">
+      <p
+        className="rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-2.5 text-sm text-emerald-900"
+        role="status"
+      >
+        {message}
+      </p>
+      <p className="text-center text-sm text-stone-600">
+        <Link href="/giris" className="font-medium text-[color:var(--brand-gold)] underline-offset-2 hover:underline">
+          Giriş sayfasına dön
+        </Link>
+      </p>
+    </div>
   );
 }
