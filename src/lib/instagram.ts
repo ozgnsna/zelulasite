@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 export type InstagramPost = {
   id: string;
   imageUrl: string;
@@ -23,12 +25,71 @@ type GraphMediaItem = {
   children?: { data?: GraphMediaChild[] };
 };
 
-type GraphResponse = {
-  data?: GraphMediaItem[];
-  error?: { message: string; code?: number; type?: string };
+type GraphError = {
+  message: string;
+  code?: number;
+  type?: string;
+  error_subcode?: number;
 };
 
+type GraphResponse = {
+  data?: GraphMediaItem[];
+  error?: GraphError;
+};
+
+/** Varsayılan: 1 saat — tüm kullanıcılar aynı önbelleği paylaşır (~1 Graph isteği / saat). */
+const DEFAULT_REVALIDATE_SECONDS = 3600;
+
 const isDev = process.env.NODE_ENV === "development";
+
+function getRevalidateSeconds(): number {
+  const raw = process.env.INSTAGRAM_FEED_REVALIDATE_SECONDS?.trim();
+  const parsed = raw ? Number(raw) : DEFAULT_REVALIDATE_SECONDS;
+  if (!Number.isFinite(parsed) || parsed < 60) return DEFAULT_REVALIDATE_SECONDS;
+  return Math.floor(parsed);
+}
+
+function isRealtimeFeed(): boolean {
+  return String(process.env.INSTAGRAM_FEED_REALTIME ?? "").trim().toLowerCase() === "true";
+}
+
+/** Yalnızca sunucu .env — istemciye sızmaz. */
+export function getInstagramCredentials(): {
+  token: string;
+  userId: string;
+  tokenEnvKey: "INSTAGRAM_ACCESS_TOKEN";
+  userIdEnvKey: "INSTAGRAM_USER_ID";
+} {
+  return {
+    token: process.env.INSTAGRAM_ACCESS_TOKEN?.trim() ?? "",
+    userId: process.env.INSTAGRAM_USER_ID?.trim() ?? "",
+    tokenEnvKey: "INSTAGRAM_ACCESS_TOKEN",
+    userIdEnvKey: "INSTAGRAM_USER_ID",
+  };
+}
+
+function logInstagramIssue(
+  level: "warn" | "info",
+  message: string,
+  extra?: Record<string, string | number | boolean | undefined>,
+) {
+  const payload = { ...extra };
+  if (level === "warn") {
+    console.warn(`[instagram-feed] ${message}`, Object.keys(payload).length ? payload : "");
+  } else if (isDev) {
+    console.info(`[instagram-feed] ${message}`, Object.keys(payload).length ? payload : "");
+  }
+}
+
+function classifyGraphError(error: GraphError | undefined): string {
+  if (!error) return "unknown";
+  const code = error.code;
+  if (code === 190 || error.error_subcode === 463) return "token_invalid_or_expired";
+  if (code === 102) return "token_missing_or_invalid";
+  if (code === 4 || code === 17 || code === 32 || code === 80002) return "rate_limit";
+  if (code === 100) return "invalid_parameter";
+  return "api_error";
+}
 
 function pickImageUrl(row: GraphMediaItem): string | undefined {
   if (row.media_type === "VIDEO") {
@@ -46,22 +107,8 @@ function pickImageUrl(row: GraphMediaItem): string | undefined {
   return row.media_url ?? row.thumbnail_url;
 }
 
-export async function getInstagramFeed(limit = 4): Promise<InstagramPost[]> {
-  const token = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
-  const userId = process.env.INSTAGRAM_USER_ID?.trim();
-  if (!token || !userId) {
-    if (isDev) {
-      console.warn(
-        "[getInstagramFeed] .env.local içinde eksik:",
-        !token ? "INSTAGRAM_ACCESS_TOKEN " : "",
-        !userId ? "INSTAGRAM_USER_ID" : "",
-      );
-    }
-    return [];
-  }
-
-  // Facebook Login + IG iş hesabı → graph.facebook.com (graph.instagram.com Business Login içindir)
-  const graphVersion = process.env.META_GRAPH_API_VERSION ?? "v21.0";
+function buildMediaUrl(userId: string, token: string, limit: number): string {
+  const graphVersion = process.env.META_GRAPH_API_VERSION?.trim() || "v21.0";
   const url = new URL(`https://graph.facebook.com/${graphVersion}/${userId}/media`);
   url.searchParams.set(
     "fields",
@@ -69,66 +116,137 @@ export async function getInstagramFeed(limit = 4): Promise<InstagramPost[]> {
   );
   url.searchParams.set("limit", String(Math.min(Math.max(limit, 1), 12)));
   url.searchParams.set("access_token", token);
+  return url.toString();
+}
 
-  const realtime = String(process.env.INSTAGRAM_FEED_REALTIME ?? "").trim().toLowerCase() === "true";
-  const revalidateSeconds = Math.max(60, Number(process.env.INSTAGRAM_FEED_REVALIDATE_SECONDS ?? 300));
+function rowsToPosts(rows: GraphMediaItem[], limit: number): InstagramPost[] {
+  return rows
+    .map((row) => {
+      const imageUrl = pickImageUrl(row);
+      if (!row.id || !imageUrl || !row.permalink) return null;
+      return {
+        id: row.id,
+        imageUrl,
+        permalink: row.permalink,
+        caption: row.caption ?? "Zelula Instagram paylaşımı",
+        timestamp: row.timestamp,
+      } satisfies InstagramPost;
+    })
+    .filter((x): x is InstagramPost => Boolean(x))
+    .slice(0, limit);
+}
+
+/**
+ * Tek Graph API isteği (/media).
+ * @returns null = API/ağ hatası (önbelleğe yazılmaz); [] = yanıt başarılı, listelenecek gönderi yok.
+ */
+async function fetchInstagramFeedFromGraph(
+  limit: number,
+  revalidateSeconds: number,
+): Promise<InstagramPost[] | null> {
+  const { token, userId, tokenEnvKey, userIdEnvKey } = getInstagramCredentials();
+
+  if (!token || !userId) {
+    if (isDev) {
+      logInstagramIssue("warn", "Eksik ortam değişkeni", {
+        missingToken: !token,
+        missingUserId: !userId,
+        expectedTokenVar: tokenEnvKey,
+        expectedUserIdVar: userIdEnvKey,
+      });
+    }
+    return [];
+  }
+
+  const url = buildMediaUrl(userId, token, limit);
 
   try {
-    const res = await fetch(url.toString(), {
-      ...(realtime ? { cache: "no-store" as const } : { next: { revalidate: revalidateSeconds } }),
+    const res = await fetch(url, {
+      next: { revalidate: revalidateSeconds, tags: ["instagram-feed"] },
       headers: { Accept: "application/json" },
     });
     const json = (await res.json()) as GraphResponse;
-    if (!res.ok || json.error) {
-      if (isDev) {
-        if (json.error) {
-          console.warn(
-            "[getInstagramFeed] Graph API:",
-            json.error.message,
-            json.error.code != null ? `(#${json.error.code})` : "",
-          );
-        } else {
-          console.warn("[getInstagramFeed] HTTP", res.status, res.statusText);
-        }
-      }
-      return [];
-    }
-    const rows = json.data ?? [];
 
-    const posts = rows
-      .map((row) => {
-        const imageUrl = pickImageUrl(row);
-        if (!row.id || !imageUrl || !row.permalink) return null;
-        return {
-          id: row.id,
-          imageUrl,
-          permalink: row.permalink,
-          caption: row.caption ?? "Zelula Instagram paylaşımı",
-          timestamp: row.timestamp,
-        } satisfies InstagramPost;
-      })
-      .filter((x): x is InstagramPost => Boolean(x));
+    if (!res.ok || json.error) {
+      const kind = classifyGraphError(json.error);
+      logInstagramIssue("warn", "Graph API yanıtı başarısız", {
+        kind,
+        httpStatus: res.status,
+        code: json.error?.code,
+        subcode: json.error?.error_subcode,
+        message: json.error?.message?.slice(0, 200),
+        tokenSource: tokenEnvKey,
+        userIdConfigured: Boolean(userId),
+      });
+      if (kind === "token_invalid_or_expired" || kind === "token_missing_or_invalid") {
+        logInstagramIssue(
+          "warn",
+          "INSTAGRAM_ACCESS_TOKEN geçersiz veya süresi dolmuş olabilir; Meta panelinden uzun ömürlü token yenileyin.",
+        );
+      }
+      if (kind === "rate_limit") {
+        logInstagramIssue(
+          "warn",
+          "Rate limit — önbellek süresi sonunda tekrar denenecek. INSTAGRAM_FEED_REALTIME=true açmayın.",
+        );
+      }
+      return null;
+    }
+
+    const rows = json.data ?? [];
+    const posts = rowsToPosts(rows, limit);
 
     if (isDev && posts.length === 0) {
       if (rows.length === 0) {
-        console.warn(
-          "[getInstagramFeed] API başarılı ama gönderi yok: INSTAGRAM_USER_ID = instagram_business_account.id olmalı (sayfa ID değil). Token sayfa erişimi içermeli.",
+        logInstagramIssue(
+          "warn",
+          "API başarılı ama gönderi yok; INSTAGRAM_USER_ID = instagram_business_account.id olmalı.",
         );
       } else {
-        console.warn(
-          "[getInstagramFeed] Yanıtta",
-          rows.length,
-          "kayıt vardı; görsel veya permalink eksik olduğu için listelenmedi.",
-        );
+        logInstagramIssue("warn", "Kayıtlar var ancak görsel/permalink eksik", { rowCount: rows.length });
       }
     }
 
-    return posts.slice(0, limit);
+    return posts;
   } catch (e) {
-    if (isDev) {
-      console.warn("[getInstagramFeed] İstek hatası:", e instanceof Error ? e.message : e);
-    }
+    logInstagramIssue("warn", "İstek hatası", {
+      message: e instanceof Error ? e.message.slice(0, 200) : "unknown",
+    });
+    return null;
+  }
+}
+
+async function loadInstagramFeedCached(limit: number): Promise<InstagramPost[]> {
+  const revalidateSeconds = getRevalidateSeconds();
+
+  try {
+    return await unstable_cache(
+      async (bounded: number, rev: number) => {
+        const posts = await fetchInstagramFeedFromGraph(bounded, rev);
+        if (posts === null) {
+          throw new Error("instagram_fetch_failed");
+        }
+        return posts;
+      },
+      ["instagram-feed", String(limit), String(revalidateSeconds)],
+      { revalidate: revalidateSeconds, tags: ["instagram-feed"] },
+    )(limit, revalidateSeconds);
+  } catch {
     return [];
   }
 }
 
+/** Ana sayfa Instagram akışı — önbellekli (varsayılan 1 saat). */
+export async function getInstagramFeed(limit = 4): Promise<InstagramPost[]> {
+  const bounded = Math.min(Math.max(limit, 1), 12);
+
+  if (isRealtimeFeed()) {
+    if (isDev) {
+      logInstagramIssue("warn", "INSTAGRAM_FEED_REALTIME=true — önbellek kapalı, her istekte Graph API çağrılır.");
+    }
+    const posts = await fetchInstagramFeedFromGraph(bounded, 60);
+    return posts ?? [];
+  }
+
+  return loadInstagramFeedCached(bounded);
+}

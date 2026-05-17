@@ -176,7 +176,7 @@ export function CheckoutForm({
       <form
         id="checkout-form"
         ref={formRootRef}
-        className="checkout-panel zl-shimmer flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[#e8dccb]/90 bg-[linear-gradient(180deg,#fffdfb_0%,#fbf8f3_100%)] shadow-[0_12px_30px_rgba(62,52,38,0.08)] lg:max-h-[min(100dvh-6.5rem,54rem)]"
+        className="checkout-panel zl-shimmer flex flex-col rounded-2xl border border-[#e8dccb]/90 bg-[linear-gradient(180deg,#fffdfb_0%,#fbf8f3_100%)] shadow-[0_12px_30px_rgba(62,52,38,0.08)]"
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
@@ -261,7 +261,7 @@ export function CheckoutForm({
           });
         }}
       >
-        <div className="form-area checkout-scroll flex flex-col space-y-6 overflow-visible px-6 pt-8 pb-24 sm:px-8 sm:pt-9 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-7 lg:pt-9 lg:pb-8">
+        <div className="form-area flex flex-col space-y-6 px-6 pt-8 pb-24 sm:px-8 sm:pt-9 lg:px-7 lg:pb-6">
           <section>
             <h2 className="text-lg font-medium text-stone-900">Özet</h2>
             <dl className="mt-3 space-y-2 text-sm">
@@ -1035,7 +1035,7 @@ export function CheckoutForm({
 
         </div>
 
-        <div className="payment-area relative z-10 mt-5 hidden shrink-0 flex-col gap-3 border-t border-[#e5d5bd]/85 bg-[linear-gradient(165deg,#fffdf9_0%,#f7ecda_100%)] px-6 py-5 shadow-[0_-8px_26px_rgba(62,52,38,0.10)] backdrop-blur-[2px] before:pointer-events-none before:absolute before:inset-x-0 before:-top-5 before:h-5 before:bg-gradient-to-t before:from-[#f7ecda]/80 before:to-transparent lg:flex">
+        <div className="payment-area relative z-10 hidden shrink-0 flex-col gap-3 border-t border-[#e5d5bd]/85 bg-[linear-gradient(165deg,#fffdf9_0%,#f7ecda_100%)] px-6 py-5 lg:flex lg:px-7">
           <p className="text-base font-semibold text-stone-900">⚡ 2 dakikada güvenli ödeme</p>
           <p className="text-4xl font-semibold tracking-tight text-stone-900 tabular-nums">{formatTry(payable)}</p>
           <p className="text-[12px] text-stone-700">Bu alışverişten +{earnedPointsPreview} Zelula Puan kazanacaksın ✨</p>
