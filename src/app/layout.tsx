@@ -26,18 +26,36 @@ const sans = DM_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+const siteDescription =
+  "Zelula Design: Premium ama erişilebilir takı seçkileri. Zamansız tasarım, modern dokunuş.";
+
+const ogImage = "/zelula-logo.png";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zeluladesign.com"),
   title: {
-    default: "Zelula — Takı",
-    template: "%s · Zelula",
+    default: "Zelula Design",
+    template: "%s | Zelula",
   },
-  description:
-    "Zelula: Premium ama erişilebilir takı seçkileri. Zamansız tasarım, modern dokunuş.",
+  description: siteDescription,
   openGraph: {
-    title: "Zelula",
+    title: "Zelula Design",
     description: "Günlük ışıltını tamamlayan seçkiler.",
     type: "website",
     locale: "tr_TR",
+    siteName: "Zelula Design",
+    images: [
+      {
+        url: ogImage,
+        alt: "Zelula Design",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Zelula Design",
+    description: "Günlük ışıltını tamamlayan seçkiler.",
+    images: [ogImage],
   },
 };
 
