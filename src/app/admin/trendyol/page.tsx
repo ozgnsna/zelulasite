@@ -21,6 +21,7 @@ import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { AdminSyncLogsSection } from "@/components/admin/dashboard/AdminSyncLogsSection";
+import { AdminTrendyolImportAlert } from "@/components/admin/dashboard/AdminTrendyolImportAlert";
 import { AdminTrendyolIntegrationCard } from "@/components/admin/dashboard/AdminTrendyolIntegrationCard";
 import { AdminTrendyolReadinessSection } from "@/components/admin/dashboard/AdminTrendyolReadinessSection";
 import { TrendyolBrandSearchPanel } from "@/components/admin/TrendyolBrandSearchPanel";
@@ -105,7 +106,20 @@ function MarketplaceSyncLogEntry({
 export default async function AdminTrendyolPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; ty?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    ty?: string;
+    tyErr?: string;
+    tyWarn?: string;
+    tyOk?: string;
+    tyPreview?: string;
+    tyImported?: string;
+    tyUpdated?: string;
+    tyDeactivated?: string;
+    tyMatch?: string;
+    tyFetched?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const trendyolFilter = sp.ty ?? "all";
@@ -227,6 +241,18 @@ export default async function AdminTrendyolPage({
           Kontrol paneli
         </Link>
       </div>
+
+      <AdminTrendyolImportAlert
+        tyErr={sp.tyErr}
+        tyWarn={sp.tyWarn}
+        tyOk={sp.tyOk}
+        tyPreview={sp.tyPreview}
+        tyImported={sp.tyImported}
+        tyUpdated={sp.tyUpdated}
+        tyDeactivated={sp.tyDeactivated}
+        tyMatch={sp.tyMatch}
+        tyFetched={sp.tyFetched}
+      />
 
       <AdminTrendyolIntegrationCard
         integration={marketplaceIntegration.data}

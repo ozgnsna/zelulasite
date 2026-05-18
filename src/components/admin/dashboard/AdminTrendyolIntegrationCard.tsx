@@ -76,14 +76,32 @@ export function AdminTrendyolIntegrationCard({
             Trendyol siparişlerini çek
           </button>
         </form>
-        <form action={importTrendyolApprovedProductsAction} className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2 py-1">
-          <label className="text-[11px] text-stone-600">
-            <input type="checkbox" name="confirm_overwrite" className="mr-1" />
-            mevcutlarla birleştir (overwrite yok)
-          </label>
-          <button className="rounded-md bg-stone-900 px-2 py-1 text-[11px] text-white">
-            Trendyol&apos;dan ürünleri içe aktar
-          </button>
+        <form
+          action={importTrendyolApprovedProductsAction}
+          className="flex max-w-md flex-col gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2"
+        >
+          <p className="text-[11px] leading-relaxed text-stone-600">
+            Onaylı ürünlerden satışta ve stokta olanlar Zelula&apos;ya yazılır (yeni kayıtlar pasif). Aynı barkod
+            güncellenir; silinen ürünler Trendyol bağlantısından çıkarılır.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              name="import_mode"
+              value="preview"
+              className="rounded-md border border-stone-300 bg-white px-2.5 py-1 text-[11px] text-stone-800 hover:bg-stone-50"
+            >
+              Önizle
+            </button>
+            <button
+              type="submit"
+              name="import_mode"
+              value="import"
+              className="rounded-md bg-stone-900 px-2.5 py-1 text-[11px] text-white"
+            >
+              İçe aktar
+            </button>
+          </div>
         </form>
         <form action={checkTrendyolBatchStatusAction} className="flex items-center gap-2">
           <input name="batch_request_id" placeholder="batchRequestId" className="rounded border p-1.5 text-xs" />

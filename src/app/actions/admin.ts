@@ -41,14 +41,28 @@ import {
 import { fetchTrendyolBrandsByName, type TrendyolBrandHit } from "@/lib/marketplaces/trendyol/brands";
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
 
-function normalizeTrendyolUiError(message: string) {
+type TrendyolUiErrorContext = "import" | "price_inventory" | "orders" | "connection" | "generic";
+
+function normalizeTrendyolUiError(message: string, context: TrendyolUiErrorContext = "generic") {
   const raw = String(message ?? "");
   const lower = raw.toLowerCase();
   if (
     /\bhttp\s*556\b|\bhttp\s*503\b|\bhttp\s*502\b|\bhttp\s*504\b|\bhttp\s*429\b/i.test(raw) ||
     /service unavailable/i.test(raw)
   ) {
-    return "Trendyol fiyat/stok servisi geçici olarak yanıt vermedi (çoğunlukla Trendyol altyapı yoğunluğu). Birkaç dakika sonra tekrar deneyin; yineliyorsa Trendyol paneli veya destek ile doğrulayın.";
+    const transientByContext: Record<TrendyolUiErrorContext, string> = {
+      import:
+        "Trendyol onaylı ürün listesi geçici olarak yanıt vermedi (çoğunlukla Trendyol altyapı yoğunluğu). Birkaç dakika sonra tekrar deneyin; yineliyorsa Trendyol paneli veya destek ile doğrulayın.",
+      price_inventory:
+        "Trendyol fiyat/stok servisi geçici olarak yanıt vermedi (çoğunlukla Trendyol altyapı yoğunluğu). Birkaç dakika sonra tekrar deneyin; yineliyorsa Trendyol paneli veya destek ile doğrulayın.",
+      orders:
+        "Trendyol sipariş servisi geçici olarak yanıt vermedi. Birkaç dakika sonra tekrar deneyin.",
+      connection:
+        "Trendyol ürün API’sine geçici olarak ulaşılamadı. Birkaç dakika sonra tekrar deneyin.",
+      generic:
+        "Trendyol API geçici olarak yanıt vermedi. Birkaç dakika sonra tekrar deneyin; yineliyorsa Trendyol paneli veya destek ile doğrulayın.",
+    };
+    return transientByContext[context];
   }
   const isCloudflareBlocked =
     lower.includes("cloudflare_block") ||
@@ -401,27 +415,50 @@ export async function syncTrendyolPriceInventoryBatch() {
   revalidatePath("/admin");
 }
 
+function redirectAfterTrendyolImport(
+  result: Awaited<ReturnType<typeof importApprovedProductsFromTrendyol>>,
+  dryRun: boolean,
+) {
+  const base = "/admin/trendyol";
+  if (!result.ok) {
+    const message = encodeURIComponent(
+      normalizeTrendyolUiError(result.message ?? "İçe aktarma sırasında bir hata oluştu.", "import"),
+    );
+    redirect(`${base}?tyErr=${message}`);
+  }
+  if (result.skipped) {
+    redirect(
+      `${base}?tyWarn=${encodeURIComponent("Entegrasyon kapalı veya seller_id / API bilgileri eksik. Ayarları kaydedip tekrar deneyin.")}`,
+    );
+  }
+  const match = result.count ?? 0;
+  const fetched = result.fetchedCount ?? match;
+  if (dryRun) {
+    redirect(`${base}?tyPreview=1&tyMatch=${match}&tyFetched=${fetched}`);
+  }
+  redirect(
+    `${base}?tyOk=1&tyImported=${result.imported ?? 0}&tyUpdated=${result.updated ?? 0}&tyDeactivated=${result.deactivated ?? 0}&tyMatch=${match}&tyFetched=${fetched}`,
+  );
+}
+
 export async function importTrendyolApprovedProductsAction(formData: FormData) {
   const admin = createAdminClient();
-  const confirmed = formData.get("confirm_overwrite") === "on";
-  await importApprovedProductsFromTrendyol(admin, !confirmed);
+  const mode = String(formData.get("import_mode") ?? "import");
+  const dryRun = mode === "preview";
+  const result = await importApprovedProductsFromTrendyol(admin, dryRun);
   revalidatePath("/admin");
+  revalidatePath("/admin/trendyol");
+  revalidatePath("/admin/products");
+  redirectAfterTrendyolImport(result, dryRun);
 }
 
 export async function importTrendyolProductsAction() {
   const admin = createAdminClient();
   const result = await importApprovedProductsFromTrendyol(admin, false);
   revalidatePath("/admin");
+  revalidatePath("/admin/trendyol");
   revalidatePath("/admin/products");
-  if (!result.ok) {
-    const message = encodeURIComponent(
-      normalizeTrendyolUiError(result.message ?? "İçe aktarma sırasında bir hata oluştu."),
-    );
-    redirect(`/admin?tab=analytics&trendyolImportError=${message}`);
-  }
-  redirect(
-    `/admin?tab=analytics&trendyolImported=${result.imported}&trendyolUpdated=${result.updated ?? 0}&trendyolDeactivated=${result.deactivated ?? 0}&trendyolFetched=${result.fetchedCount ?? result.count ?? 0}`,
-  );
+  redirectAfterTrendyolImport(result, false);
 }
 
 export async function testTrendyolConnectionAction() {
@@ -432,7 +469,7 @@ export async function testTrendyolConnectionAction() {
     const env = result.environment ? String(result.environment) : "";
     redirect(
       `/admin?tab=analytics&trendyolTestError=${encodeURIComponent(
-        normalizeTrendyolUiError(result.message),
+        normalizeTrendyolUiError(result.message, "connection"),
       )}&trendyolTestEnv=${encodeURIComponent(env)}`,
     );
   }
@@ -459,7 +496,9 @@ export async function fetchTrendyolOrdersAction() {
   revalidatePath("/admin");
   revalidatePath("/admin/trendyol");
   if (!result.ok) {
-    redirect(`/admin?tab=analytics&trendyolImportError=${encodeURIComponent(normalizeTrendyolUiError(result.message ?? "Sipariş çekim hatası"))}`);
+    redirect(
+      `/admin/trendyol?tyErr=${encodeURIComponent(normalizeTrendyolUiError(result.message ?? "Sipariş çekim hatası", "orders"))}`,
+    );
   }
   redirect(
     `/admin?tab=analytics&trendyolOrdersProcessed=${result.processedOrders}&trendyolOrderStockUpdated=${result.updatedProducts}` +
