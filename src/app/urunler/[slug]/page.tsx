@@ -54,21 +54,64 @@ function normalizeCopyText(text: string) {
   return text.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+/** Kesilmiş özet (… ile biten) veya kısaltılmış kopya tespiti. */
+function excerptStem(text: string) {
+  return normalizeCopyText(text)
+    .replace(/\.{2,}$/, "")
+    .replace(/\s+\S{0,4}$/, "")
+    .trim();
+}
+
+function isDuplicateOrPrefixOf(a: string, b: string) {
+  const left = normalizeCopyText(a);
+  const right = normalizeCopyText(b);
+  if (!left || !right) return false;
+  if (left === right || right.startsWith(left) || left.startsWith(right)) return true;
+
+  const leftStem = excerptStem(a);
+  const rightStem = excerptStem(b);
+  if (leftStem.length >= 48 && right.startsWith(leftStem)) return true;
+  if (rightStem.length >= 48 && left.startsWith(rightStem)) return true;
+
+  const shorter = left.length <= right.length ? left : right;
+  const longer = left.length <= right.length ? right : left;
+  const probeLen = Math.min(140, shorter.length);
+  if (probeLen >= 48 && longer.startsWith(shorter.slice(0, probeLen))) return true;
+
+  return false;
+}
+
+function dedupeDescriptionParagraphs(paragraphs: string[]): string[] {
+  const result: string[] = [];
+  for (const paragraph of paragraphs) {
+    const dupIndex = result.findIndex(
+      (existing) => isDuplicateOrPrefixOf(existing, paragraph) || isDuplicateOrPrefixOf(paragraph, existing),
+    );
+    if (dupIndex === -1) {
+      result.push(paragraph);
+      continue;
+    }
+    if (normalizeCopyText(paragraph).length > normalizeCopyText(result[dupIndex]).length) {
+      result[dupIndex] = paragraph;
+    }
+  }
+  return result;
+}
+
 /** PDP açıklaması yalnızca solda; kısa + uzun metin tekrarsız birleştirilir. */
 function productDescriptionParagraphs(shortRaw: string, fullRaw: string): string[] {
   const short = shortRaw.trim();
-  const paragraphs = splitDescriptionParagraphs(fullRaw);
-  const shortNorm = normalizeCopyText(short);
+  let paragraphs = splitDescriptionParagraphs(fullRaw);
 
-  if (!shortNorm) return paragraphs;
-  if (paragraphs.length === 0) return [short];
-
-  const firstNorm = normalizeCopyText(paragraphs[0] ?? "");
-  if (firstNorm === shortNorm || firstNorm.startsWith(shortNorm) || shortNorm.startsWith(firstNorm)) {
-    return paragraphs;
+  if (short) {
+    if (paragraphs.length === 0) {
+      paragraphs = [short];
+    } else if (!isDuplicateOrPrefixOf(short, paragraphs[0] ?? "")) {
+      paragraphs = [short, ...paragraphs];
+    }
   }
 
-  return [short, ...paragraphs];
+  return dedupeDescriptionParagraphs(paragraphs);
 }
 
 function metaDescriptionFromParagraphs(paragraphs: string[]) {
