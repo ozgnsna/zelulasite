@@ -446,6 +446,9 @@ type TrendyolRemoteImage = {
 
 type TrendyolRemoteProduct = {
   title?: unknown;
+  description?: unknown;
+  category?: unknown;
+  contentId?: unknown;
   productMainId?: unknown;
   barcode?: unknown;
   brand?: unknown;
@@ -560,6 +563,31 @@ function isVariantOnSale(item: TrendyolRemoteProduct): boolean {
   const variant = firstVariant(item);
   if (!variant) return false;
   return Boolean(variant.onSale);
+}
+
+function extractRemoteCategoryId(item: TrendyolRemoteProduct): string | null {
+  const cat = item.category;
+  if (!cat || typeof cat !== "object") return null;
+  const id = (cat as Record<string, unknown>).id;
+  if (typeof id === "number" && Number.isFinite(id) && Math.trunc(id) > 0) {
+    return String(Math.trunc(id));
+  }
+  if (typeof id === "string") {
+    const t = id.trim();
+    if (/^\d+$/.test(t)) return t;
+  }
+  return null;
+}
+
+/** Trendyol onaylı ürün listesindeki description; yoksa kısa yer tutucu. */
+function buildImportedProductDescriptions(item: TrendyolRemoteProduct, name: string) {
+  const fromApi = asTrimmedString(item.description);
+  if (fromApi) {
+    const short = fromApi.length > 400 ? `${fromApi.slice(0, 397)}…` : fromApi;
+    return { short_description: short, full_description: fromApi };
+  }
+  const fallback = `${name} - ${TRENDYOL_IMPORTED_REVIEW_NOTE}`;
+  return { short_description: fallback, full_description: fallback };
 }
 
 async function fetchTrendyolProductsAllPages(
@@ -718,7 +746,8 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
         const compareAtPrice = extractRemoteListPrice(item);
         const stockQuantity = Math.max(0, Math.trunc(extractRemoteQuantity(item)));
         const imageUrls = normalizeRemoteImages(item.images);
-        const description = `${name} - ${TRENDYOL_IMPORTED_REVIEW_NOTE}`;
+        const descriptions = buildImportedProductDescriptions(item, name);
+        const trendyolCategoryId = extractRemoteCategoryId(item);
 
         const existing = existingByBarcode.get(barcode);
         if (existing) {
@@ -727,8 +756,11 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
             .update({
               name,
               sku,
+              short_description: descriptions.short_description,
+              full_description: descriptions.full_description,
               trendyol_barcode: barcode,
               trendyol_brand: trendyolBrandId,
+              ...(trendyolCategoryId ? { trendyol_category_id: trendyolCategoryId } : {}),
               price,
               compare_at_price: compareAtPrice > 0 ? compareAtPrice : null,
               stock_quantity: stockQuantity,
@@ -759,8 +791,8 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
           .insert({
             name,
             slug,
-            short_description: description,
-            full_description: description,
+            short_description: descriptions.short_description,
+            full_description: descriptions.full_description,
             price,
             compare_at_price: compareAtPrice > 0 ? compareAtPrice : null,
             sku,
@@ -771,6 +803,7 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
             trendyol_active: false,
             trendyol_barcode: barcode,
             trendyol_brand: trendyolBrandId,
+            trendyol_category_id: trendyolCategoryId,
             trendyol_stock_code: sku,
           })
           .select("id")
