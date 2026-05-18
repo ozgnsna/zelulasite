@@ -8,6 +8,7 @@ function revalidateAdminOrderPaths(orderId: string) {
 }
 import { redirect } from "next/navigation";
 import { normalizeEmailInput } from "@/lib/account/email-input";
+import { purgeAllOrdersAndResetCounter } from "@/lib/admin/purge-orders";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
@@ -79,6 +80,19 @@ function normalizeTrendyolUiError(message: string, context: TrendyolUiErrorConte
       : "Trendyol erişimi Cloudflare tarafından engellendi";
   }
   return raw;
+}
+
+async function assertAdminSession() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/admin/login");
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+  if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
 }
 
 export async function signInAdmin(formData: FormData) {
@@ -504,6 +518,28 @@ export async function fetchTrendyolOrdersAction() {
   redirect(
     `/admin?tab=analytics&trendyolOrdersProcessed=${result.processedOrders}&trendyolOrderStockUpdated=${result.updatedProducts}` +
       `&trendyolOrderUnmatched=${result.unmatchedProducts}&trendyolOrderDuplicate=${result.duplicateSkipped}&trendyolOrderRestored=${result.restoredOrders}`,
+  );
+}
+
+export async function purgeAllOrdersAndResetCounterAction(formData: FormData) {
+  await assertAdminSession();
+  const confirm = String(formData.get("confirm_purge") ?? "").trim().toLocaleUpperCase("tr-TR");
+  if (confirm !== "SIFIRLA") {
+    redirect(
+      `/admin/orders?purgeErr=${encodeURIComponent('Onay için kutuya tam olarak SIFIRLA yazın.')}`,
+    );
+  }
+
+  const admin = createAdminClient();
+  const result = await purgeAllOrdersAndResetCounter(admin);
+  revalidatePath("/admin");
+  revalidatePath("/admin/orders");
+
+  if (!result.ok) {
+    redirect(`/admin/orders?purgeErr=${encodeURIComponent(result.message)}`);
+  }
+  redirect(
+    `/admin/orders?purgeOk=1&purgeCount=${encodeURIComponent(String(result.ordersDeleted))}`,
   );
 }
 

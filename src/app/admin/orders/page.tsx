@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminOrdersListShell } from "@/components/admin/orders/AdminOrdersListShell";
+import { AdminOrdersPurgePanel } from "@/components/admin/orders/AdminOrdersPurgePanel";
 import { fetchAdminOrdersList } from "@/lib/admin/fetch-admin-orders-list";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -19,10 +20,13 @@ const FILTER_IDS = new Set([
 export default async function AdminOrdersListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ queue?: string; filter?: string }>;
+  searchParams: Promise<{ queue?: string; filter?: string; purgeOk?: string; purgeCount?: string; purgeErr?: string }>;
 }) {
   const sp = await searchParams;
   const queue = String(sp.queue ?? "").trim();
+  const purgeOk = sp.purgeOk;
+  const purgeCount = sp.purgeCount;
+  const purgeErr = sp.purgeErr;
   const filterRaw = String(sp.filter ?? "").trim();
   if (queue === "ship" && !filterRaw) {
     redirect("/admin/orders?filter=ship_ready");
@@ -68,6 +72,8 @@ export default async function AdminOrdersListPage({
       ) : null}
 
       <AdminOrdersListShell orders={orders} activeFilter={activeFilter} />
+
+      <AdminOrdersPurgePanel purgeOk={purgeOk} purgeCount={purgeCount} purgeErr={purgeErr} />
     </main>
   );
 }
