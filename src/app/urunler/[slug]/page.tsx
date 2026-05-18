@@ -46,13 +46,46 @@ function splitDescriptionParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
+function normalizeCopyText(text: string) {
+  return text.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Tekil PDP metni: kısa özet üstte bir kez, uzun metin altta «neden özel» bölümünde. */
+function productDescriptionView(shortRaw: string, fullRaw: string) {
+  const short = shortRaw.trim();
+  const paragraphs = splitDescriptionParagraphs(fullRaw);
+  const shortNorm = normalizeCopyText(short);
+
+  if (!shortNorm) {
+    return { teaser: "", storyParagraphs: paragraphs };
+  }
+
+  if (paragraphs.length === 0) {
+    return { teaser: short, storyParagraphs: [] };
+  }
+
+  const firstNorm = normalizeCopyText(paragraphs[0] ?? "");
+  if (firstNorm === shortNorm || firstNorm.startsWith(shortNorm) || shortNorm.startsWith(firstNorm)) {
+    return { teaser: short, storyParagraphs: paragraphs.slice(1) };
+  }
+
+  return { teaser: short, storyParagraphs: paragraphs };
+}
+
+function metaDescriptionFromCopy(teaser: string, storyParagraphs: string[]) {
+  const base = teaser || storyParagraphs[0] || "";
+  const flat = base.replace(/\s+/g, " ").trim();
+  return flat.length > 160 ? `${flat.slice(0, 157)}…` : flat;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) return { title: "Ürün" };
+  const { teaser, storyParagraphs } = productDescriptionView(product.short_description, product.full_description);
   return {
     title: product.name,
-    description: product.short_description,
+    description: metaDescriptionFromCopy(teaser, storyParagraphs),
   };
 }
 
@@ -63,7 +96,7 @@ export default async function ProductPage({ params }: Props) {
 
   const galleryExtras =
     isZodiacStoryProduct(slug, product.name) ? ZODIAC_GALLERY_EXTRAS : [];
-  const storyParagraphs = splitDescriptionParagraphs(product.full_description);
+  const { teaser, storyParagraphs } = productDescriptionView(product.short_description, product.full_description);
   const compareAt = product.compare_at_price ? Number(product.compare_at_price) : null;
   const priceNum = Number(product.price);
   const hasRealDiscount = Boolean(compareAt && compareAt > priceNum);
@@ -152,10 +185,9 @@ export default async function ProductPage({ params }: Props) {
             Zelula seçimi
           </span>
 
-          <p className="mt-4 max-w-xl font-serif text-lg font-light italic leading-relaxed text-stone-700 sm:text-xl">
-            Zarif ama güçlü. Günün her anında seninle uyum içinde.
-          </p>
-          <p className="mt-3.5 max-w-xl text-sm font-light leading-relaxed text-stone-600">{product.short_description}</p>
+          {teaser ? (
+            <p className="mt-4 max-w-xl text-sm font-light leading-relaxed text-stone-600 sm:text-[15px]">{teaser}</p>
+          ) : null}
 
           {isZodiacStoryProduct(slug, product.name) ? (
             <aside className="mt-8 max-w-xl border-l-[3px] border-brand-gold/60 bg-[#faf8f5]/90 px-5 py-5 sm:px-6 sm:py-5">
@@ -170,11 +202,6 @@ export default async function ProductPage({ params }: Props) {
           ) : null}
 
           <section className="pdp-reveal-cta mt-6 max-w-none space-y-5 rounded-[1.7rem] border border-[#eee5d9] bg-[#fffdf9] p-6 shadow-[0_20px_40px_rgba(62,52,38,0.14)] sm:p-7">
-            <div className="space-y-2">
-              <h2 className="font-serif text-2xl font-light leading-tight text-stone-900">{product.name}</h2>
-              <p className="text-sm font-light leading-relaxed text-stone-600">{product.short_description}</p>
-            </div>
-
             <div className="space-y-2">
               <div className="flex flex-wrap items-end gap-2.5">
                 {hasRealDiscount ? (
@@ -296,17 +323,11 @@ export default async function ProductPage({ params }: Props) {
               Bu parça neden özel?
             </h2>
             <div className="mt-5 space-y-4 text-[15px] leading-[1.75] text-stone-700">
-              <p>
-                Minimal tasarımıyla her kombine uyum sağlar, ama asıl farkı onu taktığında hissettirdiği zarif
-                özgüvende.
-              </p>
-              <p>
-                İşe giderken, akşam yemeğinde ya da özel bir buluşmada; bu parça sessiz bir imza gibi stiline eşlik
-                eder.
-              </p>
-              {storyParagraphs.slice(0, 1).map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
+              {storyParagraphs.length > 0 ? (
+                storyParagraphs.map((para, i) => <p key={i}>{para}</p>)
+              ) : (
+                <p className="text-stone-600">Ürün detayları yakında eklenecek.</p>
+              )}
             </div>
           </section>
 
