@@ -21,10 +21,12 @@ import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { AdminSyncLogsSection } from "@/components/admin/dashboard/AdminSyncLogsSection";
+import { AdminTrendyolBrandSection } from "@/components/admin/dashboard/AdminTrendyolBrandSection";
 import { AdminTrendyolImportAlert } from "@/components/admin/dashboard/AdminTrendyolImportAlert";
 import { AdminTrendyolIntegrationCard } from "@/components/admin/dashboard/AdminTrendyolIntegrationCard";
 import { AdminTrendyolReadinessSection } from "@/components/admin/dashboard/AdminTrendyolReadinessSection";
-import { TrendyolBrandSearchPanel } from "@/components/admin/TrendyolBrandSearchPanel";
+import { AdminTrendyolStatusBar } from "@/components/admin/dashboard/AdminTrendyolStatusBar";
+import { AdminTrendyolWorkflowSteps } from "@/components/admin/dashboard/AdminTrendyolWorkflowSteps";
 
 export const dynamic = "force-dynamic";
 
@@ -229,6 +231,12 @@ export default async function AdminTrendyolPage({
   const readyCount = trendyolRowsRaw.filter((r) => r.readiness.status === "ready").length;
   const missingCount = trendyolRowsRaw.filter((r) => r.readiness.status === "missing").length;
   const disabledCount = trendyolRowsRaw.filter((r) => r.readiness.status === "disabled").length;
+  const linkedCount = products.filter((p) =>
+    String((p as Record<string, unknown>).trendyol_barcode ?? "").trim(),
+  ).length;
+  const integrationRow = marketplaceIntegration.data;
+  const connectionOk = Boolean(integrationRow?.is_active) && Boolean(String(integrationRow?.seller_id ?? "").trim());
+  const lastLogAt = syncLogsPreview[0]?.created_at ? String(syncLogsPreview[0].created_at) : null;
 
   return (
     <main className={`${ADMIN_OPERATIONS_MAIN} py-8 sm:py-10 lg:py-10`}>
@@ -236,6 +244,9 @@ export default async function AdminTrendyolPage({
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-500">Pazaryeri</p>
           <h1 className="mt-1 font-serif text-3xl font-light text-stone-900">Trendyol</h1>
+          <p className="mt-2 max-w-2xl text-sm text-stone-500">
+            Bağlantı → içe aktarma → ürün hazırlığı → gönderim sırasıyla ilerleyin. Kartlara tıklayarak ilgili bölüme gidebilirsiniz.
+          </p>
         </div>
         <Link href="/admin" className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-800 shadow-sm hover:bg-stone-50">
           Kontrol paneli
@@ -254,6 +265,18 @@ export default async function AdminTrendyolPage({
         tyFetched={sp.tyFetched}
       />
 
+      <AdminTrendyolStatusBar
+        isActive={Boolean(integrationRow?.is_active)}
+        environment={String(integrationRow?.environment ?? "stage")}
+        sellerId={integrationRow?.seller_id ? String(integrationRow.seller_id) : null}
+        linkedCount={linkedCount}
+        readyCount={readyCount}
+        missingCount={missingCount}
+        lastLogAt={lastLogAt}
+      />
+
+      <AdminTrendyolWorkflowSteps connectionOk={connectionOk} readyCount={readyCount} />
+
       <AdminTrendyolIntegrationCard
         integration={marketplaceIntegration.data}
         saveTrendyolIntegrationSettings={saveTrendyolIntegrationSettings}
@@ -270,25 +293,7 @@ export default async function AdminTrendyolPage({
         }
       />
 
-      <section className="mb-8 rounded-2xl border border-[#e8dfd3] bg-white/90 p-4 shadow-sm">
-        <h2 className="text-sm font-medium text-stone-800">Marka ID bul (Trendyol API)</h2>
-        <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
-          Satıcı panelinde marka numarası yoktur. Aşağıdaki arama, kayıtlı API bilgilerinizle Trendyol{" "}
-          <span className="font-mono text-[10px]">brands/by-name</span> servisini çağırır; çıkan{" "}
-          <span className="font-medium text-stone-700">Marka ID</span> değerini ürün formundaki «Marka ID (Trendyol)»
-          alanına kopyalayın.
-        </p>
-        <div className="mt-3">
-          <TrendyolBrandSearchPanel targetInputId="trendyol-brand-id-copy-target" />
-          <input
-            id="trendyol-brand-id-copy-target"
-            type="text"
-            readOnly
-            placeholder="«Bu ID’yi yaz» ile buraya yazılır — kopyalayıp ürün sayfasına yapıştırın"
-            className="mt-2 w-full rounded-lg border border-dashed border-stone-300 bg-stone-50/80 px-3 py-2 font-mono text-xs text-stone-800"
-          />
-        </div>
-      </section>
+      <AdminTrendyolBrandSection />
 
       <AdminTrendyolReadinessSection
         baseQueryParams={baseQueryParams}

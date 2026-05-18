@@ -1,10 +1,17 @@
 import type { ReactNode } from "react";
 
 export function AdminSyncLogsSection({ children }: { children: ReactNode }) {
+  const isEmpty = !children || (Array.isArray(children) && children.length === 0);
+
   return (
     <div className="mt-4">
-      <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-stone-500">Entegrasyon logları</p>
-      <ul className="mt-2 space-y-1.5 text-xs">{children}</ul>
+      {isEmpty ? (
+        <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50/80 px-4 py-6 text-center text-xs text-stone-500">
+          Henüz kayıt yok. Bir senkron işlemi çalıştırdığınızda sonuçlar burada listelenir.
+        </p>
+      ) : (
+        <ul className="max-h-[420px] space-y-2 overflow-y-auto pr-1 text-xs">{children}</ul>
+      )}
     </div>
   );
 }

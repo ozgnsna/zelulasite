@@ -1,5 +1,12 @@
 import Link from "next/link";
+import { AdminTrendyolSubmitButton } from "@/components/admin/dashboard/AdminTrendyolSubmitButton";
 import { TrendyolPayloadPreviewButton } from "@/components/admin/TrendyolPayloadPreviewButton";
+import {
+  adminPrimaryButton,
+  adminSectionCard,
+  adminSectionSubtitle,
+  adminSectionTitle,
+} from "@/components/admin/products/adminFieldClasses";
 
 type Row = {
   product: {
@@ -37,43 +44,45 @@ export function AdminTrendyolReadinessSection({
   syncReadyTrendyolProductsAction: (formData: FormData) => Promise<void>;
   refreshTrendyolCategoryAttributesAction: (formData: FormData) => Promise<void>;
 }) {
+  const filterBase = `/admin/trendyol?${baseQueryParams}`;
+
   return (
-    <section className="mb-8 rounded-2xl border border-[#e8dfd3] bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] p-5 shadow-[0_8px_24px_rgba(62,52,38,0.04)]">
+    <section id="trendyol-urunler" className={`${adminSectionCard} mb-8 scroll-mt-24`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-medium tracking-wide text-stone-800">Trendyol Ürün Hazırlığı</h2>
-          <p className="mt-1 text-xs font-light text-stone-500">
-            Senkron öncesi zorunlu alan kontrolü. Eksik olanları düzenleyip tekrar kontrol edebilirsin.
+          <h2 className={adminSectionTitle}>Ürün hazırlığı ve gönderim</h2>
+          <p className={adminSectionSubtitle}>
+            Zorunlu alanları tamamlayın; hazır olanları Trendyol&apos;a toplu gönderin. Liste en fazla 120 ürün gösterir.
           </p>
         </div>
         <form action={syncReadyTrendyolProductsAction}>
-          <button className="rounded-lg border border-[#d8c9b1] bg-white px-3 py-1.5 text-xs text-stone-700 hover:border-[#c6a15b]/50">
-            Hazır ürünleri Trendyol&apos;a gönder
-          </button>
+          <AdminTrendyolSubmitButton variant="primary" pendingLabel="Gönderiliyor…" className={adminPrimaryButton}>
+            Hazır ürünleri gönder ({readyCount})
+          </AdminTrendyolSubmitButton>
         </form>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
         <Link
-          href={`/admin?${baseQueryParams}&ty=all`}
+          href={`${filterBase}&ty=all`}
           className={`rounded-full border px-3 py-1 ${trendyolFilter === "all" ? "border-[#c6a15b]/50 bg-[#faf6ef] text-stone-800" : "border-stone-200 text-stone-600 hover:bg-stone-50"}`}
         >
           Tümü ({trendyolRowsRaw.length})
         </Link>
         <Link
-          href={`/admin?${baseQueryParams}&ty=ready`}
+          href={`${filterBase}&ty=ready`}
           className={`rounded-full border px-3 py-1 ${trendyolFilter === "ready" ? "border-[#c6a15b]/50 bg-[#eef7ee] text-stone-800" : "border-stone-200 text-stone-600 hover:bg-stone-50"}`}
         >
           Hazır ({readyCount})
         </Link>
         <Link
-          href={`/admin?${baseQueryParams}&ty=missing`}
+          href={`${filterBase}&ty=missing`}
           className={`rounded-full border px-3 py-1 ${trendyolFilter === "missing" ? "border-[#c6a15b]/50 bg-[#faf4ea] text-stone-800" : "border-stone-200 text-stone-600 hover:bg-stone-50"}`}
         >
           Eksik bilgi var ({missingCount})
         </Link>
         <Link
-          href={`/admin?${baseQueryParams}&ty=disabled`}
+          href={`${filterBase}&ty=disabled`}
           className={`rounded-full border px-3 py-1 ${trendyolFilter === "disabled" ? "border-[#c6a15b]/50 bg-[#f5f3ef] text-stone-800" : "border-stone-200 text-stone-600 hover:bg-stone-50"}`}
         >
           Senkron kapalı ({disabledCount})
