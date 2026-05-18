@@ -243,7 +243,8 @@ const COMPLEMENTARY_CATEGORY_MAP: Record<string, string[]> = {
   kolye: ["kupe", "bileklik"],
   kupe: ["kolye", "yuzuk"],
   yuzuk: ["kolye", "kupe"],
-  bileklik: ["kolye", "kupe"],
+  bileklik: ["kolye", "kupe", "bilezik"],
+  bilezik: ["kolye", "kupe", "bileklik"],
 };
 
 function normalizeCategoryName(name?: string | null) {

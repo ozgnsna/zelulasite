@@ -51,6 +51,7 @@ const categories = [
   { name: "Küpe", slug: "kupe" },
   { name: "Yüzük", slug: "yuzuk" },
   { name: "Bileklik", slug: "bileklik" },
+  { name: "Bilezik", slug: "bilezik" },
   { name: "Halhal", slug: "halhal" },
   { name: "Şahmeran", slug: "sahmeran" },
   { name: "Aksesuar", slug: "aksesuar" },

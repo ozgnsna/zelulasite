@@ -24,6 +24,7 @@ export const CATEGORY_TAXONOMY: CategoryTaxon[] = [
   { id: "kolye", name: "Kolye", slug: "kolye", parentId: "takilar", dbCategorySlug: "kolye", kind: "leaf" },
   { id: "kupe", name: "Küpe", slug: "kupe", parentId: "takilar", dbCategorySlug: "kupe", kind: "leaf" },
   { id: "bileklik", name: "Bileklik", slug: "bileklik", parentId: "takilar", dbCategorySlug: "bileklik", kind: "leaf" },
+  { id: "bilezik", name: "Bilezik", slug: "bilezik", parentId: "takilar", dbCategorySlug: "bilezik", kind: "leaf" },
   { id: "yuzuk", name: "Yüzük", slug: "yuzuk", parentId: "takilar", dbCategorySlug: "yuzuk", kind: "leaf" },
   { id: "setler", name: "Setler", slug: "setler", parentId: "takilar", dbCategorySlug: null, kind: "leaf" },
 
@@ -59,6 +60,7 @@ export const HEADER_PRIMARY_LEAF_SLUGS = [
   "kolye",
   "kupe",
   "bileklik",
+  "bilezik",
   "yuzuk",
   "setler",
   "hediye-karti",
@@ -68,7 +70,7 @@ export const HEADER_PRIMARY_LEAF_SLUGS = [
 export const MEGA_MENU_GROUPS: { title: string; slugs: readonly string[] }[] = [
   {
     title: "Takılar",
-    slugs: ["kolye", "kupe", "bileklik", "yuzuk", "setler", "hediye-karti"],
+    slugs: ["kolye", "kupe", "bileklik", "bilezik", "yuzuk", "setler", "hediye-karti"],
   },
   { title: "Aksesuar", slugs: ["bros", "sapka"] },
 ];
@@ -78,4 +80,4 @@ export function categoryHref(slug: string): string {
 }
 
 /** Takılar hub’ında listelenecek ürünler: çekirdek takı DB slug’ları */
-export const TAKILAR_PRODUCT_DB_SLUGS = ["kolye", "kupe", "bileklik", "yuzuk"] as const;
+export const TAKILAR_PRODUCT_DB_SLUGS = ["kolye", "kupe", "bileklik", "bilezik", "yuzuk"] as const;

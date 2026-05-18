@@ -179,6 +179,7 @@ const CATEGORY_PREFIX: Record<string, string> = {
   kupe: "KP",
   kolye: "KL",
   bileklik: "BL",
+  bilezik: "BZ",
   yuzuk: "YZ",
   bros: "BR",
   halhal: "HH",

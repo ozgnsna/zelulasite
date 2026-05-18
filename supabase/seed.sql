@@ -3,6 +3,7 @@ insert into categories (name, slug) values
 ('Küpe', 'kupe'),
 ('Yüzük', 'yuzuk'),
 ('Bileklik', 'bileklik'),
+('Bilezik', 'bilezik'),
 ('Halhal', 'halhal'),
 ('Şahmeran', 'sahmeran'),
 ('Aksesuar', 'aksesuar'),
