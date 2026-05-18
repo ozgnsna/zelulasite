@@ -16,6 +16,10 @@ import { ensureUserReferralCode } from "@/lib/referral/server";
 import { ProductFavoriteButton } from "@/components/ProductFavoriteButton";
 import { getSupportWhatsAppHref } from "@/lib/support-contact";
 import { TrackedExternalLink } from "@/components/analytics/TrackedExternalLink";
+import { ProductPdpShippingCard } from "@/components/product/ProductPdpShippingCard";
+import { ProductPdpTraitOptions } from "@/components/product/ProductPdpTraitOptions";
+import { buildPdpShippingPromise } from "@/lib/storefront/pdp-shipping";
+import { resolvePdpTraitGroups } from "@/lib/storefront/pdp-traits";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -50,31 +54,25 @@ function normalizeCopyText(text: string) {
   return text.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-/** Tekil PDP metni: kısa özet üstte bir kez, uzun metin altta «neden özel» bölümünde. */
-function productDescriptionView(shortRaw: string, fullRaw: string) {
+/** PDP açıklaması yalnızca solda; kısa + uzun metin tekrarsız birleştirilir. */
+function productDescriptionParagraphs(shortRaw: string, fullRaw: string): string[] {
   const short = shortRaw.trim();
   const paragraphs = splitDescriptionParagraphs(fullRaw);
   const shortNorm = normalizeCopyText(short);
 
-  if (!shortNorm) {
-    return { teaser: "", storyParagraphs: paragraphs };
-  }
-
-  if (paragraphs.length === 0) {
-    return { teaser: short, storyParagraphs: [] };
-  }
+  if (!shortNorm) return paragraphs;
+  if (paragraphs.length === 0) return [short];
 
   const firstNorm = normalizeCopyText(paragraphs[0] ?? "");
   if (firstNorm === shortNorm || firstNorm.startsWith(shortNorm) || shortNorm.startsWith(firstNorm)) {
-    return { teaser: short, storyParagraphs: paragraphs.slice(1) };
+    return paragraphs;
   }
 
-  return { teaser: short, storyParagraphs: paragraphs };
+  return [short, ...paragraphs];
 }
 
-function metaDescriptionFromCopy(teaser: string, storyParagraphs: string[]) {
-  const base = teaser || storyParagraphs[0] || "";
-  const flat = base.replace(/\s+/g, " ").trim();
+function metaDescriptionFromParagraphs(paragraphs: string[]) {
+  const flat = (paragraphs[0] ?? "").replace(/\s+/g, " ").trim();
   return flat.length > 160 ? `${flat.slice(0, 157)}…` : flat;
 }
 
@@ -82,10 +80,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) return { title: "Ürün" };
-  const { teaser, storyParagraphs } = productDescriptionView(product.short_description, product.full_description);
+  const storyParagraphs = productDescriptionParagraphs(product.short_description, product.full_description);
   return {
     title: product.name,
-    description: metaDescriptionFromCopy(teaser, storyParagraphs),
+    description: metaDescriptionFromParagraphs(storyParagraphs),
   };
 }
 
@@ -96,7 +94,7 @@ export default async function ProductPage({ params }: Props) {
 
   const galleryExtras =
     isZodiacStoryProduct(slug, product.name) ? ZODIAC_GALLERY_EXTRAS : [];
-  const { teaser, storyParagraphs } = productDescriptionView(product.short_description, product.full_description);
+  const storyParagraphs = productDescriptionParagraphs(product.short_description, product.full_description);
   const compareAt = product.compare_at_price ? Number(product.compare_at_price) : null;
   const priceNum = Number(product.price);
   const hasRealDiscount = Boolean(compareAt && compareAt > priceNum);
@@ -110,8 +108,13 @@ export default async function ProductPage({ params }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const favorited = user?.id ? await isProductFavorited(supabase, user.id, product.id) : false;
-  const referralCode = user?.id ? await ensureUserReferralCode(createAdminClient(), user.id) : null;
+  const admin = createAdminClient();
+  const [favorited, referralCode, traitGroups, shippingPromise] = await Promise.all([
+    user?.id ? isProductFavorited(supabase, user.id, product.id) : Promise.resolve(false),
+    user?.id ? ensureUserReferralCode(admin, user.id) : Promise.resolve(null),
+    resolvePdpTraitGroups(product, admin),
+    Promise.resolve(buildPdpShippingPromise()),
+  ]);
   return (
     <main className="container-premium pb-28 pt-8 sm:pb-16 sm:pt-10">
       <ViewItemTracker
@@ -185,10 +188,6 @@ export default async function ProductPage({ params }: Props) {
             Zelula seçimi
           </span>
 
-          {teaser ? (
-            <p className="mt-4 max-w-xl text-sm font-light leading-relaxed text-stone-600 sm:text-[15px]">{teaser}</p>
-          ) : null}
-
           {isZodiacStoryProduct(slug, product.name) ? (
             <aside className="mt-8 max-w-xl border-l-[3px] border-brand-gold/60 bg-[#faf8f5]/90 px-5 py-5 sm:px-6 sm:py-5">
               <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-stone-500">Seçilmiş parça</p>
@@ -199,6 +198,12 @@ export default async function ProductPage({ params }: Props) {
                 bir arada sunar.
               </p>
             </aside>
+          ) : null}
+
+          {traitGroups.length > 0 ? (
+            <div className="mt-6 max-w-xl">
+              <ProductPdpTraitOptions groups={traitGroups} />
+            </div>
           ) : null}
 
           <section className="pdp-reveal-cta mt-6 max-w-none space-y-5 rounded-[1.7rem] border border-[#eee5d9] bg-[#fffdf9] p-6 shadow-[0_20px_40px_rgba(62,52,38,0.14)] sm:p-7">
@@ -220,8 +225,9 @@ export default async function ProductPage({ params }: Props) {
                   Bugüne özel fiyat
                 </span>
               )}
-              <p className="text-[11px] font-medium text-stone-500">Bugüne özel fiyat</p>
             </div>
+
+            <ProductPdpShippingCard promise={shippingPromise} />
 
             <AddToCartButton
               productId={product.id}
@@ -253,29 +259,6 @@ export default async function ProductPage({ params }: Props) {
                 Kolay iade
               </li>
             </ul>
-
-            {(product.material || product.color || product.category?.name) && (
-              <div className="space-y-2">
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Ürün seçenekleri</p>
-                <div className="flex flex-wrap gap-2">
-                  {product.material ? (
-                    <span className="rounded-full border border-[#e3d8ca] bg-[#faf7f2] px-2.5 py-1 text-[11px] text-stone-700">
-                      Materyal: {product.material}
-                    </span>
-                  ) : null}
-                  {product.color ? (
-                    <span className="rounded-full border border-[#e3d8ca] bg-[#faf7f2] px-2.5 py-1 text-[11px] text-stone-700">
-                      Renk: {product.color}
-                    </span>
-                  ) : null}
-                  {product.category?.name ? (
-                    <span className="rounded-full border border-[#e3d8ca] bg-[#faf7f2] px-2.5 py-1 text-[11px] text-stone-700">
-                      Kategori: {product.category.name}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            )}
 
             {stockQty > 0 ? (
               <p
