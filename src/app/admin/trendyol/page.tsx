@@ -4,6 +4,7 @@ import {
   checkTrendyolBatchStatusAction,
   fetchTrendyolOrdersAction,
   importTrendyolApprovedProductsAction,
+  reconcileDailyTrendyolStockAction,
   refreshTrendyolCategoryAttributesAction,
   saveTrendyolIntegrationSettings,
   syncReadyTrendyolProductsAction,
@@ -121,6 +122,12 @@ export default async function AdminTrendyolPage({
     tyDeactivated?: string;
     tyMatch?: string;
     tyFetched?: string;
+    tyDailySync?: string;
+    tyDailyOrders?: string;
+    tyDailyAdjusted?: string;
+    tyDailyPushed?: string;
+    tyDailyDeactivated?: string;
+    tyDailyUnmatched?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -263,6 +270,12 @@ export default async function AdminTrendyolPage({
         tyDeactivated={sp.tyDeactivated}
         tyMatch={sp.tyMatch}
         tyFetched={sp.tyFetched}
+        tyDailySync={sp.tyDailySync}
+        tyDailyOrders={sp.tyDailyOrders}
+        tyDailyAdjusted={sp.tyDailyAdjusted}
+        tyDailyPushed={sp.tyDailyPushed}
+        tyDailyDeactivated={sp.tyDailyDeactivated}
+        tyDailyUnmatched={sp.tyDailyUnmatched}
       />
 
       <AdminTrendyolStatusBar
@@ -284,6 +297,7 @@ export default async function AdminTrendyolPage({
         fetchTrendyolOrdersAction={fetchTrendyolOrdersAction}
         importTrendyolApprovedProductsAction={importTrendyolApprovedProductsAction}
         checkTrendyolBatchStatusAction={checkTrendyolBatchStatusAction}
+        reconcileDailyTrendyolStockAction={reconcileDailyTrendyolStockAction}
         logs={
           <AdminSyncLogsSection>
             {syncLogsPreview.map((l) => (

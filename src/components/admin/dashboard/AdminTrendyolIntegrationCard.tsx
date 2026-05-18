@@ -60,6 +60,7 @@ export function AdminTrendyolIntegrationCard({
   fetchTrendyolOrdersAction,
   importTrendyolApprovedProductsAction,
   checkTrendyolBatchStatusAction,
+  reconcileDailyTrendyolStockAction,
   logs,
 }: {
   integration: IntegrationData;
@@ -68,6 +69,7 @@ export function AdminTrendyolIntegrationCard({
   fetchTrendyolOrdersAction: (formData: FormData) => Promise<void>;
   importTrendyolApprovedProductsAction: (formData: FormData) => Promise<void>;
   checkTrendyolBatchStatusAction: (formData: FormData) => Promise<void>;
+  reconcileDailyTrendyolStockAction: () => Promise<void>;
   logs: ReactNode;
 }) {
   const env = integration?.environment ?? "stage";
@@ -138,6 +140,20 @@ export function AdminTrendyolIntegrationCard({
       <section id="trendyol-islemler" className={`${adminSectionCard} mb-6 scroll-mt-24`}>
         <h2 className={adminSectionTitle}>Senkron işlemleri</h2>
         <p className={adminSectionSubtitle}>Her işlem tamamlandığında üstte sonuç kutusu ve altta log görünür.</p>
+
+        <article className="mt-5 rounded-xl border border-[#c6a15b]/40 bg-[#faf6ef] p-4">
+          <h3 className="text-sm font-semibold text-stone-900">Günlük stok eşitleme</h3>
+          <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
+            Günde bir kez önerilir: son 24 saat Trendyol siparişlerini işler, site ile Trendyol stoklarını eşitler
+            (düşük olan geçerli) ve Trendyol&apos;a güncel stok gönderir. Satış kaçırılmasın diye sabah veya gün sonu
+            kullanın.
+          </p>
+          <form action={reconcileDailyTrendyolStockAction} className="mt-3">
+            <AdminTrendyolSubmitButton variant="primary" pendingLabel="Eşitleniyor…">
+              Bugünkü stokları eşitle
+            </AdminTrendyolSubmitButton>
+          </form>
+        </article>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <ActionCard

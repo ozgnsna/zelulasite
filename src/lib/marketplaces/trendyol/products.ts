@@ -721,6 +721,12 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
     const barcodes = [...new Set(importableList.map((item) => extractRemoteBarcode(item)).filter(Boolean))];
     const fetchedBarcodes = [...new Set(list.map((item) => extractRemoteBarcode(item)).filter(Boolean))];
     const importableBarcodeSet = new Set(barcodes);
+    const remoteStockByBarcode = new Map<string, number>();
+    for (const item of list) {
+      const barcode = extractRemoteBarcode(item);
+      if (!barcode) continue;
+      remoteStockByBarcode.set(barcode, Math.max(0, Math.trunc(extractRemoteQuantity(item))));
+    }
     const existingByBarcode = new Map<string, { id: string }>();
     if (barcodes.length > 0) {
       const { data: existingRows } = await admin
@@ -830,26 +836,25 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
           .select("id,trendyol_barcode,trendyol_active,is_active")
           .in("trendyol_barcode", fetchedBarcodes);
 
-        const toDeactivateIds = (remoteLinkedRows ?? [])
-          .filter((row) => {
-            const barcode = asTrimmedString((row as { trendyol_barcode?: unknown }).trendyol_barcode);
-            const trendyolActive = Boolean((row as { trendyol_active?: unknown }).trendyol_active);
-            return barcode && !importableBarcodeSet.has(barcode) && trendyolActive;
-          })
-          .map((row) => asTrimmedString((row as { id?: unknown }).id))
-          .filter(Boolean);
+        const toDelistRows = (remoteLinkedRows ?? []).filter((row) => {
+          const barcode = asTrimmedString((row as { trendyol_barcode?: unknown }).trendyol_barcode);
+          return barcode && !importableBarcodeSet.has(barcode);
+        });
 
-        if (toDeactivateIds.length > 0) {
+        for (const row of toDelistRows) {
+          const id = asTrimmedString((row as { id?: unknown }).id);
+          const barcode = asTrimmedString((row as { trendyol_barcode?: unknown }).trendyol_barcode);
+          if (!id || !barcode) continue;
+          const remoteStock = remoteStockByBarcode.get(barcode) ?? 0;
           const { error: deactivateError } = await admin
             .from("products")
             .update({
               trendyol_active: false,
+              is_active: false,
+              stock_quantity: remoteStock,
             })
-            .in("id", toDeactivateIds);
-
-          if (!deactivateError) {
-            deactivated = toDeactivateIds.length;
-          }
+            .eq("id", id);
+          if (!deactivateError) deactivated += 1;
         }
       }
     }
@@ -860,7 +865,7 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
       status: "success",
       message: dryRun
         ? `Dry-run complete. ${importableList.length}/${list.length} ürün (satışta + stokta) eşleşme için getirildi.`
-        : `${imported} ürün eklendi, ${updated} ürün güncellendi, ${deactivated} ürün pasife alındı.`,
+        : `${imported} ürün eklendi, ${updated} ürün güncellendi, ${deactivated} ürün sitede ve Trendyol bağlantısında kapatıldı (TY'de satışta/stokta değil).`,
       responsePayload: {
         count: importableList.length,
         fetchedCount: list.length,
@@ -882,5 +887,38 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
       message,
     });
     return { ok: false as const, message };
+  }
+}
+
+export type TrendyolStockByBarcodeSnapshot =
+  | { ok: true; stockByBarcode: Map<string, number>; fetchedCount: number; integrationId: string }
+  | { ok: false; skipped: true }
+  | { ok: false; message: string };
+
+/** Trendyol onaylı ürün listesinden barkod → güncel stok (satışta değilse 0). */
+export async function fetchTrendyolStockByBarcodeSnapshot(
+  admin: SupabaseClient,
+): Promise<TrendyolStockByBarcodeSnapshot> {
+  const integration = await getActiveTrendyolIntegration(admin);
+  if (!integration || !trendyolHasCredentials(integration)) {
+    return { ok: false, skipped: true };
+  }
+  try {
+    let list = await fetchTrendyolProductsAllPages(integration, true);
+    if (list.length === 0) {
+      list = await fetchTrendyolProductsAllPages(integration, null);
+    }
+    const stockByBarcode = new Map<string, number>();
+    for (const item of list) {
+      const barcode = extractRemoteBarcode(item);
+      if (!barcode) continue;
+      const qty = Math.max(0, Math.trunc(extractRemoteQuantity(item)));
+      const effective = isVariantOnSale(item) ? qty : 0;
+      stockByBarcode.set(barcode, effective);
+    }
+    return { ok: true, stockByBarcode, fetchedCount: list.length, integrationId: integration.id };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Trendyol stok okunamadı.";
+    return { ok: false, message };
   }
 }

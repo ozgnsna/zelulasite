@@ -26,6 +26,7 @@ import {
   type TrendyolProductPayloadInput,
   type TrendyolProductSyncOverrides,
 } from "@/lib/marketplaces/trendyol/products";
+import { reconcileDailyStockWithTrendyol } from "@/lib/marketplaces/trendyol/daily-stock-reconcile";
 import { fetchTrendyolOrdersForSync } from "@/lib/marketplaces/trendyol/orders";
 import {
   buildCategoryReadinessFromCache,
@@ -503,6 +504,30 @@ export async function fetchTrendyolOrdersAction() {
   redirect(
     `/admin?tab=analytics&trendyolOrdersProcessed=${result.processedOrders}&trendyolOrderStockUpdated=${result.updatedProducts}` +
       `&trendyolOrderUnmatched=${result.unmatchedProducts}&trendyolOrderDuplicate=${result.duplicateSkipped}&trendyolOrderRestored=${result.restoredOrders}`,
+  );
+}
+
+export async function reconcileDailyTrendyolStockAction() {
+  const admin = createAdminClient();
+  const result = await reconcileDailyStockWithTrendyol(admin, { orderLookbackDays: 1 });
+  revalidatePath("/admin");
+  revalidatePath("/admin/trendyol");
+  revalidatePath("/admin/products");
+  revalidatePath("/urunler");
+
+  const base = "/admin/trendyol";
+  if (!result.ok) {
+    redirect(`${base}?tyErr=${encodeURIComponent(normalizeTrendyolUiError(result.message, "price_inventory"))}`);
+  }
+  if (result.skipped) {
+    redirect(
+      `${base}?tyWarn=${encodeURIComponent("Entegrasyon kapalı veya API bilgileri eksik. Günlük stok eşitlemesi yapılamadı.")}`,
+    );
+  }
+  redirect(
+    `${base}?tyDailySync=1&tyDailyOrders=${result.orderStockUpdates}&tyDailyAdjusted=${result.stockAdjusted}` +
+      `&tyDailyPushed=${result.pushedToTrendyol}&tyDailyDeactivated=${result.siteDeactivated}` +
+      `&tyDailyUnmatched=${result.orderUnmatched}&tyDailyTyRows=${result.trendyolRowsRead}`,
   );
 }
 
