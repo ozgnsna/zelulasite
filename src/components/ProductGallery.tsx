@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { ProductGalleryZoomTrigger, ProductImageLightbox } from "@/components/product/ProductImageLightbox";
 import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
 
 type Img = { id: string; image_url: string; is_cover?: boolean | null; sort_order?: number | null };
@@ -40,6 +41,7 @@ export function ProductGallery({
 
   const [active, setActive] = useState(() => list[0]?.image_url ?? fallback);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     const first = list[0]?.image_url ?? fallback;
@@ -49,8 +51,10 @@ export function ProductGallery({
   const mainSrc = list.some((i) => i.image_url === active) ? active : (list[0]?.image_url ?? fallback);
   const firstUrl = list[0]?.image_url ?? fallback;
   const showVideo = Boolean(loopVideoUrl?.trim()) && !videoFailed && mainSrc === firstUrl;
+  const resolvedActiveIndex = Math.max(0, list.findIndex((i) => i.image_url === mainSrc));
 
   const onVideoError = useCallback(() => setVideoFailed(true), []);
+  const openLightbox = useCallback(() => setLightboxOpen(true), []);
 
   return (
     <div className="space-y-4">
@@ -90,7 +94,17 @@ export function ProductGallery({
           <div className="absolute -inset-[20%] rotate-12 bg-gradient-to-tr from-transparent via-white/[0.14] to-transparent opacity-0 blur-2xl transition duration-[1.1s] ease-out motion-safe:group-hover:translate-x-[18%] motion-safe:group-hover:opacity-100" />
           <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-[color:var(--brand-gold)]/[0.06]" />
         </div>
+
+        {!showVideo ? <ProductGalleryZoomTrigger onOpen={openLightbox} /> : null}
       </div>
+
+      <ProductImageLightbox
+        images={list}
+        initialIndex={resolvedActiveIndex}
+        alt={alt}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
       {list.length > 1 ? (
         <div className="space-y-2">
           <p className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400">
