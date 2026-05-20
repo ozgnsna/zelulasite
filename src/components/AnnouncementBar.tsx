@@ -10,12 +10,9 @@ function buildTickerMessages() {
   const threshold = FREE_SHIPPING_THRESHOLD_TRY.toLocaleString("tr-TR");
   const cd = getShippingCountdownState();
 
-  const shippingLine = formatShippingCountdownBanner(cd);
-
   return [
     `₺${threshold} üzeri ücretsiz kargo`,
-    shippingLine,
-    "Saat 13:00'a kadar verilen siparişler aynı gün kargoya verilir",
+    formatShippingCountdownBanner(cd),
     "Güvenli ödeme · Kolay iade",
     "Türkiye geneli teslimat",
   ];
@@ -23,26 +20,40 @@ function buildTickerMessages() {
 
 export function AnnouncementBar() {
   const [tick, setTick] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
     const id = window.setInterval(() => setTick((n) => n + 1), TICK_MS);
     return () => window.clearInterval(id);
   }, []);
 
-  const messages = useMemo(() => buildTickerMessages(), [tick]);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduceMotion(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
-  const loop = [...messages, ...messages];
+  const messages = useMemo(() => buildTickerMessages(), [tick]);
+  const loop = reduceMotion ? messages : [...messages, ...messages];
 
   return (
     <div
-      className="relative overflow-hidden border-b border-[#e8e2d9]/90 bg-[#faf8f5] py-2.5"
+      className="relative flex h-9 items-center overflow-hidden border-b border-[#e8e2d9]/90 bg-[#faf8f5] sm:h-10"
       aria-label="Duyurular"
     >
-      <div className="zl-announcement-marquee flex w-max min-w-full">
+      <div
+        className={
+          reduceMotion
+            ? "zl-announcement-static flex w-full flex-nowrap items-center justify-center gap-0 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            : "zl-announcement-marquee flex w-max flex-nowrap items-center"
+        }
+      >
         {loop.map((text, index) => (
           <span
             key={`${text}-${index}`}
-            className="inline-flex shrink-0 items-center gap-2 px-6 text-[11px] font-medium tracking-wide text-stone-600 sm:text-xs"
+            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-5 text-[11px] font-medium tracking-wide text-stone-600 sm:px-6 sm:text-xs"
           >
             <span className="text-[color:var(--brand-gold)]" aria-hidden>
               ●

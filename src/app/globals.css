@@ -274,24 +274,11 @@ body {
 }
 
 .zl-announcement-marquee {
+  flex-wrap: nowrap;
   animation: zl-announcement-marquee 42s linear infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .zl-announcement-marquee {
-    animation: none;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-    max-width: 100%;
-    gap: 0.25rem 0;
-    padding: 0 0.75rem;
-  }
-
-  .zl-announcement-marquee > span {
-    padding: 0.15rem 0.5rem;
-  }
-}
+/* Hareket azaltıldığında marquee yerine tek satır (AnnouncementBar.tsx) */
 
 /* —— Zelula editorial luxury layer —— */
 @keyframes zl-shimmer-sweep {
