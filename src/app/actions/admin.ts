@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 function revalidateAdminOrderPaths(orderId: string) {
   revalidatePath("/admin");
@@ -252,7 +252,7 @@ export async function saveProduct(formData: FormData) {
     sku: String(formData.get("sku") ?? ""),
     stock_quantity: Number(formData.get("stock_quantity") ?? 0),
     featured: formData.get("featured") === "on",
-    new_arrival: formData.get("new_arrival") === "on",
+    new_arrival: id ? formData.get("new_arrival") === "on" : true,
     category_id: String(formData.get("category_id") ?? ""),
     collection_id: String(formData.get("collection_id") ?? "") || null,
     material: String(formData.get("material") ?? "") || null,
@@ -281,6 +281,8 @@ export async function saveProduct(formData: FormData) {
   // Trendyol API kayıt sırasında bekletilmez — uzun 556/timeout yanıtları «sayfa yüklenemedi» yapıyordu.
   // Pazaryeri güncellemesi için ürün formundaki «Trendyol'a gönder» kullanılır.
   revalidatePath("/admin");
+  revalidatePath("/");
+  revalidateTag("storefront-home", "max");
   if (returnTo !== "/admin") revalidatePath(returnTo);
   if (!productId || returnTo === "/admin") return;
 

@@ -199,7 +199,7 @@ export default async function HomePage() {
                     imageForward
                     imageEmphasis="high"
                     conversionOverlay
-                    badges={{ bestseller: p.featured, new: p.new_arrival }}
+                    badges={{ bestseller: p.featured, new: true }}
                     className="h-full border-[#e8e2d9] shadow-[0_12px_36px_rgba(55,48,40,0.08)]"
                     isSignedIn={isSignedIn}
                     initialFavorited={favoriteIds.has(p.id)}

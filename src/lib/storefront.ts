@@ -28,6 +28,7 @@ async function fetchHomeDataFromDb() {
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
       .eq("is_active", true)
+      .eq("product_kind", "physical")
       .gt("stock_quantity", 0)
       .eq("featured", true)
       .limit(8),
@@ -35,8 +36,8 @@ async function fetchHomeDataFromDb() {
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
       .eq("is_active", true)
+      .eq("product_kind", "physical")
       .gt("stock_quantity", 0)
-      .eq("new_arrival", true)
       .order("created_at", { ascending: false })
       .limit(8),
   ]);
@@ -51,6 +52,7 @@ async function fetchHomeDataFromDb() {
 
 const getHomeDataCached = unstable_cache(fetchHomeDataFromDb, ["storefront-home-data"], {
   revalidate: 60,
+  tags: ["storefront-home"],
 });
 
 /** Ana sayfa vitrin verisi — 60 sn önbellek (kullanıcı oturumundan bağımsız). */

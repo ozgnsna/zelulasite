@@ -3,17 +3,19 @@ const ISTANBUL = "Europe/Istanbul";
 const CUTOFF_HOUR = 13;
 const CUTOFF_MINUTE = 0;
 
-const POLICY_LINE =
+export const SHIPPING_POLICY_LINE =
   "Saat 13:00'a kadar verilen siparişler aynı gün kargoya verilir. Cumartesi ve pazar verilen siparişler pazartesi kargoya teslim edilir.";
 
 export type PdpShippingPromise = {
-  /** Pazartesi–Cuma, 13:00 öncesi: geri sayım */
+  /** Yalnızca 13:00 öncesi geri sayım için yeşil şerit */
+  showGreenBanner: boolean;
   cutoffCountdown: { hours: number; minutes: number } | null;
-  /** Yeşil kutu metni (geri sayım varsa süre sonrası kısım) */
-  urgencyTail: string;
+  greenTail: string;
+  /** Bu sipariş için kısa not (genel kuraldan farklı); yeşil şerit yokken gösterilir */
+  dispatchHint: string | null;
   carrierLabel: string;
   deliveryLine: string;
-  noteLine: string;
+  policyLine: string;
 };
 
 function istanbulDateParts(now: Date) {
@@ -63,25 +65,20 @@ export function buildPdpShippingPromise(now = new Date()): PdpShippingPromise {
   const untilCutoff = minutesUntilCutoff(hour, minute, weekday);
   const dispatch = weekdayDispatchLabel(weekday, hour, minute);
 
-  let urgencyTail: string;
-  if (isWeekend(weekday)) {
-    urgencyTail = "Cumartesi ve pazar verilen siparişler pazartesi kargoya teslim edilir.";
-  } else if (untilCutoff != null && untilCutoff > 0) {
-    urgencyTail = "içinde sipariş verirsen bugün DHL Kargo'ya teslim edilir.";
-  } else if (isWeekday(weekday)) {
-    urgencyTail = `Bu sipariş en geç ${dispatch} DHL Kargo'ya teslim edilir.`;
-  } else {
-    urgencyTail = POLICY_LINE;
-  }
+  const beforeCutoff = untilCutoff != null && untilCutoff > 0;
 
   return {
-    cutoffCountdown:
-      untilCutoff != null && untilCutoff > 0
-        ? { hours: Math.floor(untilCutoff / 60), minutes: untilCutoff % 60 }
+    showGreenBanner: beforeCutoff,
+    cutoffCountdown: beforeCutoff
+      ? { hours: Math.floor(untilCutoff / 60), minutes: untilCutoff % 60 }
+      : null,
+    greenTail: "içinde sipariş verirsen bugün DHL Kargo'ya teslim edilir.",
+    dispatchHint:
+      !beforeCutoff && isWeekday(weekday)
+        ? `Bu sipariş en geç ${dispatch} DHL Kargo'ya teslim edilir.`
         : null,
-    urgencyTail,
     carrierLabel: "DHL Kargo",
     deliveryLine: "Tahmini teslimat: 2–4 iş günü içinde kapında",
-    noteLine: POLICY_LINE,
+    policyLine: SHIPPING_POLICY_LINE,
   };
 }

@@ -366,7 +366,13 @@ export function ProductForm({
                     >
                       Öne çıkan
                     </label>
-                    <input id="product-new-arrival" type="checkbox" name="new_arrival" defaultChecked={Boolean(p.new_arrival)} className="peer/newa sr-only" />
+                    <input
+                      id="product-new-arrival"
+                      type="checkbox"
+                      name="new_arrival"
+                      defaultChecked={mode === "create" ? true : Boolean(p.new_arrival)}
+                      className="peer/newa sr-only"
+                    />
                     <label
                       htmlFor="product-new-arrival"
                       className="cursor-pointer rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-medium text-stone-600 transition hover:bg-stone-50 peer-checked/newa:border-stone-800 peer-checked/newa:bg-stone-900 peer-checked/newa:text-white"

@@ -210,11 +210,10 @@ export default async function ProductPage({ params }: Props) {
               ) : null}
             </div>
           )}
-          <p className={`editorial-kicker text-brand-gold ${product.featured || product.new_arrival ? "mt-3" : ""}`}>
-            Zelula özel koleksiyonundan
-          </p>
 
-          <div className="mt-3.5 flex flex-wrap items-start justify-between gap-3">
+          <div
+            className={`flex flex-wrap items-start justify-between gap-3 ${product.featured || product.new_arrival ? "mt-3" : ""}`}
+          >
             <h1 className="min-w-0 flex-1 font-serif text-4xl font-light leading-[1.08] tracking-tight text-stone-900 sm:text-5xl">
               {product.name}
             </h1>
@@ -227,9 +226,6 @@ export default async function ProductPage({ params }: Props) {
               isSignedIn={Boolean(user)}
             />
           </div>
-          <span className="mt-3 inline-flex w-fit rounded-full bg-[#f5ede1] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#b68f4d]">
-            Zelula seçimi
-          </span>
 
           {isZodiacStoryProduct(slug, product.name) ? (
             <aside className="mt-8 max-w-xl border-l-[3px] border-brand-gold/60 bg-[#faf8f5]/90 px-5 py-5 sm:px-6 sm:py-5">
