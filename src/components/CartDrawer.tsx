@@ -5,10 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { addToCart } from "@/app/actions/store";
+import { addToCart, updateCartItem } from "@/app/actions/store";
 import { formatTry } from "@/lib/money";
 import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
-import { ShoppingBag } from "lucide-react";
+import { trackRemoveFromCart } from "@/lib/analytics";
+import { ShoppingBag, Trash2 } from "lucide-react";
 
 type DrawerLine = {
   productId: string;
@@ -29,6 +30,62 @@ type DrawerUpsellItem = {
 };
 
 const CART_HOLD_SECONDS = 10 * 60;
+
+function CartDrawerLine({
+  line,
+  onNavigate,
+}: {
+  line: DrawerLine;
+  onNavigate: () => void;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+
+  const removeLine = () => {
+    start(async () => {
+      trackRemoveFromCart({
+        product_id: line.productId,
+        product_name: line.name,
+        price: line.price,
+        quantity: line.quantity,
+      });
+      await updateCartItem(line.productId, 0);
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-3">
+      <Link
+        href={`/urunler/${line.slug}`}
+        onClick={onNavigate}
+        className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-stone-100"
+      >
+        <Image src={line.imageUrl} alt={line.name} fill className="object-cover" sizes="80px" />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <Link
+          href={`/urunler/${line.slug}`}
+          onClick={onNavigate}
+          className="line-clamp-2 text-sm font-medium text-stone-900 hover:underline"
+        >
+          {line.name}
+        </Link>
+        <p className="mt-0.5 text-xs text-stone-500">{line.quantity} adet</p>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={removeLine}
+          className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-stone-500 transition hover:text-rose-700 disabled:opacity-50"
+        >
+          <Trash2 className="size-3.5" strokeWidth={1.75} aria-hidden />
+          {pending ? "Kaldırılıyor…" : "Kaldır"}
+        </button>
+      </div>
+      <p className="shrink-0 pt-0.5 text-xs font-semibold text-stone-900">{formatTry(line.price * line.quantity)}</p>
+    </div>
+  );
+}
 
 export function CartDrawer({
   count,
@@ -118,21 +175,7 @@ export function CartDrawer({
                 </p>
               ) : (
                 lines.map((line) => (
-                  <Link
-                    key={line.productId}
-                    href={`/urunler/${line.slug}`}
-                    className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3"
-                    onClick={() => setOpen(false)}
-                  >
-                    <div className="relative h-20 w-20 overflow-hidden rounded-lg bg-stone-100">
-                      <Image src={line.imageUrl} alt={line.name} fill className="object-cover" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{line.name}</p>
-                      <p className="text-xs text-stone-500">{line.quantity} adet</p>
-                    </div>
-                    <p className="text-xs font-medium">{formatTry(line.price * line.quantity)}</p>
-                  </Link>
+                  <CartDrawerLine key={line.productId} line={line} onNavigate={() => setOpen(false)} />
                 ))
               )}
               {lines.length > 0 && upsellTopTwo.length > 0 ? (
@@ -187,13 +230,22 @@ export function CartDrawer({
               </div>
               <p className="mb-2 text-[11px] font-medium text-stone-700">{shippingMessage}</p>
               <p className="mb-2 text-xs font-semibold text-stone-900">🔒 Güvenli ödeme</p>
-              <Link
-                href="/sepet"
-                onClick={() => setOpen(false)}
-                className="block rounded-full bg-stone-900 px-5 py-3.5 text-center text-sm font-semibold text-white shadow-[0_10px_20px_rgba(25,25,25,0.2)]"
-              >
-                {ctaText}
-              </Link>
+              <div className="flex flex-col gap-2">
+                <Link
+                  href="/sepet"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-full border border-[#e4d8c8] bg-white py-2.5 text-center text-sm font-medium text-stone-800 transition hover:border-[#c6a15b]/45"
+                >
+                  Sepeti düzenle
+                </Link>
+                <Link
+                  href="/sepet"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-full bg-stone-900 px-5 py-3.5 text-center text-sm font-semibold text-white shadow-[0_10px_20px_rgba(25,25,25,0.2)]"
+                >
+                  {ctaText}
+                </Link>
+              </div>
             </div>
           </aside>
         </div>
