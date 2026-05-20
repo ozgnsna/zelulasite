@@ -90,7 +90,7 @@ export function ProductCard({
         />
         <Link
           href={`/urunler/${slug}`}
-          className="absolute inset-0 z-[1]"
+          className="absolute inset-0 z-[2]"
           aria-label={`${name} — ürünü aç`}
         >
           <span className="sr-only">{name}</span>
@@ -115,8 +115,8 @@ export function ProductCard({
           {conversionOverlay && id ? (
             <>
               {/* Masaüstü: yalnızca hover’da sepete ekle — kart tıklaması ürüne gider */}
-              <div className="pointer-events-none absolute inset-0 z-[12] hidden items-center justify-center opacity-0 transition-opacity duration-200 ease-out lg:flex lg:group-hover:pointer-events-auto lg:group-hover:bg-black/[0.26] lg:group-hover:opacity-100">
-                <div className="pointer-events-auto translate-y-2 scale-[0.98] opacity-0 transition duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100">
+              <div className="pointer-events-none absolute inset-0 z-[12] hidden items-center justify-center bg-black/[0.26] opacity-0 transition-opacity duration-200 ease-out lg:flex lg:group-hover:opacity-100">
+                <div className="pointer-events-none translate-y-2 scale-[0.98] opacity-0 transition duration-200 ease-out group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100">
                   <QuickAddButton
                     productId={id}
                     productName={name}
@@ -131,7 +131,7 @@ export function ProductCard({
                 </div>
               </div>
               {/* Dokunmatik: küçük sepet ikonu — yanlışlıkla basmayı zorlaştırır */}
-              <div className="absolute bottom-2 right-2 z-[18] lg:hidden">
+              <div className="pointer-events-none absolute bottom-2 right-2 z-[18] lg:hidden">
                 <QuickAddButton
                   productId={id}
                   productName={name}
@@ -141,6 +141,7 @@ export function ProductCard({
                   productSlug={slug}
                   variant="icon"
                   isolateClick
+                  className="pointer-events-auto"
                 />
               </div>
             </>
