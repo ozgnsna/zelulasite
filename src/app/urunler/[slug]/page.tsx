@@ -140,6 +140,7 @@ export default async function ProductPage({ params }: Props) {
 
   const galleryExtras =
     isZodiacStoryProduct(slug, product.name) ? ZODIAC_GALLERY_EXTRAS : [];
+  const galleryImages = normalizeProductImages(product.product_images);
   const storyParagraphs = productDescriptionParagraphs(product.short_description, product.full_description);
   const compareAt = product.compare_at_price ? Number(product.compare_at_price) : null;
   const priceNum = Number(product.price);
