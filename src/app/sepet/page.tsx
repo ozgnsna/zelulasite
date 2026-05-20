@@ -8,6 +8,7 @@ import { CartLineControls } from "@/components/CartLineControls";
 import { getDetailedCart } from "@/lib/cart";
 import { formatTry } from "@/lib/money";
 import { getCartUpsellProducts } from "@/lib/storefront";
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
 import { listSavedAddressesForUser } from "@/lib/account/saved-addresses";
 
@@ -59,7 +60,7 @@ export default async function CartPage({
     name: p.name,
     slug: p.slug,
     price: Number(p.price),
-    imageUrl: p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900",
+    imageUrl: pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900"),
     stock: p.stock_quantity,
   }));
 
@@ -118,7 +119,7 @@ export default async function CartPage({
                         name: line.product.name,
                         slug: line.product.slug,
                         imageUrl:
-                          line.product.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900",
+                          pickProductCoverImageUrl(line.product.product_images, "https://picsum.photos/id/90/900/900"),
                         price: Number(line.product.price),
                         stock: line.product.stock_quantity,
                         category: line.product.category?.name,

@@ -4,6 +4,7 @@ import {
   deleteProductImage,
   pushTrendyolProductAndInventoryFromForm,
   saveProduct,
+  setProductCoverImage,
   uploadProductImage,
 } from "@/app/actions/admin";
 import { ProductForm } from "@/components/admin/products/ProductForm";
@@ -31,6 +32,7 @@ export default async function AdminEditProductPage({
     productJsonError?: string;
     imageUploadError?: string;
     imageUploadOk?: string;
+    imageCoverSet?: string;
     imageDeleted?: string;
     productSaved?: string;
     trendyolPushOk?: string;
@@ -43,6 +45,7 @@ export default async function AdminEditProductPage({
   const productJsonError = sp.productJsonError ?? "";
   const imageUploadError = sp.imageUploadError ?? "";
   const imageUploadOk = sp.imageUploadOk === "1";
+  const imageCoverSet = sp.imageCoverSet === "1";
   const imageDeleted = sp.imageDeleted === "1";
   const productSaved = sp.productSaved === "1";
   const trendyolPushOk = sp.trendyolPushOk === "1";
@@ -209,6 +212,11 @@ export default async function AdminEditProductPage({
           Görsel yüklendi.
         </div>
       ) : null}
+      {imageCoverSet ? (
+        <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
+          Kapak görseli güncellendi. Anasayfa ve ürün listesi birkaç saniye içinde yansır.
+        </div>
+      ) : null}
       {imageDeleted ? (
         <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
           Görsel silindi.
@@ -254,6 +262,7 @@ export default async function AdminEditProductPage({
         returnTo={`/admin/products/${id}/edit`}
         uploadProductImageAction={uploadProductImage}
         deleteProductImageAction={deleteProductImage}
+        setProductCoverImageAction={setProductCoverImage}
         pushTrendyolProductAndInventoryAction={pushTrendyolProductAndInventoryFromForm}
         saveProductAction={saveProduct}
       />

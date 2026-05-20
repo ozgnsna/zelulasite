@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getCategoryPageData } from "@/lib/storefront";
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -120,7 +121,7 @@ export default async function CategoryPage({ params }: Props) {
                   slug={p.slug}
                   name={p.name}
                   summary={p.short_description}
-                  imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/99/900/900"}
+                  imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/99/900/900")}
                   price={Number(p.price)}
                   compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                   category={p.category?.name}

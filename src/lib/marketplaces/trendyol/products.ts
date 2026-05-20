@@ -36,7 +36,16 @@ type TrendyolProductRow = TrendyolProductPayloadInput;
 
 function buildTrendyolImageItems(p: TrendyolProductRow): { url: string }[] {
   const rows = Array.isArray(p.product_images) ? p.product_images : [];
-  const urls = rows
+  const sorted = [...rows].sort((a, b) => {
+    const ac = Boolean((a as { is_cover?: boolean | null }).is_cover);
+    const bc = Boolean((b as { is_cover?: boolean | null }).is_cover);
+    if (ac !== bc) return ac ? -1 : 1;
+    return (
+      (Number((a as { sort_order?: number | null }).sort_order) || 0) -
+      (Number((b as { sort_order?: number | null }).sort_order) || 0)
+    );
+  });
+  const urls = sorted
     .map((r) => String((r as { image_url?: string | null })?.image_url ?? "").trim())
     .filter((u) => /^https:\/\//i.test(u))
     .slice(0, 8);
@@ -231,7 +240,7 @@ export async function syncProductToTrendyol(
     admin
       .from("products")
       .select(
-        "id,name,sku,stock_quantity,price,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,trendyol_brand,trendyol_category_id,trendyol_category_attributes,trendyol_vat_rate,trendyol_list_price,trendyol_sale_price,trendyol_quantity,trendyol_dimensional_weight,product_images(image_url)",
+        "id,name,sku,stock_quantity,price,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,trendyol_brand,trendyol_category_id,trendyol_category_attributes,trendyol_vat_rate,trendyol_list_price,trendyol_sale_price,trendyol_quantity,trendyol_dimensional_weight,product_images(image_url,is_cover,sort_order)",
       )
       .eq("id", productId)
       .maybeSingle(),

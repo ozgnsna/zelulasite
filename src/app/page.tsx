@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getHomeData } from "@/lib/storefront";
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
 import { HomeHero } from "@/components/home/HomeHero";
@@ -123,7 +124,7 @@ export default async function HomePage() {
                     slug={p.slug}
                     name={p.name}
                     summary={p.short_description}
-                    imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/99/900/900"}
+                    imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/99/900/900")}
                     price={Number(p.price)}
                     compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                     category={p.category?.name}
@@ -191,7 +192,7 @@ export default async function HomePage() {
                     slug={p.slug}
                     name={p.name}
                     summary={p.short_description}
-                    imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900"}
+                    imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900")}
                     price={Number(p.price)}
                     compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                     category={p.category?.name}

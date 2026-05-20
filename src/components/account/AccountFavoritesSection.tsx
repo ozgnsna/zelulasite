@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/ProductCard";
 import { listFavoriteProductsForUser } from "@/lib/account/favorites";
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
 export async function AccountFavoritesSection() {
   const supabase = await createClient();
@@ -35,7 +36,7 @@ export async function AccountFavoritesSection() {
                 slug={p.slug}
                 name={p.name}
                 summary={p.short_description}
-                imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900"}
+                imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900")}
                 price={Number(p.price)}
                 compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                 category={p.category?.name}

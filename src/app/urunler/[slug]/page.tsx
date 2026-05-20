@@ -20,8 +20,11 @@ import { ProductPdpShippingCard } from "@/components/product/ProductPdpShippingC
 import { ProductPdpTraitOptions } from "@/components/product/ProductPdpTraitOptions";
 import { buildPdpShippingPromise } from "@/lib/storefront/pdp-shipping";
 import { resolvePdpTraitGroups } from "@/lib/storefront/pdp-traits";
+import { normalizeProductImages } from "@/lib/products/cover-image";
 
 type Props = { params: Promise<{ slug: string }> };
+
+export const dynamic = "force-dynamic";
 
 const ZODIAC_GALLERY_EXTRAS: { id: string; image_url: string }[] = [
   {
@@ -181,7 +184,7 @@ export default async function ProductPage({ params }: Props) {
       <div className="pdp-page-enter mt-7 grid gap-7 lg:mt-8 lg:grid-cols-[0.95fr_1.15fr] lg:items-start lg:gap-9">
         <section className="mx-auto w-full max-w-[540px] lg:col-start-1 lg:max-w-[450px]">
           <ProductGallery
-            images={product.product_images ?? []}
+            images={galleryImages}
             extraImages={galleryExtras}
             fallback="https://picsum.photos/id/15/1200/1200"
             alt={product.name}

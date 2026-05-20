@@ -4,6 +4,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
 export const metadata: Metadata = {
   title: "Çok satanlar",
@@ -60,7 +61,7 @@ export default async function BestSellersPage() {
                   slug={p.slug}
                   name={p.name}
                   summary={p.short_description}
-                  imageUrl={p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/99/900/900"}
+                  imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/99/900/900")}
                   price={Number(p.price)}
                   compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                   category={p.category?.name}

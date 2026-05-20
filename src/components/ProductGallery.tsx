@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
 
-type Img = { id: string; image_url: string };
+type Img = { id: string; image_url: string; is_cover?: boolean | null; sort_order?: number | null };
 
 function dedupeByUrl(items: Img[]): Img[] {
   const seen = new Set<string>();
@@ -29,13 +30,21 @@ export function ProductGallery({
   loopVideoUrl?: string | null;
 }) {
   const list = useMemo(() => {
-    const base = images.length ? images : [{ id: "fallback", image_url: fallback }];
-    const merged = dedupeByUrl([...base, ...extraImages]);
+    const normalized = normalizeProductImages(images);
+    const base = normalized.length
+      ? sortProductImages(normalized)
+      : [{ id: "fallback", image_url: fallback }];
+    const merged = dedupeByUrl([...base, ...normalizeProductImages(extraImages)]);
     return merged.length ? merged : [{ id: "fallback", image_url: fallback }];
   }, [images, extraImages, fallback]);
 
-  const [active, setActive] = useState(list[0]?.image_url ?? fallback);
+  const [active, setActive] = useState(() => list[0]?.image_url ?? fallback);
   const [videoFailed, setVideoFailed] = useState(false);
+
+  useEffect(() => {
+    const first = list[0]?.image_url ?? fallback;
+    setActive((prev) => (list.some((item) => item.image_url === prev) ? prev : first));
+  }, [list, fallback]);
 
   const mainSrc = list.some((i) => i.image_url === active) ? active : (list[0]?.image_url ?? fallback);
   const firstUrl = list[0]?.image_url ?? fallback;
@@ -83,24 +92,43 @@ export function ProductGallery({
         </div>
       </div>
       {list.length > 1 ? (
-        <div className="flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3">
-          {list.map((img) => {
-            const isOn = mainSrc === img.image_url;
-            return (
-              <button
-                key={img.id}
-                type="button"
-                onClick={() => setActive(img.image_url)}
-                className={`relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-xl border-2 transition duration-200 motion-safe:hover:scale-[1.03] sm:w-[84px] ${
-                  isOn
-                    ? "border-brand-gold bg-white shadow-[0_0_0_1px_rgba(201,168,106,0.35)] ring-2 ring-brand-gold/30"
-                    : "border-[#e6dccf] bg-white hover:border-brand-gold/35"
-                }`}
-              >
-                <Image src={img.image_url} alt="" fill className="object-contain bg-white p-0.5" sizes="120px" />
-              </button>
-            );
-          })}
+        <div className="space-y-2">
+          <p className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400">
+            {list.findIndex((i) => i.image_url === mainSrc) + 1} / {list.length}
+          </p>
+          <div
+            className="flex gap-2.5 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] sm:gap-3 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300/80"
+            role="tablist"
+            aria-label="Ürün görselleri"
+          >
+            {list.map((img, index) => {
+              const isOn = mainSrc === img.image_url;
+              return (
+                <button
+                  key={`${img.id}-${index}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={isOn}
+                  aria-label={`Görsel ${index + 1}`}
+                  onClick={() => setActive(img.image_url)}
+                  className={`relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-xl border-2 transition duration-200 motion-safe:hover:scale-[1.03] sm:w-[84px] ${
+                    isOn
+                      ? "border-brand-gold bg-white shadow-[0_0_0_1px_rgba(201,168,106,0.35)] ring-2 ring-brand-gold/30"
+                      : "border-[#e6dccf] bg-white hover:border-brand-gold/35"
+                  }`}
+                >
+                  <Image
+                    src={img.image_url}
+                    alt=""
+                    fill
+                    unoptimized={img.image_url.includes("/storage/v1/object/public/")}
+                    className="object-contain bg-white p-0.5"
+                    sizes="120px"
+                  />
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : null}
     </div>

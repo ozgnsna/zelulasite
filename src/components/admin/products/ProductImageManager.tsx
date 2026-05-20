@@ -5,9 +5,10 @@ import {
   prepareProductImageForUpload,
   PRODUCT_IMAGE_MAX_BYTES,
 } from "@/lib/images/product-image-upload";
+import { sortProductImages } from "@/lib/products/cover-image";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Img = { id: string; image_url: string; is_cover?: boolean | null; sort_order?: number | null };
 
@@ -55,12 +56,7 @@ function pickFirstImageFile(files: FileList | null): File | null {
 
 function sortImages(images: Img[]): Img[] {
   const list = images.filter((x) => x && typeof x.image_url === "string" && x.image_url.trim().length > 0);
-  return [...list].sort((a, b) => {
-    const ac = a.is_cover ? 1 : 0;
-    const bc = b.is_cover ? 1 : 0;
-    if (ac !== bc) return bc - ac;
-    return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
-  });
+  return sortProductImages(list);
 }
 
 export function ProductImageManager({
@@ -71,6 +67,7 @@ export function ProductImageManager({
   uploadFormId,
   uploadProductImageAction,
   deleteProductImageAction,
+  setProductCoverImageAction,
 }: {
   title?: string;
   images: Img[];
@@ -79,17 +76,26 @@ export function ProductImageManager({
   uploadFormId?: string;
   uploadProductImageAction?: (formData: FormData) => Promise<void>;
   deleteProductImageAction?: (formData: FormData) => Promise<void>;
+  setProductCoverImageAction?: (formData: FormData) => Promise<void>;
 }) {
   const [selectedUrl, setSelectedUrl] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [clientError, setClientError] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [flattenWhiteBg, setFlattenWhiteBg] = useState(true);
+  const [setUploadAsCover, setSetUploadAsCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const uploadEnabled = Boolean(productId && uploadProductImageAction);
   const useExternalUploadForm = Boolean(uploadFormId && uploadEnabled);
   const sortedImages = useMemo(() => sortImages(images), [images]);
-  const selectedPreview = isLikelyImageUrl(selectedUrl) ? selectedUrl.trim() : (sortedImages[0]?.image_url ?? "");
+  const coverImage = sortedImages.find((img) => Boolean(img.is_cover)) ?? sortedImages[0];
+  const selectedPreview = isLikelyImageUrl(selectedUrl) ? selectedUrl.trim() : (coverImage?.image_url ?? "");
+  const selectedImage = sortedImages.find((img) => img.image_url === selectedPreview);
+  const selectedIsCover = Boolean(selectedImage?.is_cover);
+
+  useEffect(() => {
+    setSetUploadAsCover(sortedImages.length === 0);
+  }, [sortedImages.length]);
   const selectedPreviewIsVideo = isLikelyVideoUrl(selectedPreview);
   const noImageExists = sortedImages.length === 0;
   const canDelete = Boolean(productId && deleteProductImageAction);
@@ -123,6 +129,7 @@ export function ProductImageManager({
       const fd = new FormData();
       fd.append("product_id", productId);
       fd.append("return_to", returnTo ?? "");
+      fd.append("set_as_cover", setUploadAsCover ? "1" : "0");
       fd.append("image", uploadFile, uploadFile.name);
       await uploadProductImageAction(fd);
     } catch (err) {
@@ -155,17 +162,28 @@ export function ProductImageManager({
         <div>
           <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
           <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
-            İlk sıradaki görsel kapaktır. JPG/PNG/WebP; büyük dosyalar otomatik sıkıştırılır (~3,5 MB). Arka plan #FFFFFF yapılabilir.
+            İstediğiniz görseli «Kapak yap» ile vitrin kapağı seçin (modelli veya beyaz fark etmez). JPG/PNG/WebP; büyük dosyalar sıkıştırılır.
           </p>
-          <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
-            <input
-              type="checkbox"
-              checked={flattenWhiteBg}
-              onChange={(e) => setFlattenWhiteBg(e.target.checked)}
-              className="size-3.5 rounded border-stone-300"
-            />
-            Gemini / Trendyol için bembeyaz arka plan (#FFFFFF)
-          </label>
+          <div className="mt-2 flex flex-col gap-1.5">
+            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
+              <input
+                type="checkbox"
+                checked={flattenWhiteBg}
+                onChange={(e) => setFlattenWhiteBg(e.target.checked)}
+                className="size-3.5 rounded border-stone-300"
+              />
+              Gemini / Trendyol için bembeyaz arka plan (#FFFFFF)
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
+              <input
+                type="checkbox"
+                checked={setUploadAsCover}
+                onChange={(e) => setSetUploadAsCover(e.target.checked)}
+                className="size-3.5 rounded border-stone-300"
+              />
+              Yüklenen görseli kapak yap
+            </label>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {useExternalUploadForm ? (
@@ -255,6 +273,21 @@ export function ProductImageManager({
               <p className="max-w-[14rem] text-[10px] leading-snug text-stone-500">PNG, JPG veya video. Yüklemeden önce ürünü kaydedin.</p>
             </button>
           )}
+          {selectedImage && productId && setProductCoverImageAction && !selectedIsCover ? (
+            <div className="border-t border-stone-100 bg-stone-50/80 px-3 py-2.5">
+              <button
+                type="submit"
+                form={`zelula-cover-image-${selectedImage.id}`}
+                className="w-full rounded-lg bg-stone-900 px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
+              >
+                Bu görseli kapak yap (anasayfa + liste)
+              </button>
+            </div>
+          ) : selectedIsCover && selectedPreview ? (
+            <p className="border-t border-stone-100 bg-emerald-50/80 px-3 py-2 text-center text-[10px] font-medium text-emerald-900">
+              Bu görsel şu an kapak.
+            </p>
+          ) : null}
         </div>
 
         <div className="flex w-full min-w-0 flex-col gap-1.5 lg:w-[11.5rem] lg:shrink-0">
@@ -268,8 +301,9 @@ export function ProductImageManager({
               "[&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300/80",
             )}
           >
-            {sortedImages.map((img, idx) => {
-              const isCoverSlot = idx === 0;
+            {sortedImages.map((img) => {
+              const isCover = Boolean(img.is_cover);
+              const canSetCover = Boolean(productId && setProductCoverImageAction && !isCover);
               return (
                 <div key={img.id} className="group relative w-[4.25rem] shrink-0 snap-start sm:w-[4.5rem] lg:w-full lg:shrink">
                   <button
@@ -277,11 +311,11 @@ export function ProductImageManager({
                     onClick={() => setSelectedUrl(img.image_url)}
                     className={cn(
                       "relative block h-14 w-full overflow-hidden rounded-lg border bg-white transition sm:h-16",
-                      selectedPreview === img.image_url || (!selectedUrl && idx === 0)
+                      selectedPreview === img.image_url
                         ? "border-stone-800/40 ring-2 ring-stone-900/15"
                         : "border-stone-200/90 hover:border-stone-400",
                     )}
-                    title={isLikelyVideoUrl(img.image_url) ? "Video" : "Seç"}
+                    title={isLikelyVideoUrl(img.image_url) ? "Video" : isCover ? "Kapak görseli" : "Önizle — Kapak yap ile vitrine alın"}
                   >
                     {isLikelyVideoUrl(img.image_url) ? (
                       <>
@@ -293,12 +327,21 @@ export function ProductImageManager({
                     ) : (
                       <Image src={img.image_url} alt="" fill sizes="72px" className="object-contain bg-white p-0.5" />
                     )}
-                    {isCoverSlot || img.is_cover ? (
+                    {isCover ? (
                       <span className="absolute left-0.5 top-0.5 rounded bg-stone-900/90 px-1 py-px text-[7px] font-bold uppercase tracking-wide text-white">
                         Kapak
                       </span>
                     ) : null}
                   </button>
+                  {canSetCover ? (
+                    <button
+                      type="submit"
+                      form={`zelula-cover-image-${img.id}`}
+                      className="mt-0.5 w-full rounded bg-stone-900 px-1 py-1 text-[8px] font-semibold text-white hover:bg-stone-800"
+                    >
+                      Kapak yap
+                    </button>
+                  ) : null}
                   {canDelete ? (
                     <button
                       type="submit"

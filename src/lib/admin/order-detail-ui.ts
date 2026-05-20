@@ -55,16 +55,11 @@ export function orderBadgeClasses(status: string): string {
   }
 }
 
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
+
 export function pickCoverImageUrl(
   imgs: { image_url: string; is_cover?: boolean | null; sort_order?: number | null }[] | null | undefined,
 ): string | null {
-  if (!imgs?.length) return null;
-  const sorted = [...imgs].sort((a, b) => {
-    const ac = Boolean(a.is_cover);
-    const bc = Boolean(b.is_cover);
-    if (ac !== bc) return ac ? -1 : 1;
-    return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
-  });
-  const url = sorted[0]?.image_url;
-  return url && url.length > 0 ? url : null;
+  const url = pickProductCoverImageUrl(imgs);
+  return url || null;
 }

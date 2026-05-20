@@ -116,6 +116,7 @@ export function ProductForm({
   returnTo,
   uploadProductImageAction,
   deleteProductImageAction,
+  setProductCoverImageAction,
   pushTrendyolProductAndInventoryAction,
   saveProductAction,
 }: ProductFormProps) {
@@ -169,6 +170,23 @@ export function ProductForm({
                 key={`del-img-${img.id}`}
                 id={`zelula-delete-image-${img.id}`}
                 action={deleteProductImageAction}
+                className="sr-only"
+                aria-hidden
+              >
+                <input type="hidden" name="image_id" value={img.id} />
+                <input type="hidden" name="product_id" value={resolvedProductId} />
+                <input type="hidden" name="return_to" value={returnTo} />
+              </form>
+            ))
+        : null}
+      {resolvedProductId && setProductCoverImageAction
+        ? productImages
+            .filter((img) => img && typeof img.id === "string" && img.id.length > 0)
+            .map((img) => (
+              <form
+                key={`cover-img-${img.id}`}
+                id={`zelula-cover-image-${img.id}`}
+                action={setProductCoverImageAction}
                 className="sr-only"
                 aria-hidden
               >
@@ -312,6 +330,7 @@ export function ProductForm({
             uploadFormId={resolvedProductId && uploadProductImageAction ? imageUploadFormId : undefined}
             uploadProductImageAction={uploadProductImageAction}
             deleteProductImageAction={deleteProductImageAction}
+            setProductCoverImageAction={setProductCoverImageAction}
           />
 
           <FormSection id="product-section-catalog" title="Kategori" description="Site kataloğundaki yerleşim.">

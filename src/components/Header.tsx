@@ -2,6 +2,7 @@ import { getDetailedCart } from "@/lib/cart";
 import { createClient } from "@/lib/supabase/server";
 import { CartDrawer } from "@/components/CartDrawer";
 import { getCartUpsellProducts } from "@/lib/storefront";
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { HeaderShell } from "@/components/header/HeaderShell";
 
 /** Logo: `public/zelula-logo-header.svg` — transparent header mark. */
@@ -35,7 +36,7 @@ export async function Header() {
       productId: line.product.id,
       slug: line.product.slug,
       name: line.product.name,
-      imageUrl: line.product.product_images?.[0]?.image_url ?? "https://picsum.photos/id/99/600/600",
+      imageUrl: pickProductCoverImageUrl(line.product.product_images, "https://picsum.photos/id/99/600/600"),
       quantity: line.quantity,
       price: Number(line.product.price),
     }));
@@ -59,7 +60,7 @@ export async function Header() {
       slug: p.slug,
       name: p.name,
       price: Number(p.price),
-      imageUrl: p.product_images?.[0]?.image_url ?? "https://picsum.photos/id/90/900/900",
+      imageUrl: pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900"),
       stock: p.stock_quantity,
     }));
 

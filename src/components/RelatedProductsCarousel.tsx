@@ -7,6 +7,7 @@ import { useRef } from "react";
 import type { MouseEventHandler, WheelEventHandler } from "react";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { formatTry } from "@/lib/money";
+import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
 type RelatedItem = {
   id: string;
@@ -101,7 +102,7 @@ export function RelatedProductsCarousel({ items }: { items: RelatedItem[] }) {
               >
                 <Link href={`/urunler/${item.slug}`} className="relative block aspect-[4/5] overflow-hidden rounded-t-2xl bg-stone-100">
                   <Image
-                    src={item.product_images?.[0]?.image_url ?? "https://picsum.photos/id/99/900/900"}
+                    src={pickProductCoverImageUrl(item.product_images, "https://picsum.photos/id/99/900/900")}
                     alt={item.name}
                     fill
                     sizes="200px"

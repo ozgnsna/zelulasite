@@ -62,6 +62,7 @@ export type ProductFormProps = {
   returnTo: string;
   uploadProductImageAction?: (formData: FormData) => Promise<void>;
   deleteProductImageAction?: (formData: FormData) => Promise<void>;
+  setProductCoverImageAction?: (formData: FormData) => Promise<void>;
   /** Edit sayfasında: kayıtlı ürünü Trendyol ürün + fiyat/stok API’lerine iter. */
   pushTrendyolProductAndInventoryAction?: (formData: FormData) => Promise<void>;
   saveProductAction: (formData: FormData) => Promise<void>;

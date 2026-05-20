@@ -500,10 +500,11 @@ export async function getProductBySlug(slug: string) {
 
     const { data } = await supabase
       .from("products")
-      .select("*, category:categories(*), collection:collections(*), product_images(*)")
+      .select("*, category:categories(*), collection:collections(*), product_images(id, image_url, is_cover, sort_order)")
       .eq("slug", decodedSlug)
       .eq("is_active", true)
       .gt("stock_quantity", 0)
+      .order("sort_order", { foreignTable: "product_images", ascending: true })
       .maybeSingle();
     if (data) {
       const p = data as Product;
@@ -513,9 +514,10 @@ export async function getProductBySlug(slug: string) {
     // Fallback: slug varyasyonları (Türkçe karakter/encoding/ufak typo) için toleranslı eşleşme.
     const { data: allActive } = await supabase
       .from("products")
-      .select("*, category:categories(*), collection:collections(*), product_images(*)")
+      .select("*, category:categories(*), collection:collections(*), product_images(id, image_url, is_cover, sort_order)")
       .eq("is_active", true)
       .gt("stock_quantity", 0)
+      .order("sort_order", { foreignTable: "product_images", ascending: true })
       .limit(1200);
     const products = (allActive ?? []) as Product[];
     if (products.length === 0) return null;

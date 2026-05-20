@@ -821,10 +821,14 @@ async function revalidateAfterProductImageChange(
   productId: string,
 ) {
   revalidatePath(`/admin/products/${productId}/edit`);
+  revalidatePath("/");
+  revalidateTag("storefront-home", "max");
   const { data: row } = await supabase.from("products").select("slug,is_active").eq("id", productId).maybeSingle();
   const slug = String(row?.slug ?? "").trim();
   if (slug && row?.is_active) {
     revalidatePath(`/urunler/${slug}`);
+    revalidatePath("/urunler");
+    revalidatePath("/cok-satanlar");
   }
 }
 
@@ -902,12 +906,15 @@ export async function uploadProductImage(formData: FormData) {
       .eq("product_id", productId);
     const existing = existingRows ?? [];
     const maxSort = existing.reduce((m, r) => Math.max(m, Number(r.sort_order ?? 0)), 0);
-    const needsCover = existing.length === 0 || !existing.some((r) => r.is_cover);
+    const setAsCover = formData.get("set_as_cover") === "1" || existing.length === 0;
+    if (setAsCover && existing.length > 0) {
+      await supabase.from("product_images").update({ is_cover: false }).eq("product_id", productId);
+    }
 
     const { error: insertError } = await supabase.from("product_images").insert({
       product_id: productId,
       image_url: data.publicUrl,
-      is_cover: needsCover,
+      is_cover: setAsCover,
       sort_order: maxSort + 1,
     });
     if (insertError) {
@@ -955,8 +962,43 @@ export async function deleteProductImage(formData: FormData) {
     await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([objectPath]);
   }
 
+  const { data: remaining } = await supabase
+    .from("product_images")
+    .select("id,is_cover")
+    .eq("product_id", productId)
+    .order("sort_order", { ascending: true });
+  const rows = remaining ?? [];
+  if (rows.length > 0 && !rows.some((r) => r.is_cover)) {
+    await supabase.from("product_images").update({ is_cover: true }).eq("id", rows[0]!.id);
+  }
+
   await revalidateAfterProductImageChange(supabase, productId);
   redirect(withQueryParam(returnTo, "imageDeleted", "1"));
+}
+
+export async function setProductCoverImage(formData: FormData) {
+  const supabase = createAdminClient();
+  const productId = String(formData.get("product_id") ?? "");
+  const imageId = String(formData.get("image_id") ?? "");
+  const returnTo = safeReturnToForImageActions(String(formData.get("return_to") ?? ""), productId);
+
+  if (!productId || !imageId) {
+    redirect(withQueryParam(returnTo, "imageUploadError", "Kapak seçilemedi."));
+  }
+
+  const { data: row } = await supabase
+    .from("product_images")
+    .select("id,product_id")
+    .eq("id", imageId)
+    .maybeSingle();
+  if (!row || String(row.product_id) !== productId) {
+    redirect(withQueryParam(returnTo, "imageUploadError", "Görsel bulunamadı."));
+  }
+
+  await supabase.from("product_images").update({ is_cover: false }).eq("product_id", productId);
+  await supabase.from("product_images").update({ is_cover: true }).eq("id", imageId);
+  await revalidateAfterProductImageChange(supabase, productId);
+  redirect(withQueryParam(returnTo, "imageCoverSet", "1"));
 }
 
 export async function retryPaymentInit(formData: FormData) {
