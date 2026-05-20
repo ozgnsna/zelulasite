@@ -100,31 +100,36 @@ export function RelatedProductsCarousel({ items }: { items: RelatedItem[] }) {
                 key={item.id}
                 className="w-[140px] shrink-0 rounded-2xl border border-[#e8dfd2] bg-white/95 shadow-[0_8px_18px_rgba(62,52,38,0.06)] transition hover:scale-[1.02] hover:shadow-[0_12px_24px_rgba(62,52,38,0.12)] sm:w-[180px] lg:w-[200px]"
               >
-                <Link href={`/urunler/${item.slug}`} className="relative block aspect-[4/5] overflow-hidden rounded-t-2xl bg-stone-100">
-                  <Image
-                    src={pickProductCoverImageUrl(item.product_images, "https://picsum.photos/id/99/900/900")}
-                    alt={item.name}
-                    fill
-                    sizes="200px"
-                    className="object-cover"
-                  />
-                </Link>
-                <div className="space-y-2 p-3">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-t-2xl bg-stone-100">
+                  <Link href={`/urunler/${item.slug}`} className="absolute inset-0 z-[1]" aria-label={`${item.name} — ürünü aç`}>
+                    <span className="sr-only">{item.name}</span>
+                    <Image
+                      src={pickProductCoverImageUrl(item.product_images, "https://picsum.photos/id/99/900/900")}
+                      alt={item.name}
+                      fill
+                      sizes="200px"
+                      className="object-cover"
+                    />
+                  </Link>
+                  <div className="absolute bottom-2 right-2 z-[2]">
+                    <QuickAddButton
+                      productId={item.id}
+                      productName={item.name}
+                      price={Number(item.price)}
+                      category={item.category?.name}
+                      collection={item.collection?.name ?? null}
+                      productSlug={item.slug}
+                      variant="icon"
+                      isolateClick
+                      successMessage="Sepete eklendi ✨"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5 p-3">
                   <Link href={`/urunler/${item.slug}`} className="line-clamp-2 text-xs font-medium leading-snug text-stone-900 hover:underline sm:text-sm">
                     {item.name}
                   </Link>
                   <p className="text-sm font-semibold text-[#7d5f35]">{formatTry(Number(item.price))}</p>
-                  <QuickAddButton
-                    productId={item.id}
-                    productName={item.name}
-                    price={Number(item.price)}
-                    category={item.category?.name}
-                    collection={item.collection?.name ?? null}
-                    productSlug={item.slug}
-                    label="🛒 Stiline Ekle"
-                    successMessage="Sepete eklendi ✨"
-                    className="w-full rounded-full border-[#dccdb8] bg-[#fdfbf8] py-2 text-[11px] font-medium text-stone-800 transition hover:border-[#c6a15b]/60 hover:bg-[#f9f1e4] hover:shadow-[0_8px_18px_rgba(198,161,91,0.18)]"
-                  />
                 </div>
               </article>
             ))}

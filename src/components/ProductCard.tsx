@@ -113,8 +113,25 @@ export function ProductCard({
             </div>
           ) : null}
           {conversionOverlay && id ? (
-            <div className="pointer-events-none absolute inset-0 z-[12] flex items-center justify-center opacity-0 transition-opacity duration-200 ease-out group-hover:pointer-events-auto group-hover:bg-black/[0.26] group-hover:opacity-100">
-              <div className="pointer-events-auto translate-y-2 scale-[0.98] opacity-0 transition duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100">
+            <>
+              {/* Masaüstü: yalnızca hover’da sepete ekle — kart tıklaması ürüne gider */}
+              <div className="pointer-events-none absolute inset-0 z-[12] hidden items-center justify-center opacity-0 transition-opacity duration-200 ease-out lg:flex lg:group-hover:pointer-events-auto lg:group-hover:bg-black/[0.26] lg:group-hover:opacity-100">
+                <div className="pointer-events-auto translate-y-2 scale-[0.98] opacity-0 transition duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100">
+                  <QuickAddButton
+                    productId={id}
+                    productName={name}
+                    price={price}
+                    category={category}
+                    collection={collection}
+                    productSlug={slug}
+                    isolateClick
+                    label="Sepete ekle"
+                    className="rounded-full border-0 bg-gradient-to-b from-stone-900 to-stone-950 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_rgba(15,12,10,0.35)] transition hover:from-[#3d3228] hover:to-brand-gold hover:shadow-[0_16px_36px_rgba(201,168,106,0.35)]"
+                  />
+                </div>
+              </div>
+              {/* Dokunmatik: küçük sepet ikonu — yanlışlıkla basmayı zorlaştırır */}
+              <div className="absolute bottom-2 right-2 z-[18] lg:hidden">
                 <QuickAddButton
                   productId={id}
                   productName={name}
@@ -122,11 +139,11 @@ export function ProductCard({
                   category={category}
                   collection={collection}
                   productSlug={slug}
-                  label="🛒 Stiline Ekle"
-                  className="rounded-full border-0 bg-gradient-to-b from-stone-900 to-stone-950 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_rgba(15,12,10,0.35)] transition hover:from-[#3d3228] hover:to-brand-gold hover:shadow-[0_16px_36px_rgba(201,168,106,0.35)]"
+                  variant="icon"
+                  isolateClick
                 />
               </div>
-            </div>
+            </>
           ) : null}
           {showBadges ? (
             <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex max-w-[calc(100%-1.25rem)] flex-wrap gap-1.5 sm:left-3 sm:top-3">
@@ -153,7 +170,7 @@ export function ProductCard({
           <h2 className={titleClass}>{name}</h2>
           <p className={summaryClass}>{summary ?? "Zamansız form, modern dokunuş."}</p>
         </Link>
-        <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mt-auto flex items-end justify-between gap-3 pt-2">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
               <p className="zl-gold-text text-lg font-bold tabular-nums tracking-tight sm:text-xl">
@@ -166,22 +183,12 @@ export function ProductCard({
               ) : null}
             </div>
           </div>
-          {id ? (
-            <QuickAddButton
-              productId={id}
-              productName={name}
-              price={price}
-              category={category}
-              collection={collection}
-              productSlug={slug}
-              label="🛒 Stiline Ekle"
-              className={
-                conversionOverlay
-                  ? "border-brand-gold/35 bg-[#fffdfb] font-semibold shadow-sm motion-safe:hover:border-brand-gold/60"
-                  : undefined
-              }
-            />
-          ) : null}
+          <Link
+            href={`/urunler/${slug}`}
+            className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a7848] underline-offset-2 transition hover:text-[#7d5f35] hover:underline"
+          >
+            İncele
+          </Link>
         </div>
       </div>
     </article>
