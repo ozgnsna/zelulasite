@@ -28,7 +28,10 @@ export default function ShippingReturnsPage() {
             Kargo
           </h2>
           <ul className="mt-3 space-y-2 text-sm leading-relaxed text-stone-700">
-            <li>- Siparişler cumartesi ve pazar hariç 1 iş günü içinde DHL Kargo&apos;ya teslim edilir.</li>
+            <li>
+              - Saat 13:00&apos;a kadar verilen siparişler aynı gün DHL Kargo&apos;ya teslim edilir. Cumartesi ve pazar
+              verilen siparişler pazartesi kargoya teslim edilir.
+            </li>
             <li>- Gönderimler yalnızca Türkiye içi adreslere yapılır.</li>
             <li>- Teslimat süresi adres ve dönemsel yoğunluğa göre değişebilir.</li>
             <li>- Tüm siparişlerin özenle paketlenir.</li>

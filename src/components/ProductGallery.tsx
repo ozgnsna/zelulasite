@@ -45,7 +45,7 @@ export function ProductGallery({
 
   return (
     <div className="space-y-4">
-      <div className="group relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-[#e8dfd3] bg-[#f8f4ee] shadow-[0_20px_48px_rgba(70,53,38,0.1)] transition duration-200 hover:border-[#d8ccb9] hover:shadow-[0_24px_54px_rgba(70,53,38,0.14)]">
+      <div className="group relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-[#e8dfd3] bg-white shadow-[0_20px_48px_rgba(70,53,38,0.1)] transition duration-200 hover:border-[#d8ccb9] hover:shadow-[0_24px_54px_rgba(70,53,38,0.14)]">
         <div key={mainSrc} className="gallery-main-fade absolute inset-0">
           <Image
             src={mainSrc}
@@ -93,11 +93,11 @@ export function ProductGallery({
                 onClick={() => setActive(img.image_url)}
                 className={`relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-xl border-2 transition duration-200 motion-safe:hover:scale-[1.03] sm:w-[84px] ${
                   isOn
-                    ? "border-brand-gold bg-[#fff9ef] shadow-[0_0_0_1px_rgba(201,168,106,0.35)] ring-2 ring-brand-gold/30"
-                    : "border-[#e6dccf] hover:border-brand-gold/35"
+                    ? "border-brand-gold bg-white shadow-[0_0_0_1px_rgba(201,168,106,0.35)] ring-2 ring-brand-gold/30"
+                    : "border-[#e6dccf] bg-white hover:border-brand-gold/35"
                 }`}
               >
-                <Image src={img.image_url} alt="" fill className="object-cover" sizes="120px" />
+                <Image src={img.image_url} alt="" fill className="object-contain bg-white p-0.5" sizes="120px" />
               </button>
             );
           })}

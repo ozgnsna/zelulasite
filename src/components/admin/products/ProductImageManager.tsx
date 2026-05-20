@@ -1,5 +1,6 @@
 "use client";
 
+import { flattenProductImageBackground } from "@/lib/images/flatten-product-background";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
@@ -80,6 +81,8 @@ export function ProductImageManager({
   const [selectedUrl, setSelectedUrl] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [clientError, setClientError] = useState("");
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [flattenWhiteBg, setFlattenWhiteBg] = useState(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const uploadEnabled = Boolean(productId && uploadProductImageAction);
   const useExternalUploadForm = Boolean(uploadFormId && uploadEnabled);
@@ -89,8 +92,8 @@ export function ProductImageManager({
   const noImageExists = sortedImages.length === 0;
   const canDelete = Boolean(productId && deleteProductImageAction);
 
-  const submitFiles = (files: FileList | null) => {
-    if (!uploadEnabled || !fileInputRef.current) return;
+  const submitFiles = async (files: FileList | null) => {
+    if (!uploadEnabled || !productId || !uploadProductImageAction || !fileInputRef.current) return;
     setClientError("");
     const file = pickFirstImageFile(files);
     if (!file) {
@@ -103,20 +106,44 @@ export function ProductImageManager({
       );
       return;
     }
-    const input = fileInputRef.current;
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    input.files = dt.files;
-    if (useExternalUploadForm && uploadFormId) {
-      const el = document.getElementById(uploadFormId);
-      if (el instanceof HTMLFormElement) el.requestSubmit();
+
+    setUploadBusy(true);
+    try {
+      let uploadFile = file;
+      if (flattenWhiteBg) {
+        uploadFile = await flattenProductImageBackground(file);
+      }
+      if (uploadFile.size > MAX_IMAGE_BYTES) {
+        setClientError("İşlenmiş görsel çok büyük; daha küçük kaynak dosya seçin veya «Bembeyaz arka plan» seçeneğini kapatın.");
+        return;
+      }
+      const fd = new FormData();
+      fd.append("product_id", productId);
+      fd.append("return_to", returnTo ?? "");
+      fd.append("image", uploadFile, uploadFile.name);
+      await uploadProductImageAction(fd);
+    } catch (err) {
+      setClientError(err instanceof Error ? err.message : "Görsel yüklenemedi.");
+    } finally {
+      setUploadBusy(false);
+      fileInputRef.current.value = "";
     }
-    setTimeout(() => {
-      input.value = "";
-    }, 0);
   };
 
   return (
+    <>
+      {uploadBusy ? (
+        <div
+          className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-3 bg-white/92 backdrop-blur-[2px]"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-stone-300 border-t-[#b8945f]" aria-hidden />
+          <p className="text-sm font-medium text-stone-800">
+            {flattenWhiteBg ? "Arka plan beyazlatılıyor ve yükleniyor…" : "Görsel yükleniyor…"}
+          </p>
+        </div>
+      ) : null}
     <section
       id="product-section-images"
       className="scroll-mt-24 rounded-2xl border border-stone-200/50 bg-white/95 p-4 shadow-[0_2px_12px_-4px_rgba(28,25,23,0.06)] sm:p-5"
@@ -125,8 +152,17 @@ export function ProductImageManager({
         <div>
           <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
           <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
-            İlk sıradaki görsel kapaktır. JPG/PNG/WebP, en fazla ~3,5 MB.
+            İlk sıradaki görsel kapaktır. JPG/PNG/WebP, en fazla ~3,5 MB. Yüklemede arka plan #FFFFFF yapılabilir.
           </p>
+          <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
+            <input
+              type="checkbox"
+              checked={flattenWhiteBg}
+              onChange={(e) => setFlattenWhiteBg(e.target.checked)}
+              className="size-3.5 rounded border-stone-300"
+            />
+            Gemini / Trendyol için bembeyaz arka plan (#FFFFFF)
+          </label>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {useExternalUploadForm ? (
@@ -148,7 +184,7 @@ export function ProductImageManager({
           />
           <button
             type="button"
-            disabled={!uploadEnabled}
+            disabled={!uploadEnabled || uploadBusy}
             onClick={() => fileInputRef.current?.click()}
             className="min-h-[44px] rounded-lg border border-stone-300/90 bg-stone-900 px-3.5 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 sm:py-1.5"
             title={uploadEnabled ? "Dosya seç" : "Önce ürünü kaydedin"}
@@ -183,7 +219,7 @@ export function ProductImageManager({
       >
         <div
           className={cn(
-            "relative flex min-h-[180px] max-h-[min(38vh,360px)] flex-col overflow-hidden rounded-xl border border-stone-200/80 bg-gradient-to-b from-stone-50/90 to-stone-100/70",
+            "relative flex min-h-[180px] max-h-[min(38vh,360px)] flex-col overflow-hidden rounded-xl border border-stone-200/80 bg-white",
             noImageExists && "min-h-[160px]",
           )}
         >
@@ -252,7 +288,7 @@ export function ProductImageManager({
                         </span>
                       </>
                     ) : (
-                      <Image src={img.image_url} alt="" fill sizes="72px" className="object-cover" />
+                      <Image src={img.image_url} alt="" fill sizes="72px" className="object-contain bg-white p-0.5" />
                     )}
                     {isCoverSlot || img.is_cover ? (
                       <span className="absolute left-0.5 top-0.5 rounded bg-stone-900/90 px-1 py-px text-[7px] font-bold uppercase tracking-wide text-white">
@@ -297,5 +333,6 @@ export function ProductImageManager({
         <p className="mt-2 text-[10px] text-stone-500">Yayın için en az bir görsel eklemeniz önerilir.</p>
       ) : null}
     </section>
+    </>
   );
 }

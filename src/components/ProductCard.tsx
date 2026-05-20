@@ -76,7 +76,7 @@ export function ProductCard({
         className,
       )}
     >
-      <div className={`relative ${aspectClass} overflow-hidden bg-stone-100`}>
+      <div className={`relative ${aspectClass} overflow-hidden bg-white`}>
         <Image
           src={imageUrl}
           alt={name}
@@ -84,8 +84,8 @@ export function ProductCard({
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className={
             imageForward
-              ? "object-cover transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
-              : "object-cover transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
+              ? "object-contain p-2 transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
+              : "object-contain p-2 transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
           }
         />
         <Link

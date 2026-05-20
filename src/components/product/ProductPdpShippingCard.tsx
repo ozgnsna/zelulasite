@@ -11,19 +11,18 @@ export function ProductPdpShippingCard({ promise }: Props) {
   return (
     <section className="space-y-2.5" aria-label="Kargo ve teslimat">
       <div className="rounded-xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/95 to-[#f4faf6] px-3.5 py-3">
-        <p className="text-[13px] leading-snug text-emerald-950">
+        <p className="text-[13px] leading-relaxed text-emerald-950">
           {promise.cutoffCountdown ? (
             <>
               <span className="font-bold text-emerald-800">
                 {promise.cutoffCountdown.hours > 0 ? `${promise.cutoffCountdown.hours} saat ` : ""}
                 {promise.cutoffCountdown.minutes} dakika
               </span>{" "}
-              içinde sipariş verirsen{" "}
+              <span className="font-semibold text-emerald-900">{promise.urgencyTail}</span>
             </>
-          ) : null}
-          <span className={promise.cutoffCountdown ? "font-semibold text-emerald-900" : "font-medium"}>
-            {promise.urgencyTail}
-          </span>
+          ) : (
+            <span className="font-medium text-emerald-900">{promise.urgencyTail}</span>
+          )}
         </p>
       </div>
 
