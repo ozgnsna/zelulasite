@@ -57,6 +57,14 @@ export const metadata: Metadata = {
     description: "Günlük ışıltını tamamlayan seçkiler.",
     images: [ogImage],
   },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-32.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default async function RootLayout({
