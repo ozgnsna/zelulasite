@@ -1,6 +1,7 @@
 import { TrendyolCategoryAttributesPicker } from "@/components/admin/TrendyolCategoryAttributesPicker";
 import { TrendyolCategorySearchPanel } from "@/components/admin/TrendyolCategorySearchPanel";
 import { ProductImageManager } from "@/components/admin/products/ProductImageManager";
+import { ProductImageUploadOverlay } from "@/components/admin/products/ProductImageUploadOverlay";
 import {
   CopyPriceToTrendyolSaleButton,
   CopySkuToTrendyolStockButton,
@@ -135,7 +136,15 @@ export function ProductForm({
     <>
       <ProductFormUnsavedGuard formId="urun-formu" />
       {resolvedProductId && uploadProductImageAction ? (
-        <form id={imageUploadFormId} action={uploadProductImageAction} className="sr-only" aria-hidden="true" />
+        <form
+          id={imageUploadFormId}
+          action={uploadProductImageAction}
+          encType="multipart/form-data"
+          className="sr-only"
+          aria-hidden="true"
+        >
+          <ProductImageUploadOverlay />
+        </form>
       ) : null}
       {resolvedProductId && pushTrendyolProductAndInventoryAction ? (
         <form id={trendyolPushFormId} action={pushTrendyolProductAndInventoryAction} className="sr-only" aria-hidden="true">

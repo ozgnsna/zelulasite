@@ -807,6 +807,24 @@ export async function markOrderHandDelivered(formData: FormData) {
 
 const PRODUCT_IMAGES_BUCKET = "product-images";
 
+function isAllowedProductImageFile(file: File) {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp)$/i.test(file.name);
+}
+
+/** Görsel yükle/sil sonrası yalnızca ilgili sayfalar — tüm /urunler revalidate zaman aşımı yapıyordu. */
+async function revalidateAfterProductImageChange(
+  supabase: ReturnType<typeof createAdminClient>,
+  productId: string,
+) {
+  revalidatePath(`/admin/products/${productId}/edit`);
+  const { data: row } = await supabase.from("products").select("slug,is_active").eq("id", productId).maybeSingle();
+  const slug = String(row?.slug ?? "").trim();
+  if (slug && row?.is_active) {
+    revalidatePath(`/urunler/${slug}`);
+  }
+}
+
 function safeReturnToForImageActions(raw: string, productId: string): string {
   const t = String(raw ?? "").trim();
   if (t.startsWith("/admin")) return t;
@@ -839,60 +857,71 @@ export async function uploadProductImage(formData: FormData) {
   const file = formData.get("image") as File | null;
   const returnTo = safeReturnToForImageActions(String(formData.get("return_to") ?? ""), productId);
 
-  if (!productId || !file || file.size === 0) {
-    redirect(withQueryParam(returnTo, "imageUploadError", "Ürün veya dosya bulunamadı."));
+  try {
+    if (!productId || !file || file.size === 0) {
+      redirect(withQueryParam(returnTo, "imageUploadError", "Ürün veya dosya bulunamadı."));
+    }
+    if (!isAllowedProductImageFile(file)) {
+      redirect(
+        withQueryParam(returnTo, "imageUploadError", "Yalnızca görsel dosyası yükleyin (JPG, PNG, WebP). Video desteklenmiyor."),
+      );
+    }
+    if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+      redirect(
+        withQueryParam(
+          returnTo,
+          "imageUploadError",
+          `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`,
+        ),
+      );
+    }
+
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `products/${productId}/${Date.now()}.${ext}`;
+    const bytes = await file.arrayBuffer();
+
+    const { error: uploadError } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
+    if (uploadError) {
+      redirect(
+        withQueryParam(
+          returnTo,
+          "imageUploadError",
+          uploadError.message || "Depolama yüklemesi başarısız (kota, izin veya dosya boyutu).",
+        ),
+      );
+    }
+
+    const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
+
+    const { data: existingRows } = await supabase
+      .from("product_images")
+      .select("sort_order,is_cover")
+      .eq("product_id", productId);
+    const existing = existingRows ?? [];
+    const maxSort = existing.reduce((m, r) => Math.max(m, Number(r.sort_order ?? 0)), 0);
+    const needsCover = existing.length === 0 || !existing.some((r) => r.is_cover);
+
+    const { error: insertError } = await supabase.from("product_images").insert({
+      product_id: productId,
+      image_url: data.publicUrl,
+      is_cover: needsCover,
+      sort_order: maxSort + 1,
+    });
+    if (insertError) {
+      redirect(withQueryParam(returnTo, "imageUploadError", insertError.message || "Veritabanına kayıt eklenemedi."));
+    }
+
+    await revalidateAfterProductImageChange(supabase, productId);
+    redirect(withQueryParam(returnTo, "imageUploadOk", "1"));
+  } catch (err) {
+    if (err && typeof err === "object" && "digest" in err && String((err as { digest?: string }).digest).includes("NEXT_REDIRECT")) {
+      throw err;
+    }
+    const msg = err instanceof Error ? err.message : "Görsel yüklenirken beklenmeyen hata.";
+    redirect(withQueryParam(returnTo, "imageUploadError", msg));
   }
-  if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
-    redirect(
-      withQueryParam(
-        returnTo,
-        "imageUploadError",
-        `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`,
-      ),
-    );
-  }
-
-  const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `products/${productId}/${Date.now()}.${ext}`;
-  const bytes = await file.arrayBuffer();
-
-  const { error: uploadError } = await supabase.storage
-    .from(PRODUCT_IMAGES_BUCKET)
-    .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
-  if (uploadError) {
-    redirect(
-      withQueryParam(
-        returnTo,
-        "imageUploadError",
-        uploadError.message || "Depolama yüklemesi başarısız (kota, izin veya dosya boyutu).",
-      ),
-    );
-  }
-
-  const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
-
-  const { data: existingRows } = await supabase
-    .from("product_images")
-    .select("sort_order,is_cover")
-    .eq("product_id", productId);
-  const existing = existingRows ?? [];
-  const maxSort = existing.reduce((m, r) => Math.max(m, Number(r.sort_order ?? 0)), 0);
-  const needsCover = existing.length === 0 || !existing.some((r) => r.is_cover);
-
-  const { error: insertError } = await supabase.from("product_images").insert({
-    product_id: productId,
-    image_url: data.publicUrl,
-    is_cover: needsCover,
-    sort_order: maxSort + 1,
-  });
-  if (insertError) {
-    redirect(withQueryParam(returnTo, "imageUploadError", insertError.message || "Veritabanına kayıt eklenemedi."));
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/urunler");
-  revalidatePath(`/admin/products/${productId}/edit`);
-  redirect(withQueryParam(returnTo, "imageUploadOk", "1"));
 }
 
 export async function deleteProductImage(formData: FormData) {
@@ -925,9 +954,7 @@ export async function deleteProductImage(formData: FormData) {
     await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([objectPath]);
   }
 
-  revalidatePath("/admin");
-  revalidatePath("/urunler");
-  revalidatePath(`/admin/products/${productId}/edit`);
+  await revalidateAfterProductImageChange(supabase, productId);
   redirect(withQueryParam(returnTo, "imageDeleted", "1"));
 }
 

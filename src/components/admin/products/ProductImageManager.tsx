@@ -34,6 +34,22 @@ function ImageIcon({ className }: { className?: string }) {
   );
 }
 
+const MAX_IMAGE_BYTES = 3_500_000;
+
+function isAllowedImageFile(file: File): boolean {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp)$/i.test(file.name);
+}
+
+function pickFirstImageFile(files: FileList | null): File | null {
+  if (!files?.length) return null;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (isAllowedImageFile(file)) return file;
+  }
+  return null;
+}
+
 function sortImages(images: Img[]): Img[] {
   const list = images.filter((x) => x && typeof x.image_url === "string" && x.image_url.trim().length > 0);
   return [...list].sort((a, b) => {
@@ -63,6 +79,7 @@ export function ProductImageManager({
 }) {
   const [selectedUrl, setSelectedUrl] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [clientError, setClientError] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const uploadEnabled = Boolean(productId && uploadProductImageAction);
   const useExternalUploadForm = Boolean(uploadFormId && uploadEnabled);
@@ -73,10 +90,22 @@ export function ProductImageManager({
   const canDelete = Boolean(productId && deleteProductImageAction);
 
   const submitFiles = (files: FileList | null) => {
-    if (!uploadEnabled || !files?.length || !fileInputRef.current) return;
+    if (!uploadEnabled || !fileInputRef.current) return;
+    setClientError("");
+    const file = pickFirstImageFile(files);
+    if (!file) {
+      setClientError("Yalnızca görsel dosyası seçin (JPG, PNG, WebP). Video yüklenemez.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setClientError(
+        `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin veya sıkıştırın.`,
+      );
+      return;
+    }
     const input = fileInputRef.current;
     const dt = new DataTransfer();
-    for (let i = 0; i < files.length; i++) dt.items.add(files[i]);
+    dt.items.add(file);
     input.files = dt.files;
     if (useExternalUploadForm && uploadFormId) {
       const el = document.getElementById(uploadFormId);
@@ -96,7 +125,7 @@ export function ProductImageManager({
         <div>
           <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
           <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
-            İlk sıradaki görsel kapaktır. Sürükleyip bırakın veya dosya seçin.
+            İlk sıradaki görsel kapaktır. JPG/PNG/WebP, en fazla ~3,5 MB.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -111,7 +140,7 @@ export function ProductImageManager({
             type="file"
             name="image"
             form={useExternalUploadForm ? uploadFormId : undefined}
-            accept="image/*,video/*"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.gif,.heic"
             className="hidden"
             onChange={(e) => {
               submitFiles(e.currentTarget.files);
@@ -128,6 +157,10 @@ export function ProductImageManager({
           </button>
         </div>
       </div>
+
+      {clientError ? (
+        <p className="mb-2 rounded-lg border border-rose-200/90 bg-rose-50/90 px-3 py-2 text-[11px] text-rose-950">{clientError}</p>
+      ) : null}
 
       <div
         className={cn(
