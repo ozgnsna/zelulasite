@@ -22,7 +22,6 @@ export function ProductPdpTraitOptions({ groups }: Props) {
       aria-label="Ürün özellikleri"
     >
       {groups.map((group, index) => {
-        const selected = group.options.find((o) => o.id === group.selectedId) ?? group.options[0];
         return (
           <Fragment key={group.key}>
             {index > 0 ? (
