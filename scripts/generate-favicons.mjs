@@ -1,5 +1,5 @@
 /**
- * Zelula favicon — yalnızca PNG (ICO tarayıcıda bozulabiliyor).
+ * Zelula favicon — PNG, tam kelime markası (tagline hariç).
  * Kullanım: npm run favicons
  */
 import { writeFile } from "fs/promises";
@@ -10,22 +10,20 @@ import sharp from "sharp";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const logoPng = join(root, "public/zelula-logo.png");
 
-/** Kelime markasındaki bust (O) bölgesi — küçük boyutta okunaklı. */
-async function rasterizeMark(size) {
+/** Kare logo: üstte zelola + bust, altta tagline — favicon için üst bölüm. */
+async function rasterizeFavicon(size) {
   const meta = await sharp(logoPng).metadata();
-  const w = meta.width ?? 800;
-  const h = meta.height ?? 200;
-  const side = Math.min(h, Math.round(w * 0.36));
-  const left = Math.min(Math.round(w * 0.5), Math.max(0, w - side));
-  const top = Math.max(0, Math.round((h - side) / 2));
+  const w = meta.width ?? 1024;
+  const h = meta.height ?? 1024;
+  const cropH = Math.round(h * 0.58);
 
   return sharp(logoPng)
-    .extract({ left, top, width: Math.min(side, w - left), height: side })
+    .extract({ left: 0, top: 0, width: w, height: cropH })
     .resize(size, size, {
       fit: "contain",
       background: { r: 255, g: 255, b: 255, alpha: 1 },
     })
-    .png({ compressionLevel: 9, quality: 100 })
+    .png({ compressionLevel: 9 })
     .toBuffer();
 }
 
@@ -42,8 +40,8 @@ async function rasterizeApple(size) {
 
 async function main() {
   const [icon32, icon48, apple180] = await Promise.all([
-    rasterizeMark(32),
-    rasterizeMark(48),
+    rasterizeFavicon(32),
+    rasterizeFavicon(48),
     rasterizeApple(180),
   ]);
 
@@ -58,7 +56,7 @@ async function main() {
     writeFile(join(publicDir, "apple-touch-icon.png"), apple180),
   ]);
 
-  console.log("PNG favicon güncellendi (ICO yok).");
+  console.log("Favicon güncellendi (tam kelime markası, tagline hariç).");
 }
 
 main().catch((err) => {
