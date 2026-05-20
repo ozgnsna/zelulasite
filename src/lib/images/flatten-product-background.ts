@@ -1,5 +1,7 @@
 /** Ürün görseli: açık gri / kirli beyaz arka planı #FFFFFF yapar (Trendyol / Gemini uyumu). */
 
+import { exportCanvasAsJpegFile, PRODUCT_IMAGE_MAX_BYTES } from "@/lib/images/product-image-upload";
+
 const TARGET_WHITE = 255;
 const DEFAULT_LIGHTNESS_MIN = 208;
 const DEFAULT_SATURATION_MAX = 0.14;
@@ -88,14 +90,6 @@ export async function flattenProductImageBackground(
   }
   ctx.putImageData(imageData, 0, 0);
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Görsel dışa aktarılamadı."))),
-      "image/jpeg",
-      0.94,
-    );
-  });
-
   const baseName = file.name.replace(/\.[^.]+$/, "") || "product";
-  return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+  return exportCanvasAsJpegFile(canvas, baseName, PRODUCT_IMAGE_MAX_BYTES);
 }

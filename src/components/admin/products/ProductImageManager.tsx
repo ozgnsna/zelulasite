@@ -1,6 +1,10 @@
 "use client";
 
 import { flattenProductImageBackground } from "@/lib/images/flatten-product-background";
+import {
+  prepareProductImageForUpload,
+  PRODUCT_IMAGE_MAX_BYTES,
+} from "@/lib/images/product-image-upload";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
@@ -34,8 +38,6 @@ function ImageIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
-const MAX_IMAGE_BYTES = 3_500_000;
 
 function isAllowedImageFile(file: File): boolean {
   if (file.type.startsWith("image/")) return true;
@@ -100,21 +102,22 @@ export function ProductImageManager({
       setClientError("Yalnızca görsel dosyası seçin (JPG, PNG, WebP). Video yüklenemez.");
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
-      setClientError(
-        `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin veya sıkıştırın.`,
-      );
-      return;
-    }
-
     setUploadBusy(true);
     try {
-      let uploadFile = file;
-      if (flattenWhiteBg) {
-        uploadFile = await flattenProductImageBackground(file);
+      let uploadFile: File;
+      try {
+        uploadFile = await prepareProductImageForUpload(file, {
+          flattenBackground: flattenWhiteBg,
+          flattenFn: flattenProductImageBackground,
+        });
+      } catch {
+        setClientError(
+          `Görsel işlenemedi (${Math.round(file.size / 1024 / 1024)} MB). Farklı bir dosya deneyin veya «Bembeyaz arka plan» seçeneğini kapatın.`,
+        );
+        return;
       }
-      if (uploadFile.size > MAX_IMAGE_BYTES) {
-        setClientError("İşlenmiş görsel çok büyük; daha küçük kaynak dosya seçin veya «Bembeyaz arka plan» seçeneğini kapatın.");
+      if (uploadFile.size > PRODUCT_IMAGE_MAX_BYTES) {
+        setClientError("Sıkıştırma sonrası dosya hâlâ çok büyük; daha küçük bir kaynak görsel seçin.");
         return;
       }
       const fd = new FormData();
@@ -152,7 +155,7 @@ export function ProductImageManager({
         <div>
           <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
           <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
-            İlk sıradaki görsel kapaktır. JPG/PNG/WebP, en fazla ~3,5 MB. Yüklemede arka plan #FFFFFF yapılabilir.
+            İlk sıradaki görsel kapaktır. JPG/PNG/WebP; büyük dosyalar otomatik sıkıştırılır (~3,5 MB). Arka plan #FFFFFF yapılabilir.
           </p>
           <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
             <input

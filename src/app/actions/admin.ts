@@ -13,6 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
 import { captureGiftCardRedemptionForOrder } from "@/lib/gift-cards/redeem";
+import { PRODUCT_IMAGE_MAX_BYTES } from "@/lib/images/product-image-upload";
 import { syncLoyaltyLedgersForOrder } from "@/lib/loyalty/sync-order-ledger";
 import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
@@ -850,8 +851,6 @@ function storageObjectPathFromPublicUrl(publicUrl: string, bucket: string): stri
   const path = publicUrl.slice(i + marker.length).split("?")[0]?.split("#")[0];
   return path && path.length > 0 ? path : null;
 }
-
-const PRODUCT_IMAGE_MAX_BYTES = 3_500_000;
 
 export async function uploadProductImage(formData: FormData) {
   const supabase = createAdminClient();
