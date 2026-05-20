@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
-      { source: "/favicon.ico", destination: "/icon-48.png", permanent: true },
+      { source: "/favicon.ico", destination: "/icon-96.png", permanent: true },
     ];
   },
   experimental: {

@@ -1,5 +1,5 @@
 /**
- * Zelula favicon — PNG, tam kelime markası (tagline hariç).
+ * Zelula favicon — bust (O) odaklı, kareyi doldurur (sekmede küçük kalmaz).
  * Kullanım: npm run favicons
  */
 import { writeFile } from "fs/promises";
@@ -10,19 +10,25 @@ import sharp from "sharp";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const logoPng = join(root, "public/zelula-logo.png");
 
-/** Kare logo: üstte zelola + bust, altta tagline — favicon için üst bölüm. */
-async function rasterizeFavicon(size) {
+/** 1024² logo: bust “o” ~%40–58 yatay, üst %12–%48 dikey */
+async function rasterizeBustIcon(size) {
   const meta = await sharp(logoPng).metadata();
   const w = meta.width ?? 1024;
   const h = meta.height ?? 1024;
-  const cropH = Math.round(h * 0.58);
+
+  const side = Math.round(w * 0.3);
+  const left = Math.round(w * 0.35);
+  const top = Math.round(h * 0.12);
+  const cropW = Math.min(side, w - left);
+  const cropH = Math.min(side, Math.round(h * 0.42) - top);
 
   return sharp(logoPng)
-    .extract({ left: 0, top: 0, width: w, height: cropH })
+    .extract({ left, top, width: cropW, height: cropH })
     .resize(size, size, {
-      fit: "contain",
-      background: { r: 255, g: 255, b: 255, alpha: 1 },
+      fit: "cover",
+      position: "centre",
     })
+    .flatten({ background: "#ffffff" })
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
@@ -39,9 +45,10 @@ async function rasterizeApple(size) {
 }
 
 async function main() {
-  const [icon32, icon48, apple180] = await Promise.all([
-    rasterizeFavicon(32),
-    rasterizeFavicon(48),
+  const [icon32, icon48, icon96, apple180] = await Promise.all([
+    rasterizeBustIcon(32),
+    rasterizeBustIcon(48),
+    rasterizeBustIcon(96),
     rasterizeApple(180),
   ]);
 
@@ -49,14 +56,15 @@ async function main() {
   const publicDir = join(root, "public");
 
   await Promise.all([
-    writeFile(join(appDir, "icon.png"), icon48),
+    writeFile(join(appDir, "icon.png"), icon96),
     writeFile(join(appDir, "apple-icon.png"), apple180),
     writeFile(join(publicDir, "icon-32.png"), icon32),
     writeFile(join(publicDir, "icon-48.png"), icon48),
+    writeFile(join(publicDir, "icon-96.png"), icon96),
     writeFile(join(publicDir, "apple-touch-icon.png"), apple180),
   ]);
 
-  console.log("Favicon güncellendi (tam kelime markası, tagline hariç).");
+  console.log("Favicon güncellendi (bust büyük, 96px).");
 }
 
 main().catch((err) => {
