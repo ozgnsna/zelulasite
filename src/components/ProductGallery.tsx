@@ -59,13 +59,13 @@ export function ProductGallery({
   return (
     <div className="space-y-4">
       <div className="group relative aspect-[4/5] overflow-hidden rounded-3xl border border-[#e8dfd3] bg-white shadow-[0_16px_40px_rgba(70,53,38,0.08)] transition duration-200 hover:border-[#d8ccb9] hover:shadow-[0_20px_48px_rgba(70,53,38,0.1)]">
-        <div key={mainSrc} className="gallery-main-fade absolute inset-0">
+        <div key={mainSrc} className="gallery-main-fade absolute inset-0 bg-white">
           <Image
             src={mainSrc}
             alt={alt}
             fill
             priority
-            className="object-contain p-3 transition duration-[680ms] ease-out motion-safe:group-hover:scale-[1.02] sm:p-4"
+            className="bg-white object-cover object-center transition duration-[680ms] ease-out motion-safe:group-hover:scale-[1.02]"
             sizes="(max-width: 1024px) 100vw, 50vw"
           />
         </div>
@@ -86,13 +86,12 @@ export function ProductGallery({
           </video>
         ) : null}
 
-        {/* Subtle jewelry shine */}
+        {/* Parlama — yalnızca hover; gri ton için sürekli gradient yok */}
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl motion-reduce:hidden"
           aria-hidden
         >
           <div className="absolute -inset-[20%] rotate-12 bg-gradient-to-tr from-transparent via-white/[0.14] to-transparent opacity-0 blur-2xl transition duration-[1.1s] ease-out motion-safe:group-hover:translate-x-[18%] motion-safe:group-hover:opacity-100" />
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-[color:var(--brand-gold)]/[0.06]" />
         </div>
 
         {!showVideo ? <ProductGalleryZoomTrigger onOpen={openLightbox} /> : null}
