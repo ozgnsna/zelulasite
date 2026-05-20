@@ -1,5 +1,5 @@
 /**
- * Zelula favicon — bust (O) odaklı, kareyi doldurur (sekmede küçük kalmaz).
+ * Zelula favicon — bust bölgesi otomatik kırpma, kareyi doldurur.
  * Kullanım: npm run favicons
  */
 import { writeFile } from "fs/promises";
@@ -10,24 +10,33 @@ import sharp from "sharp";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const logoPng = join(root, "public/zelula-logo.png");
 
-/** 1024² logo: bust “o” ~%40–58 yatay, üst %12–%48 dikey */
-async function rasterizeBustIcon(size) {
-  const meta = await sharp(logoPng).metadata();
-  const w = meta.width ?? 1024;
-  const h = meta.height ?? 1024;
+/** Logo üzerinde metin+bust sınır kutusu (1024² PNG). */
+const TEXT_BOUNDS = { left: 105, top: 321, width: 819, height: 350 };
 
-  const side = Math.round(w * 0.3);
-  const left = Math.round(w * 0.35);
-  const top = Math.round(h * 0.12);
-  const cropW = Math.min(side, w - left);
-  const cropH = Math.min(side, Math.round(h * 0.42) - top);
+async function rasterizeBustIcon(size) {
+  const { left: tLeft, top: tTop, width: tW, height: tH } = TEXT_BOUNDS;
+  const bustCenterX = tLeft + Math.round(tW * 0.54);
+  const bustCenterY = tTop + Math.round(tH * 0.4);
+  const side = Math.round(Math.min(tH * 0.88, tW * 0.2));
+
+  const left = Math.max(0, bustCenterX - Math.round(side / 2));
+  const top = Math.max(0, bustCenterY - Math.round(side / 2));
 
   return sharp(logoPng)
-    .extract({ left, top, width: cropW, height: cropH })
-    .resize(size, size, {
-      fit: "cover",
-      position: "centre",
-    })
+    .extract({ left, top, width: side, height: side })
+    .trim({ threshold: 12 })
+    .resize(size, size, { fit: "cover", position: "centre" })
+    .flatten({ background: "#ffffff" })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+/** Sekme için alternatif: tüm kelime markası (tagline hariç), kareyi doldurur. */
+async function rasterizeWordmarkIcon(size) {
+  const { left, top, width, height } = TEXT_BOUNDS;
+  return sharp(logoPng)
+    .extract({ left, top, width, height })
+    .resize(size, size, { fit: "cover", position: "centre" })
     .flatten({ background: "#ffffff" })
     .png({ compressionLevel: 9 })
     .toBuffer();
@@ -45,10 +54,11 @@ async function rasterizeApple(size) {
 }
 
 async function main() {
+  const rasterize = rasterizeBustIcon;
   const [icon32, icon48, icon96, apple180] = await Promise.all([
-    rasterizeBustIcon(32),
-    rasterizeBustIcon(48),
-    rasterizeBustIcon(96),
+    rasterize(32),
+    rasterize(48),
+    rasterize(96),
     rasterizeApple(180),
   ]);
 
@@ -64,7 +74,7 @@ async function main() {
     writeFile(join(publicDir, "apple-touch-icon.png"), apple180),
   ]);
 
-  console.log("Favicon güncellendi (bust büyük, 96px).");
+  console.log("Favicon güncellendi (bust merkezli kırpma).");
 }
 
 main().catch((err) => {
