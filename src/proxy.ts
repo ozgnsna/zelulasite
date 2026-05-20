@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { ZELULA_REFERRAL_COOKIE, ZELULA_REFERRAL_TTL_SECONDS } from "@/lib/referral/constants";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
   const requestWithHeaders = { headers: requestHeaders };
