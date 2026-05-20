@@ -312,6 +312,7 @@ export async function syncProductToTrendyol(
       method: "POST",
       path: `/integration/product/sellers/${encodeURIComponent(sellerId)}/v2/products`,
       body: payload,
+      timeoutMs: 16_000,
     });
     const batchRequestId = response.batchRequestId ?? null;
     await admin.from("marketplace_product_links").upsert(

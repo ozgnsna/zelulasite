@@ -19,6 +19,8 @@ import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int
 import { evaluateTrendyolReadiness } from "@/lib/marketplaces/trendyol/readiness";
 
 export const dynamic = "force-dynamic";
+/** Kaydet / görsel yükleme server action süresi (Vercel). */
+export const maxDuration = 60;
 
 export default async function AdminEditProductPage({
   params,
@@ -213,8 +215,11 @@ export default async function AdminEditProductPage({
         </div>
       ) : null}
       {productSaved ? (
-        <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm font-medium text-emerald-950">
-          Değişiklikler başarıyla kaydedildi.
+        <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
+          <p className="font-medium">Değişiklikler başarıyla kaydedildi.</p>
+          <p className="mt-1 text-xs text-emerald-900/90">
+            Trendyol güncellemesi için aşağıdaki «Trendyol&apos;a gönder» düğmesini kullanın (kayıt sırasında API beklenmez).
+          </p>
         </div>
       ) : null}
       {trendyolPushOk ? (

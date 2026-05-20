@@ -242,13 +242,6 @@ export async function saveProduct(formData: FormData) {
   } else {
     categoryAttributes = [];
   }
-  const existing = id
-    ? await supabase
-        .from("products")
-        .select("id,price,stock_quantity,is_active,trendyol_active")
-        .eq("id", id)
-        .maybeSingle()
-    : null;
   const payload = {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? ""),
@@ -285,17 +278,8 @@ export async function saveProduct(formData: FormData) {
     const { data: inserted } = await supabase.from("products").insert(payload).select("id").maybeSingle();
     productId = inserted?.id ?? "";
   }
-  if (productId) {
-    await syncProductToTrendyol(supabase, productId);
-    const prev = existing?.data;
-    const priceChanged = prev ? Number(prev.price ?? 0) !== Number(payload.price ?? 0) : true;
-    const stockChanged =
-      prev ? Number(prev.stock_quantity ?? 0) !== Number(payload.stock_quantity ?? 0) : true;
-    const activeChanged = prev ? Boolean(prev.is_active) !== Boolean(payload.is_active) : true;
-    if (priceChanged || stockChanged || activeChanged) {
-      await syncPriceInventoryForProducts(supabase, [productId], "save_product");
-    }
-  }
+  // Trendyol API kayıt sırasında bekletilmez — uzun 556/timeout yanıtları «sayfa yüklenemedi» yapıyordu.
+  // Pazaryeri güncellemesi için ürün formundaki «Trendyol'a gönder» kullanılır.
   revalidatePath("/admin");
   if (returnTo !== "/admin") revalidatePath(returnTo);
   if (!productId || returnTo === "/admin") return;
@@ -377,7 +361,6 @@ export async function pushTrendyolProductAndInventoryFromForm(formData: FormData
   const pr = await syncProductToTrendyol(admin, productId, {
     overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
   });
-  const ir = await syncPriceInventoryForProducts(admin, [productId], "product_form_push");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${productId}/edit`);
@@ -386,6 +369,13 @@ export async function pushTrendyolProductAndInventoryFromForm(formData: FormData
   if (!pr.ok) {
     redirect(withQueryParam(base, "trendyolPushError", pr.message || "Ürün Trendyol’a gönderilemedi."));
   }
+  const productSkipped = Boolean(pr.ok && "skipped" in pr && pr.skipped);
+  const ir = productSkipped
+    ? ({ ok: true as const, skipped: true as const, count: 0 })
+    : await syncPriceInventoryForProducts(admin, [productId], "product_form_push", {
+        retryDelaysMs: [0, 1200],
+        requestTimeoutMs: 12_000,
+      });
   if (!ir.ok) {
     const invTransient = "transient" in ir && ir.transient === true;
     const productActuallySent = pr.ok && !("skipped" in pr && pr.skipped);
@@ -400,7 +390,6 @@ export async function pushTrendyolProductAndInventoryFromForm(formData: FormData
     }
     redirect(withQueryParam(base, "trendyolPushError", ir.message || "Fiyat/stok Trendyol’a iletilemedi."));
   }
-  const productSkipped = Boolean(pr.ok && "skipped" in pr && pr.skipped);
   const invSkipped = Boolean(ir.ok && "skipped" in ir && ir.skipped);
   if (productSkipped || invSkipped) {
     redirect(
@@ -842,6 +831,8 @@ function storageObjectPathFromPublicUrl(publicUrl: string, bucket: string): stri
   return path && path.length > 0 ? path : null;
 }
 
+const PRODUCT_IMAGE_MAX_BYTES = 3_500_000;
+
 export async function uploadProductImage(formData: FormData) {
   const supabase = createAdminClient();
   const productId = String(formData.get("product_id") ?? "");
@@ -850,6 +841,15 @@ export async function uploadProductImage(formData: FormData) {
 
   if (!productId || !file || file.size === 0) {
     redirect(withQueryParam(returnTo, "imageUploadError", "Ürün veya dosya bulunamadı."));
+  }
+  if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+    redirect(
+      withQueryParam(
+        returnTo,
+        "imageUploadError",
+        `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`,
+      ),
+    );
   }
 
   const ext = file.name.split(".").pop() ?? "jpg";

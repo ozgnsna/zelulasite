@@ -136,7 +136,7 @@ export function summarizeTrendyolResponseBody(
 /** Trendyol veya ara CDN’de sık görülen geçici kapasite / bakım benzeri kodlar. */
 export function isTrendyolTransientHttpStatus(status: number): boolean {
   return (
-    status === 408 ||
+    status === 408 || // istemci zaman aşımı
     status === 429 ||
     status === 502 ||
     status === 503 ||
@@ -246,7 +246,22 @@ type TrendyolRequest = {
   body?: unknown;
   /** Merged into request headers (e.g. storeFrontCode, Accept-Language). */
   headers?: Record<string, string>;
+  /** Varsayılan 18 sn — Vercel zaman aşımını önlemek için. */
+  timeoutMs?: number;
 };
+
+const DEFAULT_TRENDYOL_REQUEST_TIMEOUT_MS = 18_000;
+
+function timeoutResponseMeta(endpoint: string): TrendyolResponseMeta {
+  return {
+    endpoint,
+    status: 408,
+    contentType: "",
+    responseType: "api_error",
+    rayId: null,
+    bodyFirst500: "",
+  };
+}
 
 export async function trendyolRequest<T>({
   integration,
@@ -254,6 +269,7 @@ export async function trendyolRequest<T>({
   path,
   body,
   headers: extraHeaders,
+  timeoutMs = DEFAULT_TRENDYOL_REQUEST_TIMEOUT_MS,
 }: TrendyolRequest): Promise<T> {
   if (!trendyolHasCredentials(integration)) {
     throw new Error("Trendyol credentials missing or integration inactive.");
@@ -266,18 +282,34 @@ export async function trendyolRequest<T>({
   const auth = Buffer.from(`${integration.api_key}:${integration.api_secret}`).toString("base64");
   const fullPath = path.startsWith("/") ? path : `/${path}`;
   const endpoint = `${baseUrl}${fullPath}`;
-  const res = await fetch(endpoint, {
-    method,
-    headers: {
-      Authorization: `Basic ${auth}`,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "User-Agent": `${sellerId} - Self Integration`,
-      ...(extraHeaders ?? {}),
-    },
-    body: body == null ? undefined : JSON.stringify(body),
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method,
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": `${sellerId} - Self Integration`,
+        ...(extraHeaders ?? {}),
+      },
+      body: body == null ? undefined : JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    const isTimeout =
+      err instanceof Error &&
+      (err.name === "TimeoutError" || err.name === "AbortError" || /timed out/i.test(err.message));
+    if (isTimeout) {
+      throw new TrendyolRequestError(
+        `Trendyol isteği ${Math.round(timeoutMs / 1000)} sn içinde yanıt vermedi (zaman aşımı).`,
+        timeoutResponseMeta(endpoint),
+        null,
+      );
+    }
+    throw err;
+  }
   const text = await res.text();
   const contentType = res.headers.get("content-type") ?? "";
   const responseMeta = buildResponseMeta(endpoint, res.status, contentType, text);

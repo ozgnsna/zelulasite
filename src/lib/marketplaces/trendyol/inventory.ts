@@ -33,10 +33,17 @@ function mapPriceInventoryItem(p: InventoryProduct) {
   };
 }
 
+export type SyncPriceInventoryOptions = {
+  /** Varsayılan: 0, 2500, 5000 ms. Form gönderiminde kısa tutulur. */
+  retryDelaysMs?: number[];
+  requestTimeoutMs?: number;
+};
+
 export async function syncPriceInventoryForProducts(
   admin: SupabaseClient,
   productIds: string[],
   reason = "manual",
+  opts?: SyncPriceInventoryOptions,
 ) {
   if (productIds.length === 0) return { ok: true as const, skipped: true, count: 0 };
   const integration = await getActiveTrendyolIntegration(admin);
@@ -73,15 +80,17 @@ export async function syncPriceInventoryForProducts(
     items: eligible.map(mapPriceInventoryItem),
   };
   const supplierId = integration.supplier_id || integration.seller_id;
+  const requestTimeoutMs = opts?.requestTimeoutMs ?? 14_000;
   const postPriceInventory = () =>
     trendyolRequest<{ batchRequestId?: string }>({
       integration,
       method: "POST",
       path: `/suppliers/${supplierId}/products/price-and-inventory`,
       body: payload,
+      timeoutMs: requestTimeoutMs,
     });
 
-  const retryDelaysMs = [0, 2500, 5000];
+  const retryDelaysMs = opts?.retryDelaysMs ?? [0, 2500, 5000];
 
   try {
     let response: { batchRequestId?: string } | undefined;
