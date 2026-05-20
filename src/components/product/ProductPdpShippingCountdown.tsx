@@ -1,13 +1,19 @@
 "use client";
 
-import { getShippingCountdownState } from "@/lib/storefront/pdp-shipping";
+import { formatShippingCountdownBanner, getShippingCountdownState } from "@/lib/storefront/pdp-shipping";
 import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const TICK_MS = 30_000;
 
-/** Canlı geri sayım — İstanbul 13:00 kesimi; tüm PDP’lerde. */
-export function ProductPdpShippingCountdown() {
+type Props = {
+  /** Tek kargo kartının üst şeridi */
+  embedded?: boolean;
+};
+
+/** Canlı geri sayım — İstanbul 13:00 kesimi. */
+export function ProductPdpShippingCountdown({ embedded = false }: Props) {
   const [countdown, setCountdown] = useState(() => getShippingCountdownState());
 
   useEffect(() => {
@@ -18,31 +24,29 @@ export function ProductPdpShippingCountdown() {
   }, []);
 
   const isSameDay = countdown.urgency === "same-day";
+  const message = formatShippingCountdownBanner(countdown);
 
   return (
     <div
       className={cn(
-        "rounded-xl border px-3.5 py-3",
-        isSameDay
-          ? "border-emerald-200/80 bg-gradient-to-r from-emerald-50/95 to-[#f4faf6]"
-          : "border-[#eadfce] bg-gradient-to-r from-[#fffaf3] to-[#faf7f2]",
+        embedded
+          ? "flex items-start gap-2.5 border-b border-[#ebe6dc] bg-[#faf8f5]/90 px-4 py-3"
+          : "rounded-xl border px-3.5 py-3",
+        !embedded &&
+          (isSameDay
+            ? "border-emerald-200/70 bg-emerald-50/80"
+            : "border-[#eadfce] bg-[#fffaf3]"),
       )}
       aria-live="polite"
       aria-atomic="true"
     >
-      <p
-        className={cn(
-          "text-[13px] leading-relaxed",
-          isSameDay ? "text-emerald-950" : "text-stone-800",
-        )}
-      >
-        <span className={cn("font-bold", isSameDay ? "text-emerald-800" : "text-[#7d5f35]")}>
-          {countdown.hours > 0 ? `${countdown.hours} saat ` : ""}
-          {countdown.minutes} dakika
-        </span>{" "}
-        <span className={cn("font-semibold", isSameDay ? "text-emerald-900" : "text-stone-900")}>
-          {countdown.tail}
-        </span>
+      <Clock
+        className={cn("mt-0.5 size-4 shrink-0", isSameDay ? "text-emerald-700" : "text-[#b8945f]")}
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <p className={cn("min-w-0 text-[12px] leading-snug sm:text-[13px]", isSameDay ? "text-emerald-950" : "text-stone-800")}>
+        {message}
       </p>
     </div>
   );

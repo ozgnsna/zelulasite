@@ -249,8 +249,8 @@ export default async function ProductPage({ params }: Props) {
             </div>
           ) : null}
 
-          <section className="pdp-reveal-cta mt-6 max-w-none space-y-5 rounded-[1.7rem] border border-[#eee5d9] bg-[#fffdf9] p-6 shadow-[0_20px_40px_rgba(62,52,38,0.14)] sm:p-7">
-            <div className="space-y-2">
+          <section className="pdp-reveal-cta mt-6 max-w-none space-y-4 rounded-2xl border border-[#ebe6df] bg-white p-5 shadow-[0_8px_28px_rgba(62,52,38,0.08)] sm:space-y-5 sm:p-6">
+            <div className="space-y-1.5">
               <div className="flex flex-wrap items-end gap-2.5">
                 {hasRealDiscount ? (
                   <span className="text-sm text-stone-400 line-through sm:text-base">{formatTry(compareAt ?? 0)}</span>

@@ -83,6 +83,19 @@ export function getShippingCountdownState(now = new Date()): ShippingCountdownSt
   };
 }
 
+/** Geri sayım şeridi / duyuru metni — “13:00'e kadar verilen siparişler … kargoda”. */
+export function formatShippingCountdownBanner(state: ShippingCountdownState): string {
+  const timeLabel =
+    state.hours > 0 ? `${state.hours} sa ${state.minutes} dk` : `${state.minutes} dk`;
+
+  if (state.urgency === "same-day") {
+    return `13:00'e kadar verilen siparişler aynı gün kargoda · ${timeLabel} kaldı`;
+  }
+
+  const dispatchDay = state.tail.includes("pazartesi") ? "pazartesi" : "yarın";
+  return `13:00'e kadar verilen siparişler ${dispatchDay} kargoda · ${timeLabel} kaldı`;
+}
+
 /** Mağaza vitrininde gösterilecek kargo özeti. */
 export function buildPdpShippingPromise(): PdpShippingPromise {
   return {
