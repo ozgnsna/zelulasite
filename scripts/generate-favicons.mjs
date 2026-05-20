@@ -19,12 +19,13 @@ async function rasterizeBustIcon(size) {
   const bustCenterY = tTop + Math.round(tH * 0.4);
   const side = Math.round(Math.min(tH * 0.88, tW * 0.2));
 
-  const left = Math.max(0, bustCenterX - Math.round(side / 2));
-  const top = Math.max(0, bustCenterY - Math.round(side / 2));
+  const imgW = 1024;
+  const imgH = 1024;
+  const left = Math.min(Math.max(0, bustCenterX - Math.round(side / 2)), imgW - side);
+  const top = Math.min(Math.max(0, bustCenterY - Math.round(side / 2)), imgH - side);
 
   return sharp(logoPng)
     .extract({ left, top, width: side, height: side })
-    .trim({ threshold: 12 })
     .resize(size, size, { fit: "cover", position: "centre" })
     .flatten({ background: "#ffffff" })
     .png({ compressionLevel: 9 })
