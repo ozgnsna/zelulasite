@@ -263,6 +263,36 @@ body {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* —— Üst duyuru şeridi (kayan yazı) —— */
+@keyframes zl-announcement-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.zl-announcement-marquee {
+  animation: zl-announcement-marquee 42s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zl-announcement-marquee {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    gap: 0.25rem 0;
+    padding: 0 0.75rem;
+  }
+
+  .zl-announcement-marquee > span {
+    padding: 0.15rem 0.5rem;
+  }
+}
+
 /* —— Zelula editorial luxury layer —— */
 @keyframes zl-shimmer-sweep {
   0% {
