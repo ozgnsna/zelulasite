@@ -244,7 +244,7 @@ export default async function ProductPage({ params }: Props) {
           ) : null}
 
           {traitGroups.length > 0 ? (
-            <div className="mt-4 flex justify-start">
+            <div className="mt-4 block w-full">
               <ProductPdpTraitOptions groups={traitGroups} />
             </div>
           ) : null}
