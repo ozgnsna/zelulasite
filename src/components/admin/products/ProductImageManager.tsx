@@ -162,7 +162,7 @@ export function ProductImageManager({
         <div>
           <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
           <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
-            İstediğiniz görseli «Kapak yap» ile vitrin kapağı seçin (modelli veya beyaz fark etmez). JPG/PNG/WebP; büyük dosyalar sıkıştırılır.
+            İstediğiniz görseli «Kapak yap» ile vitrin kapağı seçin. Stüdyo gölgesi korunur; yalnızca köşe/üst zemin beyazlatılır. Eski bozuk görselleri aynı dosyayla yeniden yükleyin.
           </p>
           <div className="mt-2 flex flex-col gap-1.5">
             <label className="flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
@@ -172,7 +172,7 @@ export function ProductImageManager({
                 onChange={(e) => setFlattenWhiteBg(e.target.checked)}
                 className="size-3.5 rounded border-stone-300"
               />
-              Gemini / Trendyol için bembeyaz arka plan (#FFFFFF)
+              Kirli beyaz/gri zemini düzelt (#FFFFFF) — ürün gölgesi silinmez
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
               <input
