@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { RefreshCcw, Truck } from "lucide-react";
 import { getSupportWhatsAppHref } from "@/lib/support-contact";
+import { BAYRAM_POLICY_LINE, isBayramShippingPause } from "@/lib/storefront/bayram-shipping-notice";
+import { SHIPPING_POLICY_LINE } from "@/lib/storefront/pdp-shipping";
 
 export const metadata: Metadata = {
   title: "Kargo & İade",
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 export default function ShippingReturnsPage() {
   const supportMessage = "Merhaba, iade süreci hakkında destek almak istiyorum ✨";
   const supportHref = getSupportWhatsAppHref(supportMessage);
+  const shippingPolicyLine = isBayramShippingPause() ? BAYRAM_POLICY_LINE : SHIPPING_POLICY_LINE;
 
   return (
     <main className="container-premium pb-20 pt-12 sm:pt-16">
@@ -28,10 +31,7 @@ export default function ShippingReturnsPage() {
             Kargo
           </h2>
           <ul className="mt-3 space-y-2 text-sm leading-relaxed text-stone-700">
-            <li>
-              - Saat 13:00&apos;a kadar verilen siparişler aynı gün DHL Kargo&apos;ya teslim edilir. Cumartesi ve pazar
-              verilen siparişler pazartesi kargoya teslim edilir.
-            </li>
+            <li>- {shippingPolicyLine}</li>
             <li>- Gönderimler yalnızca Türkiye içi adreslere yapılır.</li>
             <li>- Teslimat süresi adres ve dönemsel yoğunluğa göre değişebilir.</li>
             <li>- Tüm siparişlerin özenle paketlenir.</li>

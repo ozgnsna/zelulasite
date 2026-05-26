@@ -1,5 +1,11 @@
 /** PDP kargo vaadi — İstanbul saati; kesim 13:00, hafta sonu pazartesi. */
 
+import {
+  BAYRAM_POLICY_LINE,
+  formatBayramShippingBanner,
+  isBayramShippingPause,
+} from "@/lib/storefront/bayram-shipping-notice";
+
 const ISTANBUL = "Europe/Istanbul";
 const CUTOFF_HOUR = 13;
 const CUTOFF_MINUTE = 0;
@@ -84,7 +90,10 @@ export function getShippingCountdownState(now = new Date()): ShippingCountdownSt
 }
 
 /** Geri sayım şeridi / duyuru metni — “13:00'e kadar verilen siparişler … kargoda”. */
-export function formatShippingCountdownBanner(state: ShippingCountdownState): string {
+export function formatShippingCountdownBanner(state: ShippingCountdownState, now = new Date()): string {
+  const bayram = formatBayramShippingBanner(now);
+  if (bayram) return bayram;
+
   const timeLabel =
     state.hours > 0 ? `${state.hours} sa ${state.minutes} dk` : `${state.minutes} dk`;
 
@@ -97,10 +106,13 @@ export function formatShippingCountdownBanner(state: ShippingCountdownState): st
 }
 
 /** Mağaza vitrininde gösterilecek kargo özeti. */
-export function buildPdpShippingPromise(): PdpShippingPromise {
+export function buildPdpShippingPromise(now = new Date()): PdpShippingPromise {
+  const bayram = isBayramShippingPause(now);
   return {
     carrierLabel: "DHL Kargo",
-    deliveryLine: "Tahmini teslimat: 2–4 iş günü içinde kapında",
-    policyLine: SHIPPING_POLICY_LINE,
+    deliveryLine: bayram
+      ? "Kargo çıkışı: 1 Haziran Pazartesi itibarıyla · teslimat 2–4 iş günü"
+      : "Tahmini teslimat: 2–4 iş günü içinde kapında",
+    policyLine: bayram ? BAYRAM_POLICY_LINE : SHIPPING_POLICY_LINE,
   };
 }

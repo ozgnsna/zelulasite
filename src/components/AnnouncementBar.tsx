@@ -1,6 +1,7 @@
 "use client";
 
 import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
+import { getBayramAnnouncementMessages, isBayramShippingPause } from "@/lib/storefront/bayram-shipping-notice";
 import { formatShippingCountdownBanner, getShippingCountdownState } from "@/lib/storefront/pdp-shipping";
 import { useEffect, useMemo, useState } from "react";
 
@@ -8,10 +9,15 @@ const TICK_MS = 60_000;
 
 function buildTickerMessages() {
   const threshold = FREE_SHIPPING_THRESHOLD_TRY.toLocaleString("tr-TR");
-  const cd = getShippingCountdownState();
+  const freeShippingLine = `₺${threshold} üzeri ücretsiz kargo`;
 
+  if (isBayramShippingPause()) {
+    return getBayramAnnouncementMessages(freeShippingLine);
+  }
+
+  const cd = getShippingCountdownState();
   return [
-    `₺${threshold} üzeri ücretsiz kargo`,
+    freeShippingLine,
     formatShippingCountdownBanner(cd),
     "Güvenli ödeme · Kolay iade",
     "Türkiye geneli teslimat",
