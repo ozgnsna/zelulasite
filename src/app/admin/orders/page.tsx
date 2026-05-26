@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminOrdersListShell } from "@/components/admin/orders/AdminOrdersListShell";
 import { AdminOrdersPurgePanel } from "@/components/admin/orders/AdminOrdersPurgePanel";
@@ -47,19 +48,56 @@ export default async function AdminOrdersListPage({
   if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
 
   const admin = createAdminClient();
-  const { orders, loadError } = await fetchAdminOrdersList(admin, activeFilter);
+  const [{ orders, loadError }, allOrdersRes] = await Promise.all([
+    fetchAdminOrdersList(admin, activeFilter),
+    activeFilter === "all"
+      ? Promise.resolve({ orders: [] as Awaited<ReturnType<typeof fetchAdminOrdersList>>["orders"], loadError: null })
+      : fetchAdminOrdersList(admin, "all"),
+  ]);
+  const ordersForQueueCounts = activeFilter === "all" ? orders : allOrdersRes.orders;
+
+  const queueCounts = {
+    paymentPending: ordersForQueueCounts.filter(
+      (o) => o.order_status !== "cancelled" && String(o.payment_status ?? "") !== "paid",
+    ).length,
+    shipReady: ordersForQueueCounts.filter(
+      (o) =>
+        o.payment_status === "paid" &&
+        o.order_status !== "cancelled" &&
+        (o.order_status === "pending" || o.order_status === "confirmed"),
+    ).length,
+    processing: ordersForQueueCounts.filter(
+      (o) => o.payment_status === "paid" && o.order_status === "processing",
+    ).length,
+  };
 
   return (
-    <main className={`${ADMIN_OPERATIONS_MAIN} pb-3 pt-2 sm:pb-4 sm:pt-2.5`}>
-      <header className="mb-1 flex flex-wrap items-end justify-between gap-x-3 gap-y-0.5 border-b border-stone-200/55 pb-1">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-            <h1 className="font-serif text-base font-light tracking-tight text-stone-900 sm:text-lg">Siparişler</h1>
-            <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-stone-400">Operasyon</span>
-          </div>
-          <p className="mt-0.5 max-w-xl text-[10px] leading-tight text-stone-600">
-            Ara, filtrele, toplu işlem — kargo ve etiket için satıra girin.
-          </p>
+    <main className={`${ADMIN_OPERATIONS_MAIN} pb-8 pt-5 lg:pt-7`}>
+      <header className="mb-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">Operasyon</p>
+        <h1 className="mt-1 font-serif text-3xl font-light tracking-tight text-stone-950">Siparişler</h1>
+        <p className="mt-1 max-w-2xl text-sm text-stone-600">
+          Ara, filtrele ve toplu işlem yapın. Kargo ve etiket için sipariş satırından detaya girin.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href="/admin/orders?filter=payment_pending"
+            className="rounded-full border border-amber-200/90 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold text-amber-950 hover:bg-amber-100/90"
+          >
+            Ödeme bekleyen · {queueCounts.paymentPending.toLocaleString("tr-TR")}
+          </Link>
+          <Link
+            href="/admin/orders?filter=ship_ready"
+            className="rounded-full border border-emerald-200/90 bg-emerald-50/70 px-3 py-1 text-[11px] font-semibold text-emerald-950 hover:bg-emerald-100/80"
+          >
+            Kargoya hazır · {queueCounts.shipReady.toLocaleString("tr-TR")}
+          </Link>
+          <Link
+            href="/admin/orders?filter=processing"
+            className="rounded-full border border-stone-200/90 bg-stone-50 px-3 py-1 text-[11px] font-semibold text-stone-800 hover:bg-white"
+          >
+            Hazırlanıyor · {queueCounts.processing.toLocaleString("tr-TR")}
+          </Link>
         </div>
       </header>
 

@@ -235,11 +235,11 @@ export function AdminOrdersListShell({
 
   return (
     <div className="min-w-0">
-      <div className="overflow-hidden rounded-md border border-stone-200/70 bg-white/[0.38] ring-1 ring-stone-950/[0.035]">
-        <div className="sticky top-0 z-30 border-b border-stone-300/50 border-l-2 border-l-amber-400/45 bg-[#f1efe9]/96 backdrop-blur-sm supports-[backdrop-filter]:bg-[#f1efe9]/90">
-          <div className="flex flex-col gap-1 px-2 py-1 sm:flex-row sm:items-stretch sm:gap-0 sm:py-1">
-            <div className="flex items-center sm:border-r sm:border-stone-300/40 sm:pr-2">
-              <div className="relative flex min-h-[1.75rem] w-full min-w-[10rem] max-w-full items-center rounded-md border border-stone-300/60 bg-white/95 py-0 pl-2 pr-1 shadow-[inset_0_1px_2px_rgba(28,25,23,0.04)] ring-1 ring-stone-950/[0.04] transition-[box-shadow,border-color] focus-within:border-amber-400/55 focus-within:shadow-[0_0_0_2px_rgba(251,191,36,0.22)] sm:w-[14rem] sm:max-w-[min(100%,16rem)] sm:flex-none">
+      <div className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-sm ring-1 ring-stone-950/[0.035]">
+        <div className="sticky top-0 z-30 border-b border-stone-200/80 bg-[#faf8f5]/95 backdrop-blur-sm supports-[backdrop-filter]:bg-[#faf8f5]/90">
+          <div className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-stretch sm:gap-0 sm:py-2">
+            <div className="flex items-center sm:border-r sm:border-stone-200/80 sm:pr-3">
+              <div className="relative flex min-h-[2rem] w-full min-w-[10rem] max-w-full items-center rounded-xl border border-stone-200/90 bg-white py-0 pl-2.5 pr-1 shadow-sm transition-[box-shadow,border-color] focus-within:border-[#c9a06e]/50 focus-within:ring-2 focus-within:ring-[#c9a06e]/20 sm:w-[15rem] sm:max-w-[min(100%,18rem)] sm:flex-none">
                 <Search
                   className="pointer-events-none size-3 shrink-0 text-stone-400/85"
                   strokeWidth={1.75}
@@ -253,29 +253,29 @@ export function AdminOrdersListShell({
                   autoComplete="off"
                   autoCorrect="off"
                   spellCheck={false}
-                  className="min-w-0 flex-1 border-0 bg-transparent py-1 pl-1.5 text-[11px] text-stone-900 outline-none placeholder:text-stone-400 focus:ring-0"
+                  className="min-w-0 flex-1 border-0 bg-transparent py-1.5 pl-1.5 text-xs text-stone-900 outline-none placeholder:text-stone-400 focus:ring-0"
                   aria-label="Siparişlerde ara"
                 />
               </div>
             </div>
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:border-r sm:border-stone-300/40 sm:px-2 sm:py-0.5 [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:border-r sm:border-stone-200/80 sm:px-3 sm:py-0.5 [&::-webkit-scrollbar]:hidden">
               {FILTERS.map((f) => (
                 <Link
                   key={f.id}
                   href={ordersListHref(f.id)}
                   className={cn(
-                    "shrink-0 rounded-full border px-1.5 py-px text-[10px] font-semibold leading-tight transition",
+                    "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-tight transition",
                     activeFilter === f.id
                       ? "border-stone-900 bg-stone-900 text-white shadow-sm"
-                      : "border-stone-200/90 bg-white text-stone-700 hover:border-amber-300/60 hover:bg-amber-50/40",
+                      : "border-stone-200/90 bg-white text-stone-700 hover:border-[#d5ba92]/80 hover:bg-[#faf6ef]",
                   )}
                 >
                   {f.label}
                 </Link>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-stone-300/35 pt-1 sm:flex-nowrap sm:justify-end sm:gap-x-2 sm:border-t-0 sm:pl-2 sm:pt-0">
-              <span className="shrink-0 text-[10px] font-semibold tabular-nums text-stone-500">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-stone-200/70 pt-2 sm:flex-nowrap sm:justify-end sm:gap-x-2 sm:border-t-0 sm:pl-3 sm:pt-0">
+              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-stone-500">
                 {searchActive ? (
                   <>
                     {displayOrders.length}/{orders.length} kayıt
@@ -290,12 +290,12 @@ export function AdminOrdersListShell({
                   count > 0 ? "rounded-md bg-amber-50/90 px-1 py-px ring-1 ring-amber-200/55" : "",
                 )}
               >
-                <span className="px-0.5 text-[10px] font-bold tabular-nums text-stone-800">{count} seçili</span>
+                <span className="px-0.5 text-[11px] font-bold tabular-nums text-stone-800">{count} seçili</span>
                 <button
                   type="button"
                   disabled={pending || count === 0}
                   onClick={() => runBulk("prepare")}
-                  className="rounded border border-amber-700/70 bg-white px-1.5 py-px text-[10px] font-bold text-amber-950 hover:bg-amber-100/80 disabled:opacity-40"
+                  className="rounded-lg border border-amber-700/50 bg-white px-2 py-1 text-[11px] font-bold text-amber-950 hover:bg-amber-50 disabled:opacity-40"
                 >
                   Toplu hazırla
                 </button>
@@ -303,7 +303,7 @@ export function AdminOrdersListShell({
                   type="button"
                   disabled={pending || count === 0}
                   onClick={() => runBulk("ship")}
-                  className="rounded border border-stone-800/20 bg-stone-900 px-1.5 py-px text-[10px] font-bold text-white hover:bg-stone-800 disabled:opacity-40"
+                  className="rounded-lg border border-stone-800/15 bg-stone-900 px-2 py-1 text-[11px] font-bold text-white hover:bg-stone-800 disabled:opacity-40"
                 >
                   Toplu kargola
                 </button>
@@ -311,7 +311,7 @@ export function AdminOrdersListShell({
                   type="button"
                   disabled={pending || count === 0}
                   onClick={() => printOrderLabels(selectedRows)}
-                  className="rounded border border-stone-300/90 bg-white px-1.5 py-px text-[10px] font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-40"
+                  className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-[11px] font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-40"
                 >
                   Etiket yazdır
                 </button>
