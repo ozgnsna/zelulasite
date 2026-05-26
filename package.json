@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed:supabase": "node scripts/seed-supabase.mjs",
     "upload:gift-card-image": "node scripts/upload-gift-card-image.mjs",
-    "favicons": "node scripts/generate-favicons.mjs"
+    "favicons": "node scripts/generate-favicons.mjs",
+    "diagnose:notify": "node scripts/diagnose-admin-notify.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

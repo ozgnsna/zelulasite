@@ -45,6 +45,8 @@ export function callbackEventKindLabelTr(eventType: string | null | undefined): 
       return "Manuel ödeme";
     case "manual_retry_init":
       return "Ödeme yeniden deneme";
+    case "admin_notify":
+      return "Admin bildirimi (e-posta / WhatsApp)";
     default:
       return e.replace(/_/g, " ");
   }

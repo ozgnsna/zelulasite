@@ -240,11 +240,15 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
         currency: String(orderForNotify.currency ?? "TRY"),
         paymentStatus: String(orderForNotify.payment_status ?? "paid"),
         paymentProvider: String(orderForNotify.payment_provider ?? payload.provider),
-        items: (itemsForNotify ?? []).map((i) => ({
-          name: String(i.product?.[0]?.name ?? "Urun"),
+        items: (itemsForNotify ?? []).map((i) => {
+          const product = i.product as { name?: string } | { name?: string }[] | null;
+          const name = Array.isArray(product) ? product[0]?.name : product?.name;
+          return {
+          name: String(name ?? "Urun"),
           quantity: Number(i.quantity ?? 0),
           totalPrice: Number(i.total_price ?? 0),
-        })),
+        };
+        }),
         adminOrderUrl: `${siteUrl}/admin/orders/${payload.orderId}`,
       });
       await admin.from("payment_logs").insert({
@@ -259,7 +263,11 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
         verification_status:
           notifyResult.email.ok || notifyResult.whatsapp.ok ? "passed" : "failed",
         verification_error:
-          notifyResult.email.error || notifyResult.whatsapp.error || null,
+          notifyResult.email.error ||
+          notifyResult.whatsapp.error ||
+          notifyResult.email.skippedReason ||
+          notifyResult.whatsapp.skippedReason ||
+          null,
         processed_at: new Date().toISOString(),
       });
     }

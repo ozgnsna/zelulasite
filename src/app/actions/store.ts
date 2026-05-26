@@ -537,7 +537,11 @@ export async function createCheckout(formData: FormData) {
       verification_status:
         notifyResult.email.ok || notifyResult.whatsapp.ok ? "passed" : "failed",
       verification_error:
-        notifyResult.email.error || notifyResult.whatsapp.error || null,
+        notifyResult.email.error ||
+        notifyResult.whatsapp.error ||
+        notifyResult.email.skippedReason ||
+        notifyResult.whatsapp.skippedReason ||
+        null,
       processed_at: new Date().toISOString(),
     });
     // Bank transfer siparişi kaydedildikten sonra sepet temizlenir.

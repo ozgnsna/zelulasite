@@ -32,6 +32,27 @@ function getAdminEmailRecipients(): string[] {
   return splitCsv(process.env.ADMIN_EMAILS);
 }
 
+function getEmailSkipReason(): string | undefined {
+  if (!process.env.RESEND_API_KEY?.trim()) return "RESEND_API_KEY tanımlı değil";
+  if (getAdminEmailRecipients().length === 0) {
+    return "ADMIN_NOTIFY_EMAILS veya ADMIN_EMAILS boş";
+  }
+  return undefined;
+}
+
+function getWhatsAppSkipReason(): string | undefined {
+  if (!process.env.WHATSAPP_CLOUD_ACCESS_TOKEN?.trim()) {
+    return "WHATSAPP_CLOUD_ACCESS_TOKEN tanımlı değil";
+  }
+  if (!process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID?.trim()) {
+    return "WHATSAPP_CLOUD_PHONE_NUMBER_ID tanımlı değil";
+  }
+  if (getAdminWhatsAppRecipients().length === 0) {
+    return "ADMIN_NOTIFY_WHATSAPP_TO geçerli numara yok";
+  }
+  return undefined;
+}
+
 function getAdminWhatsAppRecipients(): string[] {
   const raw = splitCsv(process.env.ADMIN_NOTIFY_WHATSAPP_TO);
   const normalized = raw
@@ -176,38 +197,48 @@ export async function notifyAdminOrderEvent(payload: OrderNotifyPayload): Promis
   }
 }
 
+export type AdminNotifyChannelResult = {
+  attempted: boolean;
+  ok: boolean;
+  error?: string;
+  /** Env eksikse neden gönderilmediği */
+  skippedReason?: string;
+};
+
 export type AdminNotifyResult = {
-  email: { attempted: boolean; ok: boolean; error?: string };
-  whatsapp: { attempted: boolean; ok: boolean; error?: string };
+  email: AdminNotifyChannelResult;
+  whatsapp: AdminNotifyChannelResult;
 };
 
 export async function notifyAdminOrderEventWithResult(
   payload: OrderNotifyPayload,
 ): Promise<AdminNotifyResult> {
-  const emailAttempted =
-    Boolean(process.env.RESEND_API_KEY?.trim()) &&
-    (getAdminEmailRecipients().length > 0);
-  const whatsappAttempted =
-    Boolean(process.env.WHATSAPP_CLOUD_ACCESS_TOKEN?.trim()) &&
-    Boolean(process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID?.trim()) &&
-    (getAdminWhatsAppRecipients().length > 0);
+  const emailSkip = getEmailSkipReason();
+  const whatsappSkip = getWhatsAppSkipReason();
+  const emailAttempted = !emailSkip;
+  const whatsappAttempted = !whatsappSkip;
 
   const [emailResult, whatsappResult] = await Promise.allSettled([
-    sendAdminEmail(payload),
-    sendAdminWhatsApp(payload),
+    emailAttempted ? sendAdminEmail(payload) : Promise.resolve(),
+    whatsappAttempted ? sendAdminWhatsApp(payload) : Promise.resolve(),
   ]);
 
   const out: AdminNotifyResult = {
     email: {
       attempted: emailAttempted,
-      ok: emailResult.status === "fulfilled",
-      error: emailResult.status === "rejected" ? String(emailResult.reason ?? "email_failed") : undefined,
+      ok: emailAttempted && emailResult.status === "fulfilled",
+      skippedReason: emailSkip,
+      error:
+        emailAttempted && emailResult.status === "rejected"
+          ? String(emailResult.reason ?? "email_failed")
+          : undefined,
     },
     whatsapp: {
       attempted: whatsappAttempted,
-      ok: whatsappResult.status === "fulfilled",
+      ok: whatsappAttempted && whatsappResult.status === "fulfilled",
+      skippedReason: whatsappSkip,
       error:
-        whatsappResult.status === "rejected"
+        whatsappAttempted && whatsappResult.status === "rejected"
           ? String(whatsappResult.reason ?? "whatsapp_failed")
           : undefined,
     },
