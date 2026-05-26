@@ -6,6 +6,9 @@ import { zelulaPuanEarnedFromPaidOrderTotalTry } from "@/lib/loyalty/compute";
 import { ensureUserReferralCode } from "@/lib/referral/server";
 import { siteBaseUrl, withReferralQuery } from "@/lib/referral/share-url";
 import { getSupportPhoneDisplay } from "@/lib/support-contact";
+import { getBankTransferDetails } from "@/lib/bank-transfer";
+import { formatTry } from "@/lib/money";
+import { BankTransferInstructions } from "@/components/payments/BankTransferInstructions";
 
 type Props = { searchParams: Promise<{ oid?: string; pm?: string }> };
 
@@ -70,9 +73,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
       if (refCode) paidShareUrl = withReferralQuery(cleanShareUrl, refCode);
     }
     const isBankTransferFlow = paymentMethod === "bank_transfer" || order?.payment_provider === "bank_transfer";
-    const bankName = process.env.BANK_TRANSFER_BANK_NAME ?? "Banka Adı";
-    const iban = process.env.BANK_TRANSFER_IBAN ?? "TR00 0000 0000 0000 0000 0000 00";
-    const accountHolder = process.env.BANK_TRANSFER_ACCOUNT_HOLDER ?? "Zelula";
+    const bank = getBankTransferDetails();
 
     const prematureCardOrder =
       order &&
@@ -147,15 +148,12 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
             : "Siparişiniz alındı. Banka doğrulaması nedeniyle kısa bir gecikme olabilir, endişelenmeyin."}
       </p>
       {isBankTransferFlow && order?.payment_status !== "paid" ? (
-        <div className="mx-auto mt-5 max-w-md rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-left text-sm text-amber-950">
-          <p className="font-semibold">Havale / EFT Bilgileri</p>
-          <p className="mt-2">Banka: {bankName}</p>
-          <p>Hesap Adı: {accountHolder}</p>
-          <p className="break-all">IBAN: {iban}</p>
-          <p className="mt-3 rounded-lg border border-amber-300/80 bg-white/70 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-950">
-            Transfer yaparken açıklama alanına sipariş numaranızı mutlaka yazın:{" "}
-            <span className="font-mono">{order?.order_number ?? orderId}</span>
-          </p>
+        <div className="mx-auto mt-5 max-w-md text-left">
+          <BankTransferInstructions
+            bank={bank}
+            orderNumber={String(order?.order_number ?? orderId)}
+            totalFormatted={formatTry(Number(order?.total ?? 0))}
+          />
         </div>
       ) : null}
       {order?.payment_status === "paid" && order.user_id ? (
