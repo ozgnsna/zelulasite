@@ -13,7 +13,11 @@ import { ADMIN_ORDERS_LIST_SELECT, istanbulDayUtcRange } from "@/lib/admin/admin
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { buildDashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
+import {
+  buildDashboardAnalyticsMetrics,
+  collectVisitorIds,
+} from "@/lib/admin/analytics-dashboard";
+import { fetchClientIdsSeenBefore } from "@/lib/admin/fetch-analytics-returning-clients";
 
 export const dynamic = "force-dynamic";
 
@@ -220,7 +224,15 @@ export default async function AdminPage({
   const revenueYesterday = yesterdayOrders
     .filter((o) => o.payment_status === "paid" && o.order_status !== "cancelled")
     .reduce((sum, o) => sum + Number(o.total ?? 0), 0);
-  const dashboardAnalytics = buildDashboardAnalyticsMetrics(todayAnalytics);
+  const todayVisitorIds = collectVisitorIds(todayAnalytics);
+  const clientIdsSeenBeforeToday = await fetchClientIdsSeenBefore(
+    admin,
+    [...todayVisitorIds],
+    dayStart,
+  );
+  const dashboardAnalytics = buildDashboardAnalyticsMetrics(todayAnalytics, {
+    clientIdsSeenBeforeToday,
+  });
   const addToCartToday = dashboardAnalytics.addToCarts;
   const viewItemToday = dashboardAnalytics.productViews;
   const purchaseToday = dashboardAnalytics.purchases;
@@ -439,6 +451,46 @@ export default async function AdminPage({
                 <TryPriceSplit n={revenueToday} className="text-xl font-semibold tracking-tight text-stone-900" />
               </div>
               <p className="mt-0.5 text-[10px] leading-snug text-stone-600">{kpiRevenueDeltaTr(revenueToday, revenueYesterday)}</p>
+            </div>
+          </div>
+
+          <div
+            id="visitor-analytics"
+            className="rounded-2xl border border-[#e8dfd3]/90 bg-[linear-gradient(165deg,#fffdfb_0%,#f7f4ef_100%)] px-4 py-3 shadow-sm ring-1 ring-stone-900/[0.04]"
+          >
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-800">Bugün · Ziyaretçiler</h2>
+                <p className="mt-0.5 text-[10px] text-stone-600">
+                  Yeni = ilk kez bu tarayıcı · Dönen = daha önce siteye gelmiş (client_id)
+                </p>
+              </div>
+              <a
+                href="#analytics-detail"
+                className="text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline"
+              >
+                Huninin detayı ↓
+              </a>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:max-w-md">
+              <div className="rounded-xl border border-stone-200/70 bg-white/90 px-3 py-2 text-center shadow-sm">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-stone-500">Toplam</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums text-stone-950">
+                  {dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-3 py-2 text-center shadow-sm">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-800/90">Yeni</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums text-emerald-950">
+                  {dashboardAnalytics.visitorsNewToday.toLocaleString("tr-TR")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-stone-200/70 bg-stone-50/80 px-3 py-2 text-center shadow-sm">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-stone-600">Dönen</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums text-stone-950">
+                  {dashboardAnalytics.visitorsReturningToday.toLocaleString("tr-TR")}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -912,18 +964,27 @@ export default async function AdminPage({
           </section>
 
           <section
+            id="analytics-detail"
             aria-label="Analitik özeti"
             className="rounded-xl border border-stone-200/45 bg-stone-50/35 p-2 shadow-sm ring-1 ring-stone-900/[0.02] sm:p-2.5"
           >
             <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
               <div>
                 <h2 className="text-[11px] font-semibold tracking-tight text-stone-700">Analitik özeti</h2>
-                <p className="text-[10px] leading-tight text-stone-500">Bugün · vitrin olayları</p>
+                <p className="text-[10px] leading-tight text-stone-500">
+                  Bugün · vitrin olayları · ziyaretçi = tarayıcı profili (client_id)
+                </p>
               </div>
             </div>
 
+            <p className="mt-1 text-[10px] text-stone-500">
+              Ziyaretçi özeti yukarıda ·{" "}
+              <a href="#visitor-analytics" className="font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+                Ziyaretçilere git ↑
+              </a>
+            </p>
+
             <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
-              <Metric compact title="Ziyaretçi" value={dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")} />
               <Metric compact title="Ürün Görüntüleme" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
               <Metric compact title="Sepete Ekleme" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
               <Metric compact title="Ödeme Adımı" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />

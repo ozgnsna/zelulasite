@@ -11,6 +11,10 @@ type ParsedItem = {
 
 export type DashboardAnalyticsMetrics = {
   visitorsToday: number;
+  /** İlk kez kayıt olan tarayıcı profili (bugünden önce hiç olay yok). */
+  visitorsNewToday: number;
+  /** Daha önce (bugünden önce) siteye gelmiş aynı client_id. */
+  visitorsReturningToday: number;
   productViews: number;
   addToCarts: number;
   checkoutStarts: number;
@@ -54,8 +58,37 @@ function pct(numerator: number, denominator: number): number {
   return Math.round((numerator / denominator) * 10000) / 100;
 }
 
-export function buildDashboardAnalyticsMetrics(events: AnalyticsEventRow[]): DashboardAnalyticsMetrics {
+export function collectVisitorIds(events: AnalyticsEventRow[]): Set<string> {
   const visitors = new Set<string>();
+  for (const event of events) {
+    const clientId = String(event.client_id ?? "").trim();
+    if (clientId) visitors.add(clientId);
+  }
+  return visitors;
+}
+
+export function splitNewAndReturningVisitors(
+  todayVisitorIds: ReadonlySet<string>,
+  seenBeforeToday: ReadonlySet<string>,
+): { visitorsNewToday: number; visitorsReturningToday: number } {
+  let returning = 0;
+  for (const id of todayVisitorIds) {
+    if (seenBeforeToday.has(id)) returning += 1;
+  }
+  return {
+    visitorsNewToday: todayVisitorIds.size - returning,
+    visitorsReturningToday: returning,
+  };
+}
+
+export function buildDashboardAnalyticsMetrics(
+  events: AnalyticsEventRow[],
+  options?: { clientIdsSeenBeforeToday?: ReadonlySet<string> },
+): DashboardAnalyticsMetrics {
+  const visitors = collectVisitorIds(events);
+  const { visitorsNewToday, visitorsReturningToday } = options?.clientIdsSeenBeforeToday
+    ? splitNewAndReturningVisitors(visitors, options.clientIdsSeenBeforeToday)
+    : { visitorsNewToday: 0, visitorsReturningToday: 0 };
   let productViews = 0;
   let addToCarts = 0;
   let checkoutStarts = 0;
@@ -64,8 +97,6 @@ export function buildDashboardAnalyticsMetrics(events: AnalyticsEventRow[]): Das
 
   for (const event of events) {
     const name = String(event.event_name ?? "");
-    const clientId = String(event.client_id ?? "").trim();
-    if (clientId) visitors.add(clientId);
 
     if (name === "view_item") {
       productViews += 1;
@@ -92,6 +123,8 @@ export function buildDashboardAnalyticsMetrics(events: AnalyticsEventRow[]): Das
 
   return {
     visitorsToday: visitors.size,
+    visitorsNewToday,
+    visitorsReturningToday,
     productViews,
     addToCarts,
     checkoutStarts,

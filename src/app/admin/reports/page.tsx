@@ -25,7 +25,7 @@ export default async function AdminReportsPage() {
         Satış hunisi ve ürün görüntülenmeleri kontrol panelindeki analitik bölümünde özetlenir.
       </p>
       <Link
-        href="/admin#analytics"
+        href="/admin#visitor-analytics"
         className="mt-6 inline-flex rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-800"
       >
         Analitiği aç
