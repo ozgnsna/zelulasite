@@ -111,7 +111,7 @@ export function buildPdpShippingPromise(now = new Date()): PdpShippingPromise {
   return {
     carrierLabel: "DHL Kargo",
     deliveryLine: bayram
-      ? "Kargo çıkışı: 1 Haziran Pazartesi itibarıyla · teslimat 2–4 iş günü"
+      ? "Siparişiniz 1 Haziran Pazartesi kargoya verilir · teslimat 2–4 iş günü"
       : "Tahmini teslimat: 2–4 iş günü içinde kapında",
     policyLine: bayram ? BAYRAM_POLICY_LINE : SHIPPING_POLICY_LINE,
   };
