@@ -17,7 +17,7 @@ export function BankTransferInstructions({
 
   if (!bank.configured) {
     return (
-      <section className="mt-5 rounded-2xl border border-amber-300 bg-amber-50/90 p-5">
+      <section className="rounded-[20px] border border-amber-300 bg-amber-50/90 p-5 sm:p-6">
         <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-900">
           Havale / EFT bilgileri
         </h2>
@@ -40,7 +40,7 @@ export function BankTransferInstructions({
   }
 
   return (
-    <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+    <section className="rounded-[20px] border border-amber-200/90 bg-amber-50/75 p-5 shadow-[0_8px_28px_-10px_rgba(120,90,40,0.12)] sm:p-6">
       <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-800">
         Havale / EFT bilgileri
       </h2>
