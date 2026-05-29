@@ -276,7 +276,7 @@ export function ProductForm({
                 </div>
                 <input id="product-sku" name="sku" defaultValue={p.sku ?? ""} required className={cn(adminField, "py-2")} />
               </div>
-              <OptionalDetails defaultOpen summary="SEO: slug ve yardımcılar" hint="Zorunlu; genelde otomatik doldurulur.">
+              <OptionalDetails defaultOpen summary="SEO: slug ve yardımcılar">
                 <div className="space-y-3">
                   <div>
                     <div className="mb-1 flex items-center justify-between gap-2">
