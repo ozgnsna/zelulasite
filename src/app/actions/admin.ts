@@ -243,6 +243,20 @@ export async function saveProduct(formData: FormData) {
   } else {
     categoryAttributes = [];
   }
+  const categoryId = String(formData.get("category_id") ?? "").trim();
+  if (!categoryId) {
+    redirect(
+      withQueryParam(
+        returnTo === "/admin"
+          ? id
+            ? `/admin/products/${encodeURIComponent(id)}/edit`
+            : "/admin/products/new"
+          : returnTo,
+        "productSaveError",
+        "Lütfen bir kategori seçin. Ürün kategorisiz kaydedilemez.",
+      ),
+    );
+  }
   const payload = {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? ""),
@@ -254,7 +268,7 @@ export async function saveProduct(formData: FormData) {
     stock_quantity: Number(formData.get("stock_quantity") ?? 0),
     featured: formData.get("featured") === "on",
     new_arrival: id ? formData.get("new_arrival") === "on" : true,
-    category_id: String(formData.get("category_id") ?? "") || null,
+    category_id: categoryId,
     collection_id: String(formData.get("collection_id") ?? "") || null,
     material: String(formData.get("material") ?? "") || null,
     color: String(formData.get("color") ?? "") || null,

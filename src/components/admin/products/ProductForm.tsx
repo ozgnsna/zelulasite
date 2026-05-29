@@ -336,10 +336,18 @@ export function ProductForm({
           <FormSection id="product-section-catalog" title="Kategori" description="Site kataloğundaki yerleşim.">
             <div>
               <label className={adminLabel} htmlFor="product-category">
-                Kategori
+                Kategori <span className="text-rose-600">*</span>
               </label>
-              <select id="product-category" name="category_id" defaultValue={p.category_id ?? ""} className={cn(adminField, "py-2")}>
-                <option value="">Kategori seçin (opsiyonel)</option>
+              <select
+                id="product-category"
+                name="category_id"
+                defaultValue={p.category_id ?? ""}
+                required
+                className={cn(adminField, "py-2")}
+              >
+                <option value="" disabled>
+                  Kategori seçin
+                </option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -348,7 +356,9 @@ export function ProductForm({
               </select>
             </div>
             {isCategoryMissing ? (
-              <p className="mt-3 text-[10px] leading-relaxed text-stone-500">Trendyol entegrasyonu için kategori seçmeniz önerilir.</p>
+              <p className="mt-3 text-[10px] leading-relaxed text-rose-700">
+                Kategori zorunludur. Kaydetmeden önce doğru kategoriyi seçin.
+              </p>
             ) : null}
             <div className="mt-4">
               <OptionalDetails summary="İsteğe bağlı vitrin alanları" hint="Koleksiyon, rozetler, renk ve materyal.">

@@ -11,10 +11,11 @@ export const maxDuration = 60;
 export default async function AdminNewProductPage({
   searchParams,
 }: {
-  searchParams: Promise<{ productJsonError?: string }>;
+  searchParams: Promise<{ productJsonError?: string; productSaveError?: string }>;
 }) {
   const sp = await searchParams;
   const productJsonError = sp.productJsonError ?? "";
+  const productSaveError = sp.productSaveError ?? "";
 
   const supabase = await createClient();
   const {
@@ -58,6 +59,12 @@ export default async function AdminNewProductPage({
           ) : (
             <span>Kayıt doğrulanamadı.</span>
           )}
+        </div>
+      ) : null}
+      {productSaveError ? (
+        <div className="mb-4 rounded-xl border border-rose-200/90 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
+          <p className="font-medium">Ürün kaydedilemedi.</p>
+          <p className="mt-1 break-words text-xs text-rose-900/90">{productSaveError}</p>
         </div>
       ) : null}
 
