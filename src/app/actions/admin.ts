@@ -254,7 +254,7 @@ export async function saveProduct(formData: FormData) {
     stock_quantity: Number(formData.get("stock_quantity") ?? 0),
     featured: formData.get("featured") === "on",
     new_arrival: id ? formData.get("new_arrival") === "on" : true,
-    category_id: String(formData.get("category_id") ?? ""),
+    category_id: String(formData.get("category_id") ?? "") || null,
     collection_id: String(formData.get("collection_id") ?? "") || null,
     material: String(formData.get("material") ?? "") || null,
     color: String(formData.get("color") ?? "") || null,
@@ -274,9 +274,33 @@ export async function saveProduct(formData: FormData) {
 
   let productId = id;
   if (id) {
-    await supabase.from("products").update(payload).eq("id", id);
+    const { error: updateError } = await supabase.from("products").update(payload).eq("id", id);
+    if (updateError) {
+      console.error("[admin/saveProduct] update failed", { id, message: updateError.message });
+      redirect(
+        withQueryParam(
+          returnTo === "/admin" ? `/admin/products/${encodeURIComponent(id)}/edit` : returnTo,
+          "productSaveError",
+          updateError.message || "Ürün güncellenemedi.",
+        ),
+      );
+    }
   } else {
-    const { data: inserted } = await supabase.from("products").insert(payload).select("id").maybeSingle();
+    const { data: inserted, error: insertError } = await supabase
+      .from("products")
+      .insert(payload)
+      .select("id")
+      .maybeSingle();
+    if (insertError) {
+      console.error("[admin/saveProduct] insert failed", { message: insertError.message });
+      redirect(
+        withQueryParam(
+          returnTo === "/admin" ? "/admin/products/new" : returnTo,
+          "productSaveError",
+          insertError.message || "Ürün eklenemedi.",
+        ),
+      );
+    }
     productId = inserted?.id ?? "";
   }
   // Trendyol API kayıt sırasında bekletilmez — uzun 556/timeout yanıtları «sayfa yüklenemedi» yapıyordu.

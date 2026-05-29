@@ -35,6 +35,7 @@ export default async function AdminEditProductPage({
     imageCoverSet?: string;
     imageDeleted?: string;
     productSaved?: string;
+    productSaveError?: string;
     trendyolPushOk?: string;
     trendyolPushError?: string;
     trendyolPushInfo?: string;
@@ -48,6 +49,7 @@ export default async function AdminEditProductPage({
   const imageCoverSet = sp.imageCoverSet === "1";
   const imageDeleted = sp.imageDeleted === "1";
   const productSaved = sp.productSaved === "1";
+  const productSaveError = sp.productSaveError ?? "";
   const trendyolPushOk = sp.trendyolPushOk === "1";
   const trendyolPushError = sp.trendyolPushError ?? "";
   const trendyolPushInfo = sp.trendyolPushInfo ?? "";
@@ -220,6 +222,17 @@ export default async function AdminEditProductPage({
       {imageDeleted ? (
         <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
           Görsel silindi.
+        </div>
+      ) : null}
+      {productSaveError ? (
+        <div className="mb-4 rounded-xl border border-rose-200/90 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
+          <p className="font-medium">Değişiklikler kaydedilemedi.</p>
+          <p className="mt-1 break-words text-xs text-rose-900/90">{productSaveError}</p>
+          {/uuid/i.test(productSaveError) ? (
+            <p className="mt-2 text-xs text-rose-900/85">
+              Genellikle <strong>Kategori</strong> seçilmediğinde olur. Aşağıdan bir kategori seçip tekrar kaydedin.
+            </p>
+          ) : null}
         </div>
       ) : null}
       {productSaved ? (

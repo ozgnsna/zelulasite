@@ -339,6 +339,7 @@ export function ProductForm({
                 Kategori
               </label>
               <select id="product-category" name="category_id" defaultValue={p.category_id ?? ""} className={cn(adminField, "py-2")}>
+                <option value="">Kategori seçin (opsiyonel)</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
