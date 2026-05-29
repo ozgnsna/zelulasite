@@ -276,7 +276,7 @@ export function ProductForm({
                 </div>
                 <input id="product-sku" name="sku" defaultValue={p.sku ?? ""} required className={cn(adminField, "py-2")} />
               </div>
-              <OptionalDetails summary="SEO: slug ve yardımcılar" hint="Zorunlu; genelde otomatik doldurulur.">
+              <OptionalDetails defaultOpen summary="SEO: slug ve yardımcılar" hint="Zorunlu; genelde otomatik doldurulur.">
                 <div className="space-y-3">
                   <div>
                     <div className="mb-1 flex items-center justify-between gap-2">
@@ -604,24 +604,32 @@ export function ProductForm({
                   <p className="mt-1.5 text-[10px] font-medium text-amber-800/90">Stok azaldı.</p>
                 ) : null}
               </div>
+
+              <div className="rounded-xl border border-stone-200/70 bg-gradient-to-b from-stone-50/90 to-white p-2.5 sm:col-span-2">
+                <label className={cn(adminLabel, "mb-1 text-[9px] text-stone-500")} htmlFor="product-compare">
+                  Üstü çizili fiyat (eski / liste)
+                </label>
+                <input
+                  id="product-compare"
+                  name="compare_at_price"
+                  type="number"
+                  step="0.01"
+                  defaultValue={p.compare_at_price ?? ""}
+                  placeholder="örn. 699"
+                  inputMode="decimal"
+                  className={cn(
+                    adminField,
+                    "border-stone-200 bg-white py-2 text-base font-semibold tabular-nums text-stone-500 line-through decoration-stone-300",
+                  )}
+                />
+                <p className="mt-1 text-[9px] leading-snug text-stone-400">
+                  Satış fiyatının üstünde üstü çizili görünür (indirim algısı). Boş bırakılırsa gösterilmez.
+                </p>
+              </div>
             </div>
 
-            <OptionalDetails summary="Liste ve Trendyol fiyatları" hint="İsteğe bağlı.">
+            <OptionalDetails summary="Trendyol fiyatları" hint="İsteğe bağlı — pazaryeri gönderimi için.">
               <div className="space-y-3">
-                <div>
-                  <label className={cn(adminLabel, "mb-1 text-[10px] text-stone-500")} htmlFor="product-compare">
-                    İndirimli gösterim (liste)
-                  </label>
-                  <input
-                    id="product-compare"
-                    name="compare_at_price"
-                    type="number"
-                    step="0.01"
-                    defaultValue={p.compare_at_price ?? ""}
-                    placeholder="—"
-                    className={cn(adminField, "border-stone-200 bg-white py-2 text-sm tabular-nums")}
-                  />
-                </div>
                 <div id="product-section-trendyol-prices" className="scroll-mt-24 rounded-xl border border-[#e8dfd3]/80 bg-[#faf6f0]/80 p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-600/90">Trendyol</p>
                   <p className="mt-1 text-[10px] leading-snug text-stone-500/90">Senkron ve gönderim bu fiyatlarla yapılır.</p>
