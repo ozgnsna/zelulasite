@@ -295,7 +295,7 @@ export async function saveProduct(formData: FormData) {
         withQueryParam(
           returnTo === "/admin" ? `/admin/products/${encodeURIComponent(id)}/edit` : returnTo,
           "productSaveError",
-          updateError.message || "Ürün güncellenemedi.",
+          friendlyProductSaveError(updateError, "Ürün güncellenemedi."),
         ),
       );
     }
@@ -311,7 +311,7 @@ export async function saveProduct(formData: FormData) {
         withQueryParam(
           returnTo === "/admin" ? "/admin/products/new" : returnTo,
           "productSaveError",
-          insertError.message || "Ürün eklenemedi.",
+          friendlyProductSaveError(insertError, "Ürün eklenemedi."),
         ),
       );
     }
@@ -876,6 +876,30 @@ function safeReturnToForImageActions(raw: string, productId: string): string {
   const id = String(productId ?? "").trim();
   if (!id) return "/admin/products";
   return `/admin/products/${encodeURIComponent(id)}/edit`;
+}
+
+function friendlyProductSaveError(
+  error: { message?: string | null; code?: string | null } | null,
+  fallback: string,
+): string {
+  const message = String(error?.message ?? "");
+  const isUnique = error?.code === "23505" || /duplicate key value|unique constraint/i.test(message);
+  if (isUnique) {
+    if (/products_sku_key|\(sku\)/i.test(message)) {
+      return "Bu SKU (stok kodu) başka bir üründe zaten kullanılıyor. Benzersiz bir SKU girin.";
+    }
+    if (/products_slug_key|\(slug\)/i.test(message)) {
+      return "Bu slug başka bir üründe zaten kullanılıyor. Slug alanını değiştirin (Slug oluştur düğmesini deneyin).";
+    }
+    if (/barcode/i.test(message)) {
+      return "Bu Trendyol barkodu başka bir üründe zaten kullanılıyor. Benzersiz bir barkod girin.";
+    }
+    return "Bu değerlerden biri başka bir üründe zaten kullanılıyor (benzersiz olmalı). Lütfen SKU, slug veya barkodu kontrol edin.";
+  }
+  if (/invalid input syntax for type uuid/i.test(message)) {
+    return "Kategori seçimi geçersiz. Lütfen listeden bir kategori seçip tekrar kaydedin.";
+  }
+  return message || fallback;
 }
 
 function withQueryParam(path: string, key: string, value: string): string {
