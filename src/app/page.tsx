@@ -153,10 +153,10 @@ export default async function HomePage() {
               Zelula, sadece bir takı değil; bir hissin yansımasıdır.
             </p>
             <Link
-              href="/koleksiyonlar"
+              href="/urunler"
               className="mt-6 inline-flex text-[11px] font-medium uppercase tracking-[0.22em] text-[color:var(--brand-gold)] underline-offset-[6px] transition hover:text-stone-800 hover:underline"
             >
-              Hikayemizi keşfet
+              Ürünleri keşfet
             </Link>
           </div>
         </section>

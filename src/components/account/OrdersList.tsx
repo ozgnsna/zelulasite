@@ -45,10 +45,10 @@ export async function OrdersList() {
           Zelula koleksiyonunu keşfederek ilk seçimini yapabilirsin.
         </p>
         <Link
-          href="/koleksiyonlar"
+          href="/urunler"
           className="mt-6 inline-flex rounded-full border border-[#e8dfd3] bg-white px-6 py-2.5 text-sm font-medium text-stone-800 transition duration-200 hover:-translate-y-0.5 hover:border-[#c6a15b]/60 hover:text-[#7b5f32]"
         >
-          Koleksiyonu keşfet
+          Ürünleri keşfet
         </Link>
       </div>
     );

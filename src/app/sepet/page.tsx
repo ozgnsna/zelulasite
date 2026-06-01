@@ -86,10 +86,10 @@ export default async function CartPage({
             Sana yakışan parçalar sessizce bekliyor; keşfetmek için güzel bir an ✨
           </p>
           <Link
-            href="/koleksiyonlar"
+            href="/urunler"
             className="mt-8 inline-flex rounded-full bg-[linear-gradient(135deg,#C6A15B,#E8C98B)] px-8 py-3 text-sm font-medium text-[#2f271f] shadow-[0_10px_24px_rgba(198,161,91,0.28)] transition hover:brightness-[0.97] hover:shadow-[0_14px_30px_rgba(198,161,91,0.36)]"
           >
-            Koleksiyonu keşfet
+            Ürünleri keşfet
           </Link>
         </div>
       ) : (

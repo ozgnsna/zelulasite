@@ -154,10 +154,10 @@ export function HomeHero({ imageSrc, videoUrl }: Props) {
               </Link>
             </motion.div>
             <Link
-              href="/koleksiyonlar"
+              href="/urunler"
               className="pt-1 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-stone-600 underline-offset-[5px] transition hover:text-stone-900 hover:underline"
             >
-              Koleksiyonu keşfet
+              Tüm ürünleri keşfet
             </Link>
           </motion.div>
         </motion.div>

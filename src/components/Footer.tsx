@@ -75,7 +75,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/koleksiyonlar" className={linkClass}>
+                <Link href="/urunler" className={linkClass}>
                   Kampanyalar
                 </Link>
               </li>
