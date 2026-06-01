@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { saveCategory, saveCollection } from "@/app/actions/admin";
+import { TaxonomyImageUploader } from "@/components/admin/TaxonomyImageUploader";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminSettingsPage() {
+export default async function AdminSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ taxonomyImageOk?: string; taxonomyImageError?: string }>;
+}) {
+  const sp = await searchParams;
+  const taxonomyImageOk = sp.taxonomyImageOk === "1";
+  const taxonomyImageError = sp.taxonomyImageError ?? "";
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,6 +45,17 @@ export default async function AdminSettingsPage() {
           <p className="mt-1 text-sm text-stone-600">Ana sayfa kartları ve vitrin görselleri.</p>
         </div>
 
+        {taxonomyImageOk ? (
+          <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
+            Görsel yüklendi ve kaydedildi.
+          </div>
+        ) : null}
+        {taxonomyImageError ? (
+          <div className="mb-4 rounded-xl border border-rose-200/90 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
+            <span className="font-medium">Görsel yüklenemedi:</span> {taxonomyImageError}
+          </div>
+        ) : null}
+
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-stone-200/70 bg-white/95 p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-stone-900">Kategori görselleri</h2>
@@ -54,14 +73,19 @@ export default async function AdminSettingsPage() {
                   <input
                     name="image_url"
                     defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
-                    placeholder="https://… görsel URL"
+                    placeholder="https://… görsel URL (veya aşağıdan yükle)"
                     className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-xs text-stone-800"
                   />
                   <div className="mt-2 flex justify-end">
                     <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
-                      Kaydet
+                      URL'yi kaydet
                     </button>
                   </div>
+                  <TaxonomyImageUploader
+                    kind="category"
+                    id={c.id}
+                    currentImageUrl={String((c as { image_url?: string | null }).image_url ?? "")}
+                  />
                 </form>
               ))}
             </div>
@@ -84,14 +108,19 @@ export default async function AdminSettingsPage() {
                   <input
                     name="image_url"
                     defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
-                    placeholder="https://… görsel URL"
+                    placeholder="https://… görsel URL (veya aşağıdan yükle)"
                     className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-xs text-stone-800"
                   />
                   <div className="mt-2 flex justify-end">
                     <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
-                      Kaydet
+                      URL'yi kaydet
                     </button>
                   </div>
+                  <TaxonomyImageUploader
+                    kind="collection"
+                    id={c.id}
+                    currentImageUrl={String((c as { image_url?: string | null }).image_url ?? "")}
+                  />
                 </form>
               ))}
             </div>

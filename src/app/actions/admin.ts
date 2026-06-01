@@ -778,6 +778,62 @@ export async function saveCategory(formData: FormData) {
   revalidatePath("/");
 }
 
+const TAXONOMY_IMAGE_MAX_BYTES = 3_500_000;
+
+/** Kategori / koleksiyon görselini bilgisayardan yükler ve image_url'i günceller. */
+export async function uploadTaxonomyImage(formData: FormData) {
+  const supabase = createAdminClient();
+  const kind = String(formData.get("kind") ?? "") === "collection" ? "collection" : "category";
+  const id = String(formData.get("id") ?? "").trim();
+  const file = formData.get("image") as File | null;
+  const returnTo = "/admin/settings";
+
+  if (!id || !file || file.size === 0) {
+    redirect(withQueryParam(returnTo, "taxonomyImageError", "Görsel veya kayıt bulunamadı."));
+  }
+  if (!isAllowedProductImageFile(file)) {
+    redirect(withQueryParam(returnTo, "taxonomyImageError", "Yalnızca görsel dosyası yükleyin (JPG, PNG, WebP)."));
+  }
+  if (file.size > TAXONOMY_IMAGE_MAX_BYTES) {
+    redirect(
+      withQueryParam(
+        returnTo,
+        "taxonomyImageError",
+        `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`,
+      ),
+    );
+  }
+
+  const table = kind === "collection" ? "collections" : "categories";
+  const ext = file.name.split(".").pop() ?? "jpg";
+  const path = `${table}/${id}/${Date.now()}.${ext}`;
+  const bytes = await file.arrayBuffer();
+
+  const { error: uploadError } = await supabase.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
+  if (uploadError) {
+    redirect(
+      withQueryParam(
+        returnTo,
+        "taxonomyImageError",
+        uploadError.message || "Depolama yüklemesi başarısız (kota, izin veya bucket).",
+      ),
+    );
+  }
+
+  const { data: pub } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
+  const { error: updateError } = await supabase.from(table).update({ image_url: pub.publicUrl }).eq("id", id);
+  if (updateError) {
+    redirect(withQueryParam(returnTo, "taxonomyImageError", updateError.message || "Görsel kaydedilemedi."));
+  }
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  revalidateTag("storefront-home", "max");
+  redirect(withQueryParam(returnTo, "taxonomyImageOk", "1"));
+}
+
 export async function saveCollection(formData: FormData) {
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "");
