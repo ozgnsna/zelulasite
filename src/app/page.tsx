@@ -6,7 +6,6 @@ import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
 import { HomeHero } from "@/components/home/HomeHero";
-import { CinematicLinkCard } from "@/components/home/CinematicLinkCard";
 import { HomeNewsletter } from "@/components/home/HomeNewsletter";
 import { HomeCategoryGrid } from "@/components/home/HomeCategoryGrid";
 import { HomeWhyZelula } from "@/components/home/HomeWhyZelula";
@@ -21,20 +20,9 @@ import {
 const HERO_IMAGE = "/hero-luxury.png";
 
 export default async function HomePage() {
-  const [{ categories, collections, bestSellers, newArrivals }, { isSignedIn, favoriteIds }] =
+  const [{ categories, bestSellers, newArrivals }, { isSignedIn, favoriteIds }] =
     await Promise.all([getHomeData(), loadFavoriteUiContext()]);
   const heroVideoUrl = process.env.NEXT_PUBLIC_HERO_VIDEO_URL?.trim() || null;
-
-  const collectionFallbackBySlug: Record<string, string> = {
-    aura: "https://images.pexels.com/photos/9428777/pexels-photo-9428777.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    noir: "https://images.pexels.com/photos/1454172/pexels-photo-1454172.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    "daily-glow":
-      "https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  };
-  const collectionFallbackImage =
-    "https://images.pexels.com/photos/10983783/pexels-photo-10983783.jpeg?auto=compress&cs=tinysrgb&w=1200";
-
-  const collectionPreview = collections.slice(0, 4);
 
   const bestSellerItems = bestSellers.map((p) => ({
     product_id: p.id,
@@ -216,39 +204,6 @@ export default async function HomePage() {
 
       <FadeIn delay={0.02}>
         <HomeSocialProof />
-      </FadeIn>
-
-      <FadeIn delay={0.04}>
-        <section className="border-t border-[#ebe6df] bg-[#faf8f5] py-14 sm:py-16">
-          <div className="container-premium">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Koleksiyon</p>
-              <h2 className="mt-3 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
-                Ruhunu yansıtan seriler
-              </h2>
-              <p className="mt-2 text-sm font-light text-stone-600">Her seri kendi ışığını taşır.</p>
-            </div>
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-              {collectionPreview.map((c) => {
-                const imageFromDb = String(c.image_url ?? "").trim();
-                const cover = imageFromDb || collectionFallbackBySlug[c.slug] || collectionFallbackImage;
-                return (
-                  <CinematicLinkCard
-                    key={c.id}
-                    href={`/urunler?koleksiyon=${c.slug}`}
-                    imageSrc={cover}
-                    title={c.name}
-                    kicker=""
-                    cta="Keşfet"
-                    description={null}
-                    preset="collection"
-                    sizes="(max-width: 768px) 100vw, 25vw"
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </section>
       </FadeIn>
 
       <FadeIn delay={0.03}>
