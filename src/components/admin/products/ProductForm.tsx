@@ -389,13 +389,6 @@ export function ProductForm({
                     <input id="product-material" name="material" defaultValue={p.material ?? ""} className={cn(adminField, "py-2")} />
                   </div>
                   <div className="flex flex-wrap gap-2 sm:col-span-2">
-                    <input id="product-featured" type="checkbox" name="featured" defaultChecked={Boolean(p.featured)} className="peer/feat sr-only" />
-                    <label
-                      htmlFor="product-featured"
-                      className="cursor-pointer rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-medium text-stone-600 transition hover:bg-stone-50 peer-checked/feat:border-stone-800 peer-checked/feat:bg-stone-900 peer-checked/feat:text-white"
-                    >
-                      Öne çıkan
-                    </label>
                     <input
                       id="product-new-arrival"
                       type="checkbox"
@@ -683,6 +676,23 @@ export function ProductForm({
                 </span>
               </label>
               <p className="mt-1.5 text-[9px] text-stone-400">Açık: vitrinde görünür.</p>
+            </div>
+
+            <div className="border-t border-stone-100/90 pt-2">
+              <label className="relative flex min-h-[48px] cursor-pointer items-center justify-between gap-3 rounded-xl border border-stone-200/80 bg-stone-50/60 px-3 py-2.5">
+                <input
+                  id="product-featured"
+                  type="checkbox"
+                  name="featured"
+                  defaultChecked={Boolean(p.featured)}
+                  className="peer/feat sr-only"
+                />
+                <span className="text-[11px] font-medium text-stone-700">Öne çıkan</span>
+                <span className="relative h-5 w-9 shrink-0 rounded-full bg-stone-300 transition peer-checked/feat:bg-amber-500">
+                  <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked/feat:translate-x-4" />
+                </span>
+              </label>
+              <p className="mt-1.5 text-[9px] text-stone-400">Açık: ana sayfada «Çok satanlar» alanında gösterilir.</p>
             </div>
 
             <div className="border-t border-stone-100/90 pt-2">
