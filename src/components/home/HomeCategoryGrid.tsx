@@ -42,15 +42,15 @@ export function HomeCategoryGrid({ items }: { items?: HomeCategoryGridItem[] }) 
             location="home_category_grid"
             className="group relative block overflow-hidden rounded-2xl border border-[#e8e2d9] bg-[#fffdfb] shadow-[0_8px_28px_rgba(55,48,40,0.06)] transition-shadow duration-300 hover:shadow-[0_16px_40px_rgba(55,48,40,0.1)]"
           >
-            <div className="relative aspect-[16/11] overflow-hidden bg-stone-100">
+            <div className="relative aspect-[16/11] overflow-hidden bg-gradient-to-b from-[#f6f1e9] to-[#ece4d8]">
               <Image
                 src={c.image}
                 alt=""
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06]"
+                className="object-contain transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" aria-hidden />
+              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 via-black/15 to-transparent" aria-hidden />
               <p className="absolute bottom-3 left-4 font-serif text-xl font-medium tracking-tight text-white drop-shadow-sm sm:bottom-4 sm:left-5 sm:text-2xl">
                 {c.label}
               </p>

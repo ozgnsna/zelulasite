@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { saveCategory, saveCollection } from "@/app/actions/admin";
 import { TaxonomyImageUploader } from "@/components/admin/TaxonomyImageUploader";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -62,31 +61,17 @@ export default async function AdminSettingsPage({
             <p className="mt-1 text-xs text-stone-500">Slug eşleşen kartlarda kullanılır.</p>
             <div className="mt-4 space-y-3">
               {categories.map((c) => (
-                <form key={`cat-${c.id}`} action={saveCategory} className="rounded-xl border border-stone-100 bg-stone-50/50 p-3">
-                  <input type="hidden" name="id" value={c.id} />
-                  <input type="hidden" name="name" value={c.name} />
-                  <input type="hidden" name="slug" value={c.slug} />
-                  <div className="mb-2 flex items-center justify-between gap-2">
+                <div key={`cat-${c.id}`} className="rounded-xl border border-stone-100 bg-stone-50/50 p-3">
+                  <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-stone-900">{c.name}</p>
                     <span className="rounded-full bg-stone-200/80 px-2 py-0.5 text-[10px] font-medium text-stone-600">{c.slug}</span>
-                  </div>
-                  <input
-                    name="image_url"
-                    defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
-                    placeholder="https://… görsel URL (veya aşağıdan yükle)"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-xs text-stone-800"
-                  />
-                  <div className="mt-2 flex justify-end">
-                    <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
-                      URL'yi kaydet
-                    </button>
                   </div>
                   <TaxonomyImageUploader
                     kind="category"
                     id={c.id}
                     currentImageUrl={String((c as { image_url?: string | null }).image_url ?? "")}
                   />
-                </form>
+                </div>
               ))}
             </div>
           </div>
@@ -96,32 +81,17 @@ export default async function AdminSettingsPage({
             <p className="mt-1 text-xs text-stone-500">Koleksiyon kartları bu alanı kullanır.</p>
             <div className="mt-4 space-y-3">
               {collections.map((c) => (
-                <form key={`col-${c.id}`} action={saveCollection} className="rounded-xl border border-stone-100 bg-stone-50/50 p-3">
-                  <input type="hidden" name="id" value={c.id} />
-                  <input type="hidden" name="name" value={c.name} />
-                  <input type="hidden" name="slug" value={c.slug} />
-                  <input type="hidden" name="description" value={String((c as { description?: string | null }).description ?? "")} />
-                  <div className="mb-2 flex items-center justify-between gap-2">
+                <div key={`col-${c.id}`} className="rounded-xl border border-stone-100 bg-stone-50/50 p-3">
+                  <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-stone-900">{c.name}</p>
                     <span className="rounded-full bg-stone-200/80 px-2 py-0.5 text-[10px] font-medium text-stone-600">{c.slug}</span>
-                  </div>
-                  <input
-                    name="image_url"
-                    defaultValue={String((c as { image_url?: string | null }).image_url ?? "")}
-                    placeholder="https://… görsel URL (veya aşağıdan yükle)"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-xs text-stone-800"
-                  />
-                  <div className="mt-2 flex justify-end">
-                    <button type="submit" className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800">
-                      URL'yi kaydet
-                    </button>
                   </div>
                   <TaxonomyImageUploader
                     kind="collection"
                     id={c.id}
                     currentImageUrl={String((c as { image_url?: string | null }).image_url ?? "")}
                   />
-                </form>
+                </div>
               ))}
             </div>
           </div>
