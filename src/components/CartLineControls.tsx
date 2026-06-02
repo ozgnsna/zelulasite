@@ -12,6 +12,8 @@ export type CartLineRow = {
   id: string;
   quantity: number;
   giftCard?: { recipientEmail: string; recipientName?: string | null };
+  variantId?: string;
+  variantLabel?: string;
   product: {
     id: string;
     name: string;
@@ -50,7 +52,7 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
           collection: line.product.collection,
         });
       }
-      void updateCartItem(line.product.id, next).then(() => router.refresh());
+      void updateCartItem(line.product.id, next, line.variantId).then(() => router.refresh());
     });
   };
 
@@ -83,6 +85,11 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
             <p className="text-[15px] text-stone-500">
               Birim {formatTry(line.product.price)}
             </p>
+            {line.variantLabel ? (
+              <p className="mt-1 inline-flex items-center gap-1 rounded-md border border-[#e2d6c4] bg-[#fffdf8] px-2 py-0.5 text-xs font-medium text-[#7d5f35]">
+                Ölçü: {line.variantLabel}
+              </p>
+            ) : null}
             {line.giftCard ? (
               <p className="mt-1 text-xs text-stone-600">
                 Alıcı:{" "}
@@ -161,7 +168,7 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
                   category: line.product.category,
                   collection: line.product.collection,
                 });
-                void updateCartItem(line.product.id, 0).then(() => router.refresh());
+                void updateCartItem(line.product.id, 0, line.variantId).then(() => router.refresh());
               })
             }
             className="text-sm text-stone-500 underline-offset-2 transition hover:text-[#7a5f38] hover:underline"

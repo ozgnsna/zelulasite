@@ -109,11 +109,13 @@ export default async function CartPage({
               <ul className="space-y-5">
                 {lines.map((line) => (
                   <CartLineControls
-                    key={line.product.id}
+                    key={`${line.product.id}::${line.variantId ?? ""}`}
                     line={{
                       id: line.product.id,
                       quantity: line.quantity,
                       giftCard: line.giftCard,
+                      variantId: line.variantId,
+                      variantLabel: line.variantLabel,
                       product: {
                         id: line.product.id,
                         name: line.product.name,
@@ -121,7 +123,7 @@ export default async function CartPage({
                         imageUrl:
                           pickProductCoverImageUrl(line.product.product_images, "https://picsum.photos/id/90/900/900"),
                         price: Number(line.product.price),
-                        stock: line.product.stock_quantity,
+                        stock: line.variantId ? Number(line.variantStock ?? 0) : line.product.stock_quantity,
                         category: line.product.category?.name,
                         collection: line.product.collection?.name ?? null,
                       },

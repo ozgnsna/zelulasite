@@ -34,7 +34,13 @@ export type ProductFormInitialProduct = {
   product_images?: { id: string; image_url: string; is_cover?: boolean | null }[];
 };
 
-export type ProductFormCategoryOption = { id: string; name: string };
+export type ProductFormVariant = {
+  id?: string;
+  label: string;
+  stock_quantity: number;
+};
+
+export type ProductFormCategoryOption = { id: string; name: string; slug?: string | null };
 export type ProductFormCollectionOption = { id: string; name: string };
 
 export type ProductFormCategoryAttributeDefinition = CategoryAttributeDefinition;
@@ -53,6 +59,8 @@ export type ProductFormProps = {
   importedNeedsReview?: boolean;
   categories: ProductFormCategoryOption[];
   collections: ProductFormCollectionOption[];
+  /** Düzenleme modunda mevcut ölçü/varyantlar (örn. yüzük ölçüleri). */
+  initialVariants?: ProductFormVariant[];
   trendyolReadiness?: ProductFormTrendyolReadiness | null;
   /** When set (e.g. edit page), sticky summary can validate category JSON against required attributes. */
   trendyolCategoryAttributeDefinitions?: ProductFormCategoryAttributeDefinition[];

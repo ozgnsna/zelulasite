@@ -73,6 +73,7 @@ export default async function AdminOrderDetailPage({
         quantity,
         unit_price,
         total_price,
+        variant_label,
         products (
           id,
           name,

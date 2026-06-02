@@ -53,8 +53,16 @@ export function CartUpsellStrip({ items }: { items: CartUpsellItem[] }) {
                   start(async () => {
                     const res = await addToCart(p.id);
                     if (!res.ok) {
-                      toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
                       setPendingId(null);
+                      if (/ölçü|varyant/i.test(res.error)) {
+                        toast.message("Ölçü seçimi gerekiyor", {
+                          description: "Ürün sayfasında ölçü seçebilirsin.",
+                          duration: 2600,
+                        });
+                        router.push(`/urunler/${p.slug}`);
+                        return;
+                      }
+                      toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
                       return;
                     }
                     setPendingId(null);

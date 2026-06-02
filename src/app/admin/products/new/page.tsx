@@ -70,7 +70,7 @@ export default async function AdminNewProductPage({
 
       <ProductForm
         mode="create"
-        categories={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
+        categories={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
         collections={(collections.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
         returnTo="/admin/products/new"
         uploadProductImageAction={uploadProductImage}

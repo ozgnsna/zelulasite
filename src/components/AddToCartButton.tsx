@@ -7,6 +7,10 @@ import { toast } from "sonner";
 import { trackAddToCart } from "@/lib/analytics";
 import { dispatchAtcShareMoment } from "@/lib/referral/share-copy";
 import { cn } from "@/lib/utils";
+import {
+  useOptionalVariantSelection,
+  VARIANT_SELECTOR_ANCHOR_ID,
+} from "@/components/product/ProductVariantContext";
 
 type Props = {
   productId: string;
@@ -51,6 +55,19 @@ export function AddToCartButton({
   const router = useRouter();
   const primaryLabel = label ?? "Şimdi sahip ol";
 
+  const variantCtx = useOptionalVariantSelection();
+  const requiresVariant = variantCtx?.requiresVariant ?? false;
+  const selectedVariantId = variantCtx?.selectedVariantId ?? null;
+  const anyVariantInStock = (variantCtx?.variants ?? []).some((v) => v.stock_quantity > 0);
+  // Varyantlı üründe: seçim varsa o ölçünün stoğu; yoksa "tükendi" gösterme (önce seçim iste).
+  const effectiveStock = requiresVariant
+    ? selectedVariantId
+      ? variantCtx?.selectedVariant?.stock_quantity ?? 0
+      : anyVariantInStock
+        ? 1
+        : 0
+    : stock;
+
   const luxury =
     tone === "luxury"
       ? "bg-[linear-gradient(135deg,#C6A15B,#E8C98B)] text-[#2f271f] shadow-[0_10px_28px_rgba(198,161,91,0.34)] transition duration-200 ease-out motion-safe:hover:scale-[1.02] motion-safe:hover:brightness-[0.97] motion-safe:hover:shadow-[0_16px_36px_rgba(198,161,91,0.44)] active:scale-[0.98] active:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold"
@@ -61,13 +78,30 @@ export function AddToCartButton({
       ? "Yönlendiriliyor…"
       : pending
         ? "Ekleniyor…"
-        : stock < 1
+        : effectiveStock < 1
           ? "Tükendi"
-          : primaryLabel;
+          : requiresVariant && !selectedVariantId
+            ? "Ölçü seçin"
+            : primaryLabel;
+
+  /** Varyantlı üründe seçim yapılmadıysa kullanıcıyı seçiciye yönlendirir. */
+  const ensureVariantChosen = (): boolean => {
+    if (!requiresVariant || selectedVariantId) return true;
+    toast.error("Lütfen bir ölçü seçin", {
+      description: "Sepete eklemeden önce ölçü/varyant seçmelisiniz.",
+      duration: 3000,
+    });
+    if (typeof document !== "undefined") {
+      const el = document.getElementById(VARIANT_SELECTOR_ANCHOR_ID);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    return false;
+  };
 
   const runAdd = (thenRedirect?: string) => {
+    if (!ensureVariantChosen()) return;
     start(async () => {
-      const res = await addToCart(productId);
+      const res = await addToCart(productId, selectedVariantId ?? undefined);
       if (!res.ok) {
         toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
         return;
@@ -103,7 +137,7 @@ export function AddToCartButton({
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
         <button
           type="button"
-          disabled={disabled || pending || pendingSecondary || stock < 1}
+          disabled={disabled || pending || pendingSecondary || effectiveStock < 1}
           onClick={() => runAdd(redirectAfterAdd)}
           className={cn(
             "min-h-[3.25rem] flex-1 rounded-full px-6 py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none sm:min-w-0",
@@ -117,11 +151,12 @@ export function AddToCartButton({
         {secondaryLabel ? (
           <button
             type="button"
-            disabled={disabled || pending || pendingSecondary || stock < 1}
-            title={stock < 1 ? "Bu ürün stokta olmadığı için sepete eklenemez." : undefined}
+            disabled={disabled || pending || pendingSecondary || effectiveStock < 1}
+            title={effectiveStock < 1 ? "Bu ürün stokta olmadığı için sepete eklenemez." : undefined}
             onClick={() => {
+              if (!ensureVariantChosen()) return;
               startSecondary(async () => {
-                const res = await addToCart(productId);
+                const res = await addToCart(productId, selectedVariantId ?? undefined);
                 if (!res.ok) {
                   toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
                   return;
@@ -151,7 +186,7 @@ export function AddToCartButton({
           </button>
         ) : null}
       </div>
-      {helperText && stock >= 1 ? (
+      {helperText && effectiveStock >= 1 ? (
         <p className="text-center text-[11px] leading-snug text-stone-500 sm:text-xs">{helperText}</p>
       ) : null}
     </div>

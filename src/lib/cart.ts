@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { fetchVariantsForProducts } from "@/lib/products/variants";
 import type { GiftCardCartMeta } from "@/lib/gift-cards/types";
-import type { CartItem, Product } from "@/lib/types";
+import type { CartItem, Product, ProductVariant } from "@/lib/types";
 
 const CART_KEY = "zelula_cart";
 
@@ -46,6 +47,11 @@ export async function reconcileCartCookie(): Promise<CartItem[]> {
         r as { id: string; stock_quantity: number | null; is_active: boolean | null; product_kind?: string | null },
       ]),
     );
+    const variantsByProduct = await fetchVariantsForProducts(supabase, ids);
+    const variantById = new Map<string, ProductVariant>();
+    for (const list of variantsByProduct.values()) {
+      for (const v of list) variantById.set(v.id, v);
+    }
     const next: CartItem[] = [];
     for (const item of items) {
       const p = byId.get(item.productId);
@@ -57,13 +63,31 @@ export async function reconcileCartCookie(): Promise<CartItem[]> {
         }
         continue;
       }
+      const productVariants = variantsByProduct.get(item.productId) ?? [];
+      if (productVariants.length > 0) {
+        // Varyantlı ürün: seçili ölçü hâlâ geçerli ve stoklu olmalı.
+        if (!item.variantId) continue;
+        const variant = variantById.get(item.variantId);
+        if (!variant || variant.product_id !== item.productId) continue;
+        const qty = variant.stock_quantity <= 0 ? 0 : Math.min(item.quantity, variant.stock_quantity);
+        if (qty > 0) {
+          next.push({ productId: item.productId, quantity: qty, variantId: variant.id, variantLabel: variant.label });
+        }
+        continue;
+      }
       const stock = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
       const maxBuy = stock;
       const qty = maxBuy <= 0 ? 0 : Math.min(item.quantity, maxBuy);
       if (qty > 0) next.push({ productId: item.productId, quantity: qty, giftCard: item.giftCard });
     }
     const same =
-      items.length === next.length && items.every((it, i) => it.productId === next[i]?.productId && it.quantity === next[i]?.quantity);
+      items.length === next.length &&
+      items.every(
+        (it, i) =>
+          it.productId === next[i]?.productId &&
+          it.quantity === next[i]?.quantity &&
+          (it.variantId ?? "") === (next[i]?.variantId ?? ""),
+      );
     if (!same) await setCartItems(next);
     return next;
   } catch {
@@ -83,15 +107,22 @@ export async function getDetailedCart() {
       .in("id", ids)
       .eq("is_active", true);
     const byId = new Map((data ?? []).map((p) => [p.id, p as Product]));
+    const variantsByProduct = await fetchVariantsForProducts(supabase, ids);
     const lines = items
       .map((item) => {
         const product = byId.get(item.productId);
         if (!product) return null;
+        const variant = item.variantId
+          ? (variantsByProduct.get(item.productId) ?? []).find((v) => v.id === item.variantId) ?? null
+          : null;
         return {
           product,
           quantity: item.quantity,
           lineTotal: product.price * item.quantity,
           giftCard: item.giftCard,
+          variantId: item.variantId,
+          variantLabel: item.variantLabel ?? variant?.label,
+          variantStock: variant?.stock_quantity,
         };
       })
       .filter(Boolean) as {
@@ -99,6 +130,9 @@ export async function getDetailedCart() {
         quantity: number;
         lineTotal: number;
         giftCard?: GiftCardCartMeta;
+        variantId?: string;
+        variantLabel?: string;
+        variantStock?: number;
       }[];
     const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
     return { lines, subtotal };

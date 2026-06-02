@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { z } from "zod";
 import { getCartItems, reconcileCartCookie, setCartItems } from "@/lib/cart";
+import { fetchProductVariants, fetchVariantsForProducts } from "@/lib/products/variants";
+import type { CartItem, ProductVariant } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { initializePayment } from "@/lib/payments/provider";
@@ -77,7 +79,12 @@ const LEGAL_CHECKOUT_ACK_ERROR =
 
 export type AddToCartResult = { ok: true } | { ok: false; error: string };
 
-export async function addToCart(productId: string): Promise<AddToCartResult> {
+/** Aynı satır = aynı ürün + aynı varyant (varyantsızsa variantId boş). */
+function sameCartLine(item: CartItem, productId: string, variantId?: string): boolean {
+  return item.productId === productId && (item.variantId ?? "") === (variantId ?? "");
+}
+
+export async function addToCart(productId: string, variantId?: string): Promise<AddToCartResult> {
   await reconcileCartCookie();
   const cart = await getCartItems();
   const supabase = await createClient();
@@ -96,42 +103,76 @@ export async function addToCart(productId: string): Promise<AddToCartResult> {
     revalidatePath("/");
     return { ok: false, error: "Hediye kartı için lütfen hediye kartı sayfasını kullanın." };
   }
-  const stock = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
+
+  const variants = await fetchProductVariants(supabase, productId);
+  let chosenVariantId: string | undefined;
+  let variantLabel: string | undefined;
+  let stock: number;
+  if (variants.length > 0) {
+    if (!variantId) {
+      revalidatePath("/sepet");
+      revalidatePath("/");
+      return { ok: false, error: "Lütfen önce bir ölçü/varyant seçin." };
+    }
+    const variant = variants.find((v) => v.id === variantId);
+    if (!variant) {
+      revalidatePath("/sepet");
+      revalidatePath("/");
+      return { ok: false, error: "Seçilen ölçü artık mevcut değil. Lütfen tekrar seçin." };
+    }
+    chosenVariantId = variant.id;
+    variantLabel = variant.label;
+    stock = variant.stock_quantity;
+  } else {
+    stock = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
+  }
+
   if (stock < 1) {
     revalidatePath("/sepet");
     revalidatePath("/");
     return { ok: false, error: "Bu ürün için stok bulunmuyor." };
   }
-  const existing = cart.find((i) => i.productId === productId);
+  const existing = cart.find((i) => sameCartLine(i, productId, chosenVariantId));
   const currentQty = existing?.quantity ?? 0;
   if (currentQty + 1 > stock) {
     revalidatePath("/sepet");
     revalidatePath("/");
     return { ok: false, error: "Stoktan fazla adet sepete eklenemez." };
   }
-  if (existing) existing.quantity += 1;
-  else cart.push({ productId, quantity: 1 });
+  if (existing) {
+    existing.quantity += 1;
+    existing.variantLabel = variantLabel;
+  } else {
+    cart.push({ productId, quantity: 1, variantId: chosenVariantId, variantLabel });
+  }
   await setCartItems(cart);
   revalidatePath("/sepet");
   revalidatePath("/");
   return { ok: true };
 }
 
-export async function updateCartItem(productId: string, quantity: number) {
+export async function updateCartItem(productId: string, quantity: number, variantId?: string) {
   await reconcileCartCookie();
   const cart = await getCartItems();
   const supabase = await createClient();
-  const { data: p } = await supabase
-    .from("products")
-    .select("stock_quantity,is_active")
-    .eq("id", productId)
-    .maybeSingle();
-  const stock = p && p.is_active ? Math.max(0, Math.floor(Number(p.stock_quantity ?? 0))) : 0;
+  let stock = 0;
+  if (variantId) {
+    const variants = await fetchProductVariants(supabase, productId);
+    const variant = variants.find((v) => v.id === variantId);
+    stock = variant ? variant.stock_quantity : 0;
+  } else {
+    const { data: p } = await supabase
+      .from("products")
+      .select("stock_quantity,is_active")
+      .eq("id", productId)
+      .maybeSingle();
+    stock = p && p.is_active ? Math.max(0, Math.floor(Number(p.stock_quantity ?? 0))) : 0;
+  }
   const desiredRaw = Number(quantity);
   const desired = Number.isFinite(desiredRaw) ? Math.trunc(desiredRaw) : 0;
   const capped = desired <= 0 ? 0 : Math.min(Math.max(1, desired), stock);
   const next = cart
-    .map((i) => (i.productId === productId ? { ...i, quantity: capped } : i))
+    .map((i) => (sameCartLine(i, productId, variantId) ? { ...i, quantity: capped } : i))
     .filter((i) => i.quantity > 0);
   await setCartItems(next);
   revalidatePath("/sepet");
@@ -197,6 +238,8 @@ export async function createCheckout(formData: FormData) {
     return { ok: false, error: "Ürün bilgileri alınamadı. Sayfayı yenileyip tekrar deneyin." };
   }
   const productById = new Map(productRows.map((r) => [r.id, r]));
+  const variantsByProduct = await fetchVariantsForProducts(admin, ids);
+  const chosenVariantByLine = new Map<CartItem, ProductVariant>();
 
   for (const line of cart) {
     const p = productById.get(line.productId);
@@ -227,6 +270,24 @@ export async function createCheckout(formData: FormData) {
       }
       continue;
     }
+    const productVariants = variantsByProduct.get(line.productId) ?? [];
+    if (productVariants.length > 0) {
+      const variant = line.variantId ? productVariants.find((v) => v.id === line.variantId) : undefined;
+      if (!variant) {
+        return {
+          ok: false,
+          error: "Sepetinizdeki bir ürünün ölçüsü artık geçerli değil. Ürün sayfasından tekrar seçin.",
+        };
+      }
+      if (variant.stock_quantity < line.quantity) {
+        return {
+          ok: false,
+          error: "Bir veya daha fazla ölçü için stok yetersiz. Miktarları güncelleyip tekrar deneyin.",
+        };
+      }
+      chosenVariantByLine.set(line, variant);
+      continue;
+    }
     const available = Math.max(0, Math.floor(Number(p.stock_quantity ?? 0)));
     if (available < line.quantity) {
       return {
@@ -242,11 +303,14 @@ export async function createCheckout(formData: FormData) {
     subtotal += Number(p.price) * line.quantity;
     const unit = Number(Number(p.price).toFixed(2));
     const lineTotal = Number((Number(p.price) * line.quantity).toFixed(2));
+    const variant = chosenVariantByLine.get(line);
     return {
       product_id: p.id,
       quantity: line.quantity,
       unit_price: unit,
       total_price: lineTotal,
+      variant_id: variant?.id ?? null,
+      variant_label: variant?.label ?? null,
       gift_card_meta: line.giftCard
         ? {
             denominationId: line.giftCard.denominationId,
@@ -460,7 +524,9 @@ export async function createCheckout(formData: FormData) {
   const orderItemsPayload = orderItems.map((i) => ({ ...i!, order_id: order.id }));
   const itemsInsert = await admin.from("order_items").insert(orderItemsPayload);
   if (itemsInsert.error && isMissingColumnError(itemsInsert.error.message ?? "")) {
-    const slimItems = orderItemsPayload.map(({ gift_card_meta: _g, ...rest }) => rest);
+    const slimItems = orderItemsPayload.map(
+      ({ gift_card_meta: _g, variant_id: _vid, variant_label: _vl, ...rest }) => rest,
+    );
     await admin.from("order_items").insert(slimItems);
   }
 

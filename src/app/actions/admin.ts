@@ -257,6 +257,11 @@ export async function saveProduct(formData: FormData) {
       ),
     );
   }
+  const variantsFieldPresent = formData.has("variants_json");
+  const parsedVariants = parseVariantsJson(String(formData.get("variants_json") ?? ""));
+  const hasVariants = parsedVariants.length > 0;
+  const variantsStockTotal = parsedVariants.reduce((s, v) => s + v.stock_quantity, 0);
+
   const payload = {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? ""),
@@ -265,7 +270,7 @@ export async function saveProduct(formData: FormData) {
     price: Number(formData.get("price") ?? 0),
     compare_at_price: Number(formData.get("compare_at_price") ?? 0) || null,
     sku: String(formData.get("sku") ?? ""),
-    stock_quantity: Number(formData.get("stock_quantity") ?? 0),
+    stock_quantity: hasVariants ? variantsStockTotal : Number(formData.get("stock_quantity") ?? 0),
     featured: formData.get("featured") === "on",
     new_arrival: id ? formData.get("new_arrival") === "on" : true,
     category_id: categoryId,
@@ -316,6 +321,17 @@ export async function saveProduct(formData: FormData) {
       );
     }
     productId = inserted?.id ?? "";
+  }
+
+  if (variantsFieldPresent && productId) {
+    try {
+      await syncProductVariants(supabase, productId, parsedVariants);
+    } catch (err) {
+      console.error("[admin/saveProduct] variant sync failed", {
+        productId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
   // Trendyol API kayıt sırasında bekletilmez — uzun 556/timeout yanıtları «sayfa yüklenemedi» yapıyordu.
   // Pazaryeri güncellemesi için ürün formundaki «Trendyol'a gönder» kullanılır.
@@ -956,6 +972,74 @@ function friendlyProductSaveError(
     return "Kategori seçimi geçersiz. Lütfen listeden bir kategori seçip tekrar kaydedin.";
   }
   return message || fallback;
+}
+
+type ParsedVariant = { id?: string; label: string; stock_quantity: number };
+
+/** Formdan gelen `variants_json` alanını güvenle ayrıştırır (etikete göre tekilleştirir). */
+function parseVariantsJson(raw: string): ParsedVariant[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  let arr: unknown;
+  try {
+    arr = JSON.parse(trimmed);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(arr)) return [];
+  const out: ParsedVariant[] = [];
+  const seen = new Set<string>();
+  for (const v of arr) {
+    const row = v as { id?: unknown; label?: unknown; stock_quantity?: unknown };
+    const label = String(row?.label ?? "").trim();
+    if (!label) continue;
+    const key = label.toLocaleLowerCase("tr-TR");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      id: row?.id ? String(row.id) : undefined,
+      label,
+      stock_quantity: Math.max(0, Math.floor(Number(row?.stock_quantity ?? 0))),
+    });
+  }
+  return out;
+}
+
+/** Ürünün varyantlarını verilen listeye senkronlar: kaldırılanları siler, kalanları günceller, yenileri ekler. */
+async function syncProductVariants(
+  admin: ReturnType<typeof createAdminClient>,
+  productId: string,
+  variants: ParsedVariant[],
+) {
+  const { data: existing } = await admin
+    .from("product_variants")
+    .select("id")
+    .eq("product_id", productId);
+  const existingIds = new Set((existing ?? []).map((r) => String(r.id)));
+  const keepIds = new Set(variants.filter((v) => v.id).map((v) => String(v.id)));
+
+  const toDelete = [...existingIds].filter((eid) => !keepIds.has(eid));
+  if (toDelete.length > 0) {
+    await admin.from("product_variants").delete().in("id", toDelete);
+  }
+
+  for (let i = 0; i < variants.length; i += 1) {
+    const v = variants[i];
+    if (v.id && existingIds.has(v.id)) {
+      await admin
+        .from("product_variants")
+        .update({ label: v.label, stock_quantity: v.stock_quantity, sort_order: i, is_active: true })
+        .eq("id", v.id);
+    } else {
+      await admin.from("product_variants").insert({
+        product_id: productId,
+        label: v.label,
+        stock_quantity: v.stock_quantity,
+        sort_order: i,
+        is_active: true,
+      });
+    }
+  }
 }
 
 function withQueryParam(path: string, key: string, value: string): string {

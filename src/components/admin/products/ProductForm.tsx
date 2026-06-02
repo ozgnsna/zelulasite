@@ -14,6 +14,7 @@ import { ProductFormDraftStatus } from "@/components/admin/products/ProductFormD
 import { ProductFormTrendyolDetailsShell } from "@/components/admin/products/ProductFormTrendyolDetailsShell";
 import { TrendyolChannelActiveControl } from "@/components/admin/products/TrendyolChannelActiveControl";
 import { ProductFormUnsavedGuard } from "@/components/admin/products/ProductFormUnsavedGuard";
+import { ProductVariantEditor } from "@/components/admin/products/ProductVariantEditor";
 import type { ProductFormProps } from "@/components/admin/products/ProductFormTypes";
 import { adminCheckbox, adminField, adminJsonField, adminLabel } from "@/components/admin/products/adminFieldClasses";
 import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
@@ -110,6 +111,7 @@ export function ProductForm({
   importedNeedsReview,
   categories,
   collections,
+  initialVariants = [],
   trendyolReadiness,
   trendyolCategoryAttributePickerRows = [],
   openTrendyolByDefault = false,
@@ -126,6 +128,9 @@ export function ProductForm({
   const stockQuantity = Number(p.stock_quantity ?? 0);
   const isStockCritical = stockQuantity <= 3;
   const isCategoryMissing = !String(p.category_id ?? "").trim();
+  const ringCategoryIds = categories
+    .filter((c) => String(c.slug ?? "").toLowerCase() === "yuzuk")
+    .map((c) => c.id);
 
   const imageUploadFormId = "zelula-product-image-upload";
   const trendyolPushFormId = "zelula-trendyol-marketplace-push";
@@ -359,6 +364,9 @@ export function ProductForm({
               <p className="mt-3 text-[10px] leading-relaxed text-rose-700">
                 Kategori zorunludur. Kaydetmeden önce doğru kategoriyi seçin.
               </p>
+            ) : null}
+            {ringCategoryIds.length > 0 ? (
+              <ProductVariantEditor ringCategoryIds={ringCategoryIds} initialVariants={initialVariants} />
             ) : null}
             <div className="mt-4">
               <OptionalDetails summary="İsteğe bağlı vitrin alanları" hint="Koleksiyon, rozetler, renk ve materyal.">

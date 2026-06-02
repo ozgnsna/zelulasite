@@ -59,6 +59,14 @@ export function QuickAddButton({
         start(async () => {
           const res = await addToCart(productId);
           if (!res.ok) {
+            if (/ölçü|varyant/i.test(res.error) && productSlug) {
+              toast.message("Ölçü seçimi gerekiyor", {
+                description: "Ürün sayfasında ölçü seçebilirsin.",
+                duration: 2600,
+              });
+              router.push(`/urunler/${productSlug}`);
+              return;
+            }
             toast.error("Sepete eklenemedi", { description: res.error, duration: 3200 });
             return;
           }

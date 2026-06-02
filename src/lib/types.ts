@@ -48,8 +48,21 @@ export type Product = {
   category?: Category;
   collection?: Collection | null;
   product_images?: { id: string; image_url: string; is_cover: boolean }[];
+  /** Ölçü/varyant satırları (örn. yüzük ölçüsü). Boşsa ürün varyantsızdır. */
+  variants?: ProductVariant[];
   /** `category?.slug` ile aynı; liste/grid kolaylığı için */
   categorySlug?: string;
+};
+
+/** Ürün varyantı — örn. yüzük ölçüsü "6", "7". Her varyantın kendi stoğu var. */
+export type ProductVariant = {
+  id: string;
+  product_id: string;
+  label: string;
+  sku: string | null;
+  stock_quantity: number;
+  sort_order: number;
+  is_active: boolean;
 };
 
 import type { GiftCardCartMeta } from "@/lib/gift-cards/types";
@@ -59,6 +72,10 @@ export type { GiftCardCartMeta };
 export type CartItem = {
   productId: string;
   quantity: number;
+  /** Seçilen varyant (örn. yüzük ölçüsü). Varyantlı üründe zorunlu. */
+  variantId?: string;
+  /** Sepet/checkout görünümü için anlık etiket kopyası (örn. "7"). */
+  variantLabel?: string;
   /** Dijital hediye kartı satın alımı — checkout / fulfillment için */
   giftCard?: GiftCardCartMeta;
 };

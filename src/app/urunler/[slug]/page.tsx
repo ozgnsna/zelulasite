@@ -18,8 +18,11 @@ import { getSupportWhatsAppHref } from "@/lib/support-contact";
 import { TrackedExternalLink } from "@/components/analytics/TrackedExternalLink";
 import { ProductPdpShippingCard } from "@/components/product/ProductPdpShippingCard";
 import { ProductPdpTraitOptions } from "@/components/product/ProductPdpTraitOptions";
+import { ProductVariantProvider } from "@/components/product/ProductVariantContext";
+import { ProductSizeSelector } from "@/components/product/ProductSizeSelector";
 import { buildPdpShippingPromise } from "@/lib/storefront/pdp-shipping";
 import { resolvePdpTraitGroups } from "@/lib/storefront/pdp-traits";
+import { fetchProductVariants } from "@/lib/products/variants";
 import { normalizeProductImages } from "@/lib/products/cover-image";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -156,14 +159,16 @@ export default async function ProductPage({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
   const admin = createAdminClient();
-  const [favorited, referralCode, traitGroups, shippingPromise] = await Promise.all([
+  const [favorited, referralCode, traitGroups, shippingPromise, variants] = await Promise.all([
     user?.id ? isProductFavorited(supabase, user.id, product.id) : Promise.resolve(false),
     user?.id ? ensureUserReferralCode(admin, user.id) : Promise.resolve(null),
     resolvePdpTraitGroups(product, admin),
     Promise.resolve(buildPdpShippingPromise()),
+    fetchProductVariants(supabase, product.id),
   ]);
   return (
     <main className="container-premium pb-28 pt-8 sm:pb-16 sm:pt-10">
+     <ProductVariantProvider variants={variants}>
       <ViewItemTracker
         item={{
           product_id: product.id,
@@ -271,6 +276,8 @@ export default async function ProductPage({ params }: Props) {
             </div>
 
             <ProductPdpShippingCard promise={shippingPromise} />
+
+            {variants.length > 0 ? <ProductSizeSelector title="Ölçü" /> : null}
 
             <AddToCartButton
               productId={product.id}
@@ -419,6 +426,7 @@ export default async function ProductPage({ params }: Props) {
           </div>
         </div>
       </div>
+     </ProductVariantProvider>
     </main>
   );
 }

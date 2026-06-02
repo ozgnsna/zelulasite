@@ -20,19 +20,48 @@ type LockedOrderRow = {
 async function applyLocalOrderStockDelta(admin: ReturnType<typeof createAdminClient>, orderId: string) {
   const { data: rows } = await admin
     .from("order_items")
-    .select("product_id,quantity")
+    .select("product_id,variant_id,quantity")
     .eq("order_id", orderId);
   if (!rows || rows.length === 0) return;
 
   const qtyByProduct = new Map<string, number>();
+  const qtyByVariant = new Map<string, number>();
+  const variantToProduct = new Map<string, string>();
   for (const row of rows) {
     const productId = String(row.product_id ?? "").trim();
     if (!productId) continue;
     const qty = Number(row.quantity ?? 0);
     if (!Number.isFinite(qty) || qty <= 0) continue;
-    qtyByProduct.set(productId, (qtyByProduct.get(productId) ?? 0) + qty);
+    const variantId = String((row as { variant_id?: unknown }).variant_id ?? "").trim();
+    if (variantId) {
+      qtyByVariant.set(variantId, (qtyByVariant.get(variantId) ?? 0) + qty);
+      variantToProduct.set(variantId, productId);
+    } else {
+      qtyByProduct.set(productId, (qtyByProduct.get(productId) ?? 0) + qty);
+    }
   }
-  const productIds = [...qtyByProduct.keys()];
+
+  // 1) Varyant stoklarını düş.
+  const variantIds = [...qtyByVariant.keys()];
+  const productsWithVariantSale = new Set<string>();
+  if (variantIds.length > 0) {
+    const { data: variantRows } = await admin
+      .from("product_variants")
+      .select("id,product_id,stock_quantity")
+      .in("id", variantIds);
+    for (const v of variantRows ?? []) {
+      const vid = String(v.id ?? "");
+      const current = Number(v.stock_quantity ?? 0);
+      const delta = qtyByVariant.get(vid) ?? 0;
+      const next = Math.max(0, current - delta);
+      await admin.from("product_variants").update({ stock_quantity: next }).eq("id", vid);
+      const pid = String(v.product_id ?? variantToProduct.get(vid) ?? "");
+      if (pid) productsWithVariantSale.add(pid);
+    }
+  }
+
+  // 2) Etkilenen ürünleri güncelle: varyantlıysa toplam stok = varyant toplamı; değilse düz delta.
+  const productIds = [...new Set([...qtyByProduct.keys(), ...productsWithVariantSale])];
   if (productIds.length === 0) return;
 
   const { data: products } = await admin
@@ -40,13 +69,32 @@ async function applyLocalOrderStockDelta(admin: ReturnType<typeof createAdminCli
     .select("id,stock_quantity,product_kind")
     .in("id", productIds);
 
+  // Varyant satışı olan ürünlerin güncel varyant toplamlarını çek.
+  const variantTotals = new Map<string, number>();
+  if (productsWithVariantSale.size > 0) {
+    const { data: allVariants } = await admin
+      .from("product_variants")
+      .select("product_id,stock_quantity,is_active")
+      .in("product_id", [...productsWithVariantSale]);
+    for (const v of allVariants ?? []) {
+      if (v.is_active === false) continue;
+      const pid = String(v.product_id ?? "");
+      variantTotals.set(pid, (variantTotals.get(pid) ?? 0) + Math.max(0, Number(v.stock_quantity ?? 0)));
+    }
+  }
+
   const updates = (products ?? [])
     .filter((p) => p.product_kind !== "gift_card")
     .map((p) => {
       const id = String(p.id ?? "");
-      const current = Number(p.stock_quantity ?? 0);
-      const delta = qtyByProduct.get(id) ?? 0;
-      const next = Math.max(0, current - delta);
+      let next: number;
+      if (productsWithVariantSale.has(id)) {
+        next = Math.max(0, variantTotals.get(id) ?? 0);
+      } else {
+        const current = Number(p.stock_quantity ?? 0);
+        const delta = qtyByProduct.get(id) ?? 0;
+        next = Math.max(0, current - delta);
+      }
       return {
         id,
         stock_quantity: next,

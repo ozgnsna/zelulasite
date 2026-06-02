@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/admin";
 import { ProductForm } from "@/components/admin/products/ProductForm";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchProductVariants } from "@/lib/products/variants";
 import { TRENDYOL_IMPORTED_REVIEW_NOTE } from "@/lib/marketplaces/trendyol/products";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -64,12 +65,14 @@ export default async function AdminEditProductPage({
   if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
 
   const admin = createAdminClient();
-  const [{ data: product }, { data: categories }, { data: collections }, { data: integration }] = await Promise.all([
-    admin.from("products").select("*,product_images(*)").eq("id", id).maybeSingle(),
-    admin.from("categories").select("*").order("name"),
-    admin.from("collections").select("*").order("name"),
-    admin.from("marketplace_integrations").select("id").eq("marketplace", "trendyol").maybeSingle(),
-  ]);
+  const [{ data: product }, { data: categories }, { data: collections }, { data: integration }, productVariants] =
+    await Promise.all([
+      admin.from("products").select("*,product_images(*)").eq("id", id).maybeSingle(),
+      admin.from("categories").select("*").order("name"),
+      admin.from("collections").select("*").order("name"),
+      admin.from("marketplace_integrations").select("id").eq("marketplace", "trendyol").maybeSingle(),
+      fetchProductVariants(admin, id),
+    ]);
   if (!product) redirect("/admin/products");
 
   const categoryId = String((product as Record<string, unknown>).trendyol_category_id ?? "").trim();
@@ -266,8 +269,9 @@ export default async function AdminEditProductPage({
         initialProduct={{ ...(product as Record<string, unknown>), id }}
         productUpdatedAt={String((product as { updated_at?: string }).updated_at ?? "") || null}
         importedNeedsReview={importedNeedsReview}
-        categories={(categories ?? []).map((c) => ({ id: c.id, name: c.name }))}
+        categories={(categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
         collections={(collections ?? []).map((c) => ({ id: c.id, name: c.name }))}
+        initialVariants={productVariants.map((v) => ({ id: v.id, label: v.label, stock_quantity: v.stock_quantity }))}
         trendyolReadiness={trendyolReadiness}
         trendyolCategoryAttributeDefinitions={trendyolCategoryAttributeDefinitions}
         trendyolCategoryAttributePickerRows={trendyolCategoryAttributePickerRows}
