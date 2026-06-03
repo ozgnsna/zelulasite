@@ -597,20 +597,24 @@ export type QnbCheckoutFormBuilt =
   | { secureType: "3DPay"; gatewayUrl: string; hiddenFields: Record<string, string> };
 
 /** Sunucu tarafı imzalı alanlar (+ 3DPay’de kart hariç gizli alanlar). */
-export function buildQnbCheckoutFormFields(input: {
-  orderId: string;
-  purchAmount: string;
-  okUrl: string;
-  failUrl: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-}): QnbCheckoutFormBuilt {
+export function buildQnbCheckoutFormFields(
+  input: {
+    orderId: string;
+    purchAmount: string;
+    okUrl: string;
+    failUrl: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+  },
+  /** Env yerine belirli bir güvenlik tipini zorla (örn. tarayıcıdan 3DHost yönlendirmesi). */
+  forceSecureType?: QnbSecureType,
+): QnbCheckoutFormBuilt {
   const cred = getQnbCredentials();
   if (!cred.ok) {
     return { error: "QNB ortam değişkenleri eksik." };
   }
-  const secureType = getQnbSecureType();
+  const secureType = forceSecureType ?? getQnbSecureType();
   const rnd = makeQnbRnd();
   const txnType = "Auth";
   const installmentCount = "0";

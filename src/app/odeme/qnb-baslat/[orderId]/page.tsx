@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { notFound } from "next/navigation";
 import { BankReviewDemoCardPage } from "@/components/payments/BankReviewDemoCardPage";
-import { Qnb3DPayForm } from "@/components/payments/Qnb3DPayForm";
+import { QnbGatewayAutoPost } from "@/components/payments/QnbGatewayAutoPost";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildQnbCheckoutFormFields,
@@ -14,7 +14,6 @@ import {
   getQnbPaymentConfig,
   isBankReviewMode,
 } from "@/lib/payments/qnb-finansbank";
-import { qnbInitiateApiPath } from "@/lib/payments/qnb-initiate";
 import { isPaymentFlowDebugEnabled, isQnbCustomerFacingDebugVisible, logPayment } from "@/lib/payments/logger";
 
 export const dynamic = "force-dynamic";
@@ -81,10 +80,10 @@ function QnbGatewayRoutingDebugPanel({
           {meta.qnbGatewayUrlOverrideSet ? "evet" : "hayır"}
         </li>
         <li>
-          <span className="font-medium text-stone-800">Sunucu POST hedefi:</span> {meta.gatewayUrlResolved}
+          <span className="font-medium text-stone-800">Banka POST hedefi:</span> {meta.gatewayUrlResolved}
         </li>
         <li>
-          <span className="font-medium text-stone-800">Müşteri formu:</span> {qnbInitiateApiPath()} (sunucu üzerinden)
+          <span className="font-medium text-stone-800">Gönderim:</span> tarayıcıdan bankaya (3DHost) — müşteri IP&apos;si bankaya iletilir
         </li>
       </ul>
     </div>
@@ -188,15 +187,23 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
     }
 
     const okUrl = `${siteUrl}/api/payments/qnb-return`;
-    const built = buildQnbCheckoutFormFields({
-      orderId: String(order.id),
-      purchAmount: Number(order.total ?? 0).toFixed(2),
-      okUrl,
-      failUrl: okUrl,
-      customerName: String(order.customer_name ?? ""),
-      customerEmail: String(order.email ?? ""),
-      customerPhone: String(order.phone ?? ""),
-    });
+    /**
+     * 3DHost + tarayıcıdan POST: form müşterinin tarayıcısından bankaya gider; böylece QNB,
+     * son kullanıcının gerçek IP'sini görür (sunucu IP'si değil). QNB'nin fraud/IP kısıtlaması
+     * uyarısının teknik düzeltmesi budur. Kart bilgisi bankanın hosted sayfasında girilir.
+     */
+    const built = buildQnbCheckoutFormFields(
+      {
+        orderId: String(order.id),
+        purchAmount: Number(order.total ?? 0).toFixed(2),
+        okUrl,
+        failUrl: okUrl,
+        customerName: String(order.customer_name ?? ""),
+        customerEmail: String(order.email ?? ""),
+        customerPhone: String(order.phone ?? ""),
+      },
+      "3DHost",
+    );
 
     if ("error" in built) {
       logPayment("error", "qnb-baslat: form alanları üretilemedi.", {
@@ -223,15 +230,14 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
         incidentId,
         ...getQnbFlowDebugMeta(),
         ...getQnbPaymentConfig(),
-        uiBranch: built.secureType === "3DPay" ? "Qnb3DPayForm" : "unsupported",
+        uiBranch: built.secureType === "3DHost" ? "QnbGatewayAutoPost" : "unsupported",
         gatewayUrl: built.gatewayUrl,
-        initiatePath: qnbInitiateApiPath(),
         missingEnvNamesOnly: qnbPayFlowDiagMissing,
         liveConfigHintEnvNamesOnly: qnbPayFlowDiagHints,
       });
     }
 
-    if (built.secureType === "3DPay") {
+    if (built.secureType === "3DHost") {
       return (
         <main className="min-h-[50vh] bg-[#f9f6f2]">
           {showCustomerDebug ? (
@@ -244,7 +250,7 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
               />
             </div>
           ) : null}
-          <Qnb3DPayForm orderId={String(order.id)} initiatePath={qnbInitiateApiPath()} incidentId={incidentId} />
+          <QnbGatewayAutoPost postUrl={built.gatewayUrl} fields={built.fields} flowDebug={flowDebug} />
         </main>
       );
     }
@@ -252,7 +258,7 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
     return (
       <PrepError
         title="Ödeme yöntemi yapılandırılmamış"
-        detail="Canlı ödeme için QNB_SECURE_TYPE=3DPay kullanın. 3DHost şu an devre dışıdır."
+        detail="Ödeme formu üretilemedi. Lütfen daha sonra tekrar deneyin."
         incidentId={incidentId}
         showTechnical={flowDebug}
       />
