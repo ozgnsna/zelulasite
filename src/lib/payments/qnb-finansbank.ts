@@ -426,6 +426,30 @@ export function makeQnbRnd(): string {
   return `${Date.now()}${randomBytes(8).toString("hex")}`;
 }
 
+/**
+ * QNB `ClientIp` için müşteri IP'sini temizler.
+ * - X-Forwarded-For birden çok adres içerirse ilkini (gerçek istemci) alır.
+ * - Yalnızca geçerli IPv4/IPv6 karakterlerini bırakır.
+ * - QNB IPv4 (15 char) bekler; IPv6 gelirse mümkünse IPv4-mapped son parçayı kullanır.
+ * Geçerli değilse boş döner (alan hiç gönderilmez).
+ */
+export function sanitizeQnbClientIp(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let ip = String(raw).split(",")[0]?.trim() ?? "";
+  if (!ip) return "";
+  // IPv4-mapped IPv6 (::ffff:1.2.3.4) → IPv4
+  const mapped = ip.match(/(?:^|:)((?:\d{1,3}\.){3}\d{1,3})$/);
+  if (mapped?.[1]) ip = mapped[1];
+  const isIpv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(ip);
+  if (isIpv4) {
+    const ok = ip.split(".").every((o) => Number(o) >= 0 && Number(o) <= 255);
+    return ok ? ip : "";
+  }
+  const isIpv6 = /^[0-9a-fA-F:]+$/.test(ip) && ip.includes(":");
+  if (isIpv6) return ip.slice(0, 45);
+  return "";
+}
+
 /** QNB Help — 3DPay Gateway/Default.aspx örnek POST alanları (Pan/Expiry/Cvv2 dahil). */
 export const QNB_HELP_3DPAY_DOC_FIELD_NAMES = [
   "MbrId",
@@ -597,24 +621,26 @@ export type QnbCheckoutFormBuilt =
   | { secureType: "3DPay"; gatewayUrl: string; hiddenFields: Record<string, string> };
 
 /** Sunucu tarafı imzalı alanlar (+ 3DPay’de kart hariç gizli alanlar). */
-export function buildQnbCheckoutFormFields(
-  input: {
-    orderId: string;
-    purchAmount: string;
-    okUrl: string;
-    failUrl: string;
-    customerName: string;
-    customerEmail: string;
-    customerPhone: string;
-  },
-  /** Env yerine belirli bir güvenlik tipini zorla (örn. tarayıcıdan 3DHost yönlendirmesi). */
-  forceSecureType?: QnbSecureType,
-): QnbCheckoutFormBuilt {
+export function buildQnbCheckoutFormFields(input: {
+  orderId: string;
+  purchAmount: string;
+  okUrl: string;
+  failUrl: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  /**
+   * Müşterinin gerçek IP'si (X-Forwarded-For ilk adresi / X-Real-IP).
+   * QNB fraud/IP kısıtlaması doğrulaması için `ClientIp` alanına yazılır.
+   * Hash'e dahil DEĞİLDİR; imzayı etkilemez.
+   */
+  clientIp?: string | null;
+}): QnbCheckoutFormBuilt {
   const cred = getQnbCredentials();
   if (!cred.ok) {
     return { error: "QNB ortam değişkenleri eksik." };
   }
-  const secureType = forceSecureType ?? getQnbSecureType();
+  const secureType = getQnbSecureType();
   const rnd = makeQnbRnd();
   const txnType = "Auth";
   const installmentCount = "0";
@@ -622,6 +648,7 @@ export function buildQnbCheckoutFormFields(
   const okUrl = input.okUrl.trim();
   const failUrl = input.failUrl.trim();
   const orderId = String(input.orderId).trim();
+  const clientIp = sanitizeQnbClientIp(input.clientIp);
 
   const hashInputs: QnbInitHashInputs = {
     mbrId: cred.mbrId,
@@ -656,6 +683,9 @@ export function buildQnbCheckoutFormFields(
       Rnd: rnd,
       Hash: hash,
     };
+    if (clientIp) {
+      hiddenFields.ClientIp = clientIp;
+    }
     if (shouldPostMerchantPassIn3DPay()) {
       hiddenFields.MerchantPass = cred.merchantPass;
     }
@@ -683,6 +713,9 @@ export function buildQnbCheckoutFormFields(
     PurchaserEmail: input.customerEmail.trim().slice(0, 128),
     PurchaserPhone: input.customerPhone.replace(/\s/g, "").slice(0, 20),
   };
+  if (clientIp) {
+    fields.ClientIp = clientIp;
+  }
   return { secureType: "3DHost", gatewayUrl, fields };
 }
 

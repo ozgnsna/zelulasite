@@ -70,7 +70,10 @@ function safeFieldNamesForLog(fields: Record<string, string>): string[] {
  * QNB 3DPay: imzalı alanlar + kart verisi sunucudan bankaya POST edilir; HTML yanıt müşteriye döner.
  * Kart verisi saklanmaz / loglanmaz.
  */
-export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbInitiateResult> {
+export async function initiateQnb3DPayFromFormData(
+  fd: FormData,
+  opts?: { clientIp?: string | null },
+): Promise<QnbInitiateResult> {
   const orderId = String(fd.get("orderId") ?? "").trim();
   if (!orderId) {
     return { ok: false, status: 400, error: "Sipariş kimliği eksik.", errorCode: "ORDER_ID_MISSING" };
@@ -145,6 +148,7 @@ export async function initiateQnb3DPayFromFormData(fd: FormData): Promise<QnbIni
     customerName: String(order.customer_name ?? ""),
     customerEmail: String(order.email ?? ""),
     customerPhone: String(order.phone ?? ""),
+    clientIp: opts?.clientIp ?? null,
   });
 
   if ("error" in built || built.secureType !== "3DPay") {
