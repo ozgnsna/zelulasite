@@ -315,7 +315,7 @@ export function HeaderShell({
               </ul>
               <p className="mt-5 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Aksesuar</p>
               <ul className="mt-2 space-y-0.5">
-                {(["bros", "sapka"] as const).map((slug) => {
+                {(["bros", "sapka", "anahtarlik"] as const).map((slug) => {
                   const t = getTaxonBySlug(slug);
                   if (!t) return null;
                   return (

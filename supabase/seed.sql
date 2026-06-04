@@ -9,6 +9,7 @@ insert into categories (name, slug) values
 ('Aksesuar', 'aksesuar'),
 ('Broş', 'bros'),
 ('Şapka', 'sapka'),
+('Anahtarlık', 'anahtarlik'),
 ('Hediye Kartı', 'hediye-karti')
 on conflict (slug) do nothing;
 

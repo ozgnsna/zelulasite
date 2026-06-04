@@ -188,7 +188,7 @@ export async function getCategoryPageData(slug: string): Promise<CategoryPageDat
     }
     if (taxon.slug === "aksesuar") {
       const r = await getProducts({
-        categorySlugs: ["bros", "sapka", "aksesuar"],
+        categorySlugs: ["bros", "sapka", "anahtarlik", "aksesuar"],
         sort: "newest",
       });
       return {

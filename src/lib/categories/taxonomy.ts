@@ -30,6 +30,14 @@ export const CATEGORY_TAXONOMY: CategoryTaxon[] = [
 
   { id: "bros", name: "Broş", slug: "bros", parentId: "aksesuar", dbCategorySlug: "bros", kind: "leaf" },
   { id: "sapka", name: "Şapka", slug: "sapka", parentId: "aksesuar", dbCategorySlug: "sapka", kind: "leaf" },
+  {
+    id: "anahtarlik",
+    name: "Anahtarlık",
+    slug: "anahtarlik",
+    parentId: "aksesuar",
+    dbCategorySlug: "anahtarlik",
+    kind: "leaf",
+  },
 
   {
     id: "hediye-karti",
@@ -72,7 +80,7 @@ export const MEGA_MENU_GROUPS: { title: string; slugs: readonly string[] }[] = [
     title: "Takılar",
     slugs: ["kolye", "kupe", "bileklik", "bilezik", "yuzuk", "setler", "hediye-karti"],
   },
-  { title: "Aksesuar", slugs: ["bros", "sapka"] },
+  { title: "Aksesuar", slugs: ["bros", "sapka", "anahtarlik"] },
 ];
 
 export function categoryHref(slug: string): string {
