@@ -94,15 +94,18 @@ export function formatShippingCountdownBanner(state: ShippingCountdownState, now
   const bayram = formatBayramShippingBanner(now);
   if (bayram) return bayram;
 
-  const timeLabel =
-    state.hours > 0 ? `${state.hours} sa ${state.minutes} dk` : `${state.minutes} dk`;
-
   if (state.urgency === "same-day") {
+    const timeLabel =
+      state.hours > 0 ? `${state.hours} sa ${state.minutes} dk` : `${state.minutes} dk`;
     return `13:00'e kadar verilen siparişler aynı gün kargoda · ${timeLabel} kaldı`;
   }
 
+  /**
+   * Sonraki pencere (kesimden sonra / hafta sonu): kalan süre 13–72 saat olabilir;
+   * büyük bir "X sa kaldı" sayacı korkutucu ve gereksiz. Sadece sevk gününü göster.
+   */
   const dispatchDay = state.tail.includes("pazartesi") ? "pazartesi" : "yarın";
-  return `13:00'e kadar verilen siparişler ${dispatchDay} kargoda · ${timeLabel} kaldı`;
+  return `Şimdi verilen siparişler ${dispatchDay} kargoda`;
 }
 
 /** Mağaza vitrininde gösterilecek kargo özeti. */
