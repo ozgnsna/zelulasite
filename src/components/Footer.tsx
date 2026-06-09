@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Building2, Mail, MapPin, Phone, Instagram } from "lucide-react";
 import { openCookieSettingsFromUi } from "@/lib/cookies/consent";
 import {
   getSupportPhoneDisplay,
@@ -121,55 +122,79 @@ export function Footer() {
             </ul>
           </div>
 
-          <div className="space-y-3 text-sm text-stone-600">
+          <div className="text-sm text-stone-600">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">İletişim</p>
-            <p>
-              <span className="text-stone-500">Ünvan: </span>
-              <span className="text-stone-700">Özgün Sena Uğur (Şahıs Firması)</span>
-            </p>
-            <p>
-              <span className="text-stone-500">E-posta: </span>
-              <a href="mailto:destek@zeluladesign.com" className={`${linkClass} inline font-medium`}>
-                destek@zeluladesign.com
-              </a>
-            </p>
-            <p>
-              <span className="text-stone-500">Telefon: </span>
-              <a href={`tel:+${getSupportWhatsAppNumber()}`} className={`${linkClass} inline font-medium`}>
-                {getSupportPhoneDisplay()}
-              </a>
-            </p>
-            <p>
-              <span className="text-stone-500">Adres: </span>
-              <span className="text-stone-700">Beylerbeyi Mah. Arabacılar Sok. No:39/1 Üsküdar / İstanbul</span>
-            </p>
-            <p>
-              <span className="text-stone-500">Instagram: </span>
-              <a
-                href={instagramHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline font-semibold text-[#8b5a2b] underline decoration-[#c6a15b]/70 underline-offset-2 transition hover:text-[#6b4320]"
-                onClick={() =>
-                  trackInstagramClick({ location: "footer_contact", href: instagramHref })
-                }
-              >
-                @zelulaofficial
-              </a>
-            </p>
+
+            <div className="mt-4 space-y-3.5 rounded-2xl border border-neutral-200 bg-white/70 p-4 sm:space-y-3 sm:border-0 sm:bg-transparent sm:p-0">
+              <div className="flex items-start gap-2.5">
+                <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Ünvan</p>
+                  <p className="text-stone-700">Özgün Sena Uğur (Şahıs Firması)</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-stone-400">E-posta</p>
+                  <a href="mailto:destek@zeluladesign.com" className={`${linkClass} inline font-medium break-all`}>
+                    destek@zeluladesign.com
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Telefon</p>
+                  <a href={`tel:+${getSupportWhatsAppNumber()}`} className={`${linkClass} inline font-medium`}>
+                    {getSupportPhoneDisplay()}
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Adres</p>
+                  <p className="text-stone-700">Beylerbeyi Mah. Arabacılar Sok. No:39/1 Üsküdar / İstanbul</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <Instagram className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Instagram</p>
+                  <a
+                    href={instagramHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline font-semibold text-[#8b5a2b] underline decoration-[#c6a15b]/70 underline-offset-2 transition hover:text-[#6b4320]"
+                    onClick={() =>
+                      trackInstagramClick({ location: "footer_contact", href: instagramHref })
+                    }
+                  >
+                    @zelulaofficial
+                  </a>
+                </div>
+              </div>
+            </div>
+
             <a
               href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 flex min-w-0 max-w-full items-center gap-2 text-sm font-medium text-green-600 underline-offset-2 transition hover:text-green-700 hover:underline"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-700 transition hover:bg-green-100 sm:w-auto"
               onClick={() =>
                 trackWhatsAppClick({ location: "footer_support", href: whatsappHref })
               }
             >
               <WhatsAppIcon className="shrink-0 text-[#25D366]" />
-              <span className="min-w-0 break-words">WhatsApp ile hızlı destek al</span>
+              <span>WhatsApp ile hızlı destek</span>
             </a>
-            <p className="text-xs text-stone-500">Instagram DM&apos;den %10 indirim al 🎁</p>
+
+            <p className="mt-3 text-xs text-stone-500">Instagram DM&apos;den %10 indirim al 🎁</p>
           </div>
         </div>
 
