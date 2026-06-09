@@ -24,6 +24,8 @@ import { pickCheckoutReferrer, ZELULA_REFERRAL_COOKIE } from "@/lib/referral/ser
 import { LEGAL_CONTRACT_VERSION } from "@/lib/legal/legal-content";
 import { buildLegalSnapshot } from "@/lib/legal/legal-snapshot";
 import { notifyAdminOrderEventWithResult } from "@/lib/notifications/order-admin";
+import { sendCustomerOrderEmail } from "@/lib/notifications/order-customer";
+import { getBankTransferDetails } from "@/lib/bank-transfer";
 
 /** ZLL0001… atomik sıra; migration / RPC yoksa eski uzun format. */
 async function allocateOrderNumber(admin: ReturnType<typeof createAdminClient>): Promise<string> {
@@ -608,6 +610,55 @@ export async function createCheckout(formData: FormData) {
         notifyResult.email.skippedReason ||
         notifyResult.whatsapp.skippedReason ||
         null,
+      processed_at: new Date().toISOString(),
+    });
+
+    const bankDetails = getBankTransferDetails();
+    const bankCustomerAddress = [
+      parsed.data.address_line,
+      parsed.data.district,
+      parsed.data.city,
+      parsed.data.postal_code,
+    ]
+      .map((p) => String(p ?? "").trim())
+      .filter(Boolean)
+      .join(", ");
+    const customerResult = await sendCustomerOrderEmail({
+      kind: "bank_transfer",
+      orderNumber: order.order_number,
+      customerName: order.customer_name,
+      customerEmail: order.email,
+      total: paymentTotal,
+      currency: String(order.currency ?? "TRY"),
+      items: cart.map((line) => {
+        const p = productById.get(line.productId);
+        return {
+          name: String(p?.name ?? "Ürün"),
+          quantity: line.quantity,
+          totalPrice: Number((Number(p?.price ?? 0) * line.quantity).toFixed(2)),
+        };
+      }),
+      shippingAddress: bankCustomerAddress || null,
+      bank: bankDetails.configured
+        ? {
+            bankName: bankDetails.bankName,
+            accountHolder: bankDetails.accountHolder,
+            ibanDisplay: bankDetails.ibanDisplay,
+          }
+        : null,
+      orderUrl: `${siteUrl}/siparis/${order.id}/basarili?pm=bank_transfer`,
+    });
+    await admin.from("payment_logs").insert({
+      order_id: order.id,
+      provider: "internal_customer_notify",
+      event_type: "customer_notify",
+      status: customerResult.ok ? "sent" : customerResult.attempted ? "failed" : "skipped",
+      response_payload: customerResult,
+      callback_payload: null,
+      callback_hash: null,
+      reference: order.order_number,
+      verification_status: customerResult.ok ? "passed" : "failed",
+      verification_error: customerResult.error || customerResult.skippedReason || null,
       processed_at: new Date().toISOString(),
     });
     // Bank transfer siparişi kaydedildikten sonra sepet temizlenir.

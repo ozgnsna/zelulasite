@@ -4,6 +4,7 @@ import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inven
 import type { PaymentCallbackPayload } from "@/lib/payments/types";
 import { logPayment } from "@/lib/payments/logger";
 import { notifyAdminOrderEventWithResult } from "@/lib/notifications/order-admin";
+import { sendCustomerOrderEmail } from "@/lib/notifications/order-customer";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
 import {
   captureGiftCardRedemptionForOrder,
@@ -266,7 +267,9 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
 
     const { data: orderForNotify } = await admin
       .from("orders")
-      .select("id,order_number,customer_name,email,phone,total,currency,payment_status,payment_provider")
+      .select(
+        "id,order_number,customer_name,email,phone,total,currency,payment_status,payment_provider,shipping_address_json",
+      )
       .eq("id", payload.orderId)
       .maybeSingle();
     const { data: itemsForNotify } = await admin
@@ -316,6 +319,55 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
           notifyResult.email.skippedReason ||
           notifyResult.whatsapp.skippedReason ||
           null,
+        processed_at: new Date().toISOString(),
+      });
+
+      const customerItems = (itemsForNotify ?? []).map((i) => {
+        const product = i.product as { name?: string } | { name?: string }[] | null;
+        const name = Array.isArray(product) ? product[0]?.name : product?.name;
+        return {
+          name: String(name ?? "Ürün"),
+          quantity: Number(i.quantity ?? 0),
+          totalPrice: Number(i.total_price ?? 0),
+        };
+      });
+      const addr = orderForNotify.shipping_address_json as
+        | {
+            address_line?: string;
+            district?: string;
+            city?: string;
+            postal_code?: string;
+          }
+        | null;
+      const shippingAddress = addr
+        ? [addr.address_line, addr.district, addr.city, addr.postal_code]
+            .map((p) => String(p ?? "").trim())
+            .filter(Boolean)
+            .join(", ")
+        : null;
+
+      const customerResult = await sendCustomerOrderEmail({
+        kind: "paid",
+        orderNumber: String(orderForNotify.order_number ?? ""),
+        customerName: String(orderForNotify.customer_name ?? ""),
+        customerEmail: String(orderForNotify.email ?? ""),
+        total: Number(orderForNotify.total ?? 0),
+        currency: String(orderForNotify.currency ?? "TRY"),
+        items: customerItems,
+        shippingAddress,
+        orderUrl: `${siteUrl}/siparis/${payload.orderId}/basarili`,
+      });
+      await admin.from("payment_logs").insert({
+        order_id: payload.orderId,
+        provider: "internal_customer_notify",
+        event_type: "customer_notify",
+        status: customerResult.ok ? "sent" : customerResult.attempted ? "failed" : "skipped",
+        response_payload: customerResult,
+        callback_payload: null,
+        callback_hash: null,
+        reference: orderForNotify.order_number,
+        verification_status: customerResult.ok ? "passed" : "failed",
+        verification_error: customerResult.error || customerResult.skippedReason || null,
         processed_at: new Date().toISOString(),
       });
     }
