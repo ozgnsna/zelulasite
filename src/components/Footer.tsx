@@ -124,6 +124,10 @@ export function Footer() {
           <div className="space-y-3 text-sm text-stone-600">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">İletişim</p>
             <p>
+              <span className="text-stone-500">Ünvan: </span>
+              <span className="text-stone-700">Özgün Sena Uğur (Şahıs Firması)</span>
+            </p>
+            <p>
               <span className="text-stone-500">E-posta: </span>
               <a href="mailto:destek@zeluladesign.com" className={`${linkClass} inline font-medium`}>
                 destek@zeluladesign.com

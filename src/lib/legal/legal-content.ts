@@ -6,6 +6,7 @@
 export const LEGAL_CONTRACT_VERSION = "v1" as const;
 
 const SELLER = "Zelula";
+const SELLER_LEGAL_TITLE = "Özgün Sena Uğur (Zelula – Şahıs Firması)";
 const SITE_HREF = "https://www.zeluladesign.com";
 const SITE_LABEL = "www.zeluladesign.com";
 const SUPPORT_EMAIL = "destek@zeluladesign.com";
@@ -21,7 +22,7 @@ export function getDistanceSalesContractText(): string {
 
 ## 1. Taraflar
 
-Satıcı: ${SELLER}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. İnternet sitesi: ${SITE_HREF} (${SITE_LABEL}).
+Satıcı: ${SELLER_LEGAL_TITLE}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. İnternet sitesi: ${SITE_HREF} (${SITE_LABEL}).
 
 Alıcı: Sipariş sırasında iletişim bilgilerini paylaşan ve ödeme yükümlülüğünü üstlenen tüketici.
 
@@ -74,7 +75,7 @@ export function getPreContractInfoText(): string {
 
 ## 1. Satıcı bilgileri
 
-Satıcı: ${SELLER}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. Web sitesi: ${SITE_HREF} (${SITE_LABEL}).
+Satıcı: ${SELLER_LEGAL_TITLE}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. Web sitesi: ${SITE_HREF} (${SITE_LABEL}).
 
 ## 2. Ürün bilgileri
 
@@ -155,7 +156,7 @@ export function getPrivacyPolicyText(): string {
 
 ## 1. Veri sorumlusu
 
-Kişisel verileriniz, ürün ve hizmet sunumu kapsamında veri sorumlusu sıfatıyla ${SELLER} tarafından işlenebilir. Başvuru ve talepleriniz için ${SUPPORT_EMAIL} adresini kullanabilirsiniz.
+Kişisel verileriniz, ürün ve hizmet sunumu kapsamında veri sorumlusu sıfatıyla ${SELLER_LEGAL_TITLE} tarafından işlenebilir. Başvuru ve talepleriniz için ${SUPPORT_EMAIL} adresini kullanabilirsiniz.
 
 ## 2. İşlenen veri kategorileri (örnek)
 
