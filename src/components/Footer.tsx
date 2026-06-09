@@ -4,7 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { openCookieSettingsFromUi } from "@/lib/cookies/consent";
-import { getSupportWhatsAppHref } from "@/lib/support-contact";
+import {
+  getSupportPhoneDisplay,
+  getSupportWhatsAppHref,
+  getSupportWhatsAppNumber,
+} from "@/lib/support-contact";
 import { trackInstagramClick, trackWhatsAppClick } from "@/lib/analytics";
 
 const linkClass =
@@ -124,6 +128,16 @@ export function Footer() {
               <a href="mailto:destek@zeluladesign.com" className={`${linkClass} inline font-medium`}>
                 destek@zeluladesign.com
               </a>
+            </p>
+            <p>
+              <span className="text-stone-500">Telefon: </span>
+              <a href={`tel:+${getSupportWhatsAppNumber()}`} className={`${linkClass} inline font-medium`}>
+                {getSupportPhoneDisplay()}
+              </a>
+            </p>
+            <p>
+              <span className="text-stone-500">Adres: </span>
+              <span className="text-stone-700">Beylerbeyi Mah. Arabacılar Sok. No:39/1 Üsküdar / İstanbul</span>
             </p>
             <p>
               <span className="text-stone-500">Instagram: </span>

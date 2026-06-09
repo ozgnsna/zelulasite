@@ -9,6 +9,8 @@ const SELLER = "Zelula";
 const SITE_HREF = "https://www.zeluladesign.com";
 const SITE_LABEL = "www.zeluladesign.com";
 const SUPPORT_EMAIL = "destek@zeluladesign.com";
+const SELLER_ADDRESS = "Beylerbeyi Mah. Arabacılar Sok. No:39/1 Üsküdar / İstanbul";
+const SELLER_PHONE = "+90 553 371 00 24";
 
 const RETURN_CARRIER_RULE =
   "Cayma hakkı kapsamında yapılan iadelerde, SATICI tarafından belirtilen anlaşmalı kargo firmasının kullanılması durumunda iade kargo ücreti SATICI tarafından karşılanır.";
@@ -19,7 +21,7 @@ export function getDistanceSalesContractText(): string {
 
 ## 1. Taraflar
 
-Satıcı: ${SELLER}. İnternet sitesi: ${SITE_HREF} (${SITE_LABEL}).
+Satıcı: ${SELLER}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. İnternet sitesi: ${SITE_HREF} (${SITE_LABEL}).
 
 Alıcı: Sipariş sırasında iletişim bilgilerini paylaşan ve ödeme yükümlülüğünü üstlenen tüketici.
 
@@ -72,7 +74,7 @@ export function getPreContractInfoText(): string {
 
 ## 1. Satıcı bilgileri
 
-Satıcı: ${SELLER}. Web sitesi: ${SITE_HREF} (${SITE_LABEL}).
+Satıcı: ${SELLER}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. Web sitesi: ${SITE_HREF} (${SITE_LABEL}).
 
 ## 2. Ürün bilgileri
 
