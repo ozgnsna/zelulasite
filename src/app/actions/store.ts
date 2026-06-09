@@ -397,7 +397,7 @@ export async function createCheckout(formData: FormData) {
     currency: "TRY",
     payment_status: "pending",
     order_status: "pending",
-    payment_provider: isBankTransfer ? "bank_transfer" : "qnb_finansbank",
+    payment_provider: isBankTransfer ? "bank_transfer" : "paytr",
     shipping_address_json: {
       address_line: parsed.data.address_line,
       city: parsed.data.city,
@@ -431,7 +431,7 @@ export async function createCheckout(formData: FormData) {
     total: Number(total.toFixed(2)),
     payment_status: "pending",
     order_status: "pending",
-    payment_provider: isBankTransfer ? "bank_transfer" : "qnb_finansbank",
+    payment_provider: isBankTransfer ? "bank_transfer" : "paytr",
   };
 
   let { data: order, error } = await admin
@@ -634,8 +634,8 @@ export async function createCheckout(formData: FormData) {
     .join(" — ")
     .slice(0, 400);
 
-  const cardOkUrl = `${siteUrl}/api/payments/qnb-return`;
-  const cardFailUrl = cardOkUrl;
+  const cardOkUrl = `${siteUrl}/odeme/basarili`;
+  const cardFailUrl = `${siteUrl}/odeme/basarisiz`;
 
   const payment = await initializePayment({
     orderId: order.id,
@@ -649,7 +649,7 @@ export async function createCheckout(formData: FormData) {
     },
     successUrl: cardOkUrl,
     failUrl: cardFailUrl,
-    callbackUrl: `${siteUrl}/api/payments/qnb-return`,
+    callbackUrl: `${siteUrl}/api/payments/paytr-callback`,
     clientIp,
     shippingAddressLine,
   });
@@ -660,7 +660,7 @@ export async function createCheckout(formData: FormData) {
 
   await admin.from("payment_logs").insert({
     order_id: order.id,
-    provider: "qnb_finansbank",
+    provider: "paytr",
     event_type: "init",
     status: payment.ok ? "initialized" : "failed",
     request_payload: checkoutLogPayload,
@@ -754,8 +754,7 @@ export async function createCheckout(formData: FormData) {
   }
 
   const redirectTrimmed = payment.redirectUrl.trim();
-  const cardHandoffOk =
-    redirectTrimmed.includes("/odeme/qnb-baslat/") || redirectTrimmed.includes("/odeme/qnb-mock");
+  const cardHandoffOk = redirectTrimmed.includes("/odeme/paytr-baslat/");
   if (!cardHandoffOk) {
     logPayment("error", "Checkout: kart için redirectUrl beklenen rota değil (bypass / yanlış yapılandırma).", {
       orderId: order.id,
@@ -798,7 +797,7 @@ export async function createCheckout(formData: FormData) {
     url: redirectTrimmed,
     orderId: order.id,
     orderNumber: order.order_number,
-    fallbackUrl: `/odeme/qnb-baslat/${order.id}`,
+    fallbackUrl: `/odeme/paytr-baslat/${order.id}`,
     paymentMethod: "card" as const,
     ...(isPaymentFlowDebugEnabled()
       ? { payFlowDebugSnapshot: { ...getQnbFlowDebugMeta(), redirectUrl: redirectTrimmed } }

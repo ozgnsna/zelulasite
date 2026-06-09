@@ -231,8 +231,8 @@ export function CheckoutForm({
               }
               const allowMockHandoff =
                 process.env.NODE_ENV !== "production" && urlStr.includes("/odeme/qnb-mock");
-              if (isCardPayment && !urlStr.includes("/odeme/qnb-baslat/") && !allowMockHandoff) {
-                console.error("[checkout] blocked card navigation: expected /odeme/qnb-baslat/", {
+              if (isCardPayment && !urlStr.includes("/odeme/paytr-baslat/") && !allowMockHandoff) {
+                console.error("[checkout] blocked card navigation: expected /odeme/paytr-baslat/", {
                   rUrl: urlStr,
                   orderId: "orderId" in r ? r.orderId : undefined,
                 });
