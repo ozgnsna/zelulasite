@@ -14,15 +14,6 @@ type Props = { searchParams: Promise<{ oid?: string; pm?: string }> };
 
 export const dynamic = "force-dynamic";
 
-/** Geçici: canlıda yeni dağıtımın gerçekten bu dosyayı sunduğunu doğrulamak için. Doğrulama sonrası kaldırın. */
-function DebugBuildStripe() {
-  return (
-    <div className="mb-4 w-full border-2 border-yellow-400 bg-black py-2.5 text-center text-xs font-bold uppercase tracking-[0.2em] text-yellow-300">
-      DEBUG BUILD ACTIVE
-    </div>
-  );
-}
-
 export default async function PaymentSuccessPage({ searchParams }: Props) {
   const sp = await searchParams;
   const orderId = sp.oid;
@@ -31,7 +22,6 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
   if (!orderId) {
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
-        <DebugBuildStripe />
         <h1 className="font-serif text-2xl text-stone-900">Oturum bulunamadı</h1>
         <p className="mt-3 text-stone-600">Geçerli bir ödeme kaydı bulunamadı.</p>
         <Link href="/sepet" className="mt-8 inline-block text-sm font-medium text-stone-700 hover:underline">
@@ -85,7 +75,6 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
 
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
-      <DebugBuildStripe />
       {prematureCardOrder ? (
         <div className="mb-6 rounded-xl border-2 border-rose-500 bg-rose-50 px-4 py-3 text-left text-sm text-rose-950 shadow-sm">
           <p className="font-semibold text-rose-900">Bu sayfa ödeme tamamlanmadan açıldı</p>
@@ -197,7 +186,6 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
   } catch {
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
-        <DebugBuildStripe />
         <h1 className="font-serif text-2xl text-stone-900">Geçici bir sorun oluştu</h1>
         <p className="mt-3 text-sm text-stone-600">
           Sipariş referansı: <span className="font-mono">{orderId}</span>
