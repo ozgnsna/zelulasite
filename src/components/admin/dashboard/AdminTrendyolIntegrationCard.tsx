@@ -144,9 +144,9 @@ export function AdminTrendyolIntegrationCard({
         <article className="mt-5 rounded-xl border border-[#c6a15b]/40 bg-[#faf6ef] p-4">
           <h3 className="text-sm font-semibold text-stone-900">Günlük stok eşitleme</h3>
           <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-            Günde bir kez önerilir: son 24 saat Trendyol siparişlerini işler, site ile Trendyol stoklarını eşitler
-            (düşük olan geçerli) ve Trendyol&apos;a güncel stok gönderir. Satış kaçırılmasın diye sabah veya gün sonu
-            kullanın.
+            Günde bir kez otomatik çalışır: son 24 saat Trendyol siparişlerini işler, site stoğunu Trendyol stoğuyla
+            birebir eşitler (Trendyol kaynak — azalır da artar da) ve Trendyol&apos;a güncel stok gönderir. Bu buton ile
+            beklemeden de elle eşitleyebilirsin.
           </p>
           <form action={reconcileDailyTrendyolStockAction} className="mt-3">
             <AdminTrendyolSubmitButton variant="primary" pendingLabel="Eşitleniyor…">

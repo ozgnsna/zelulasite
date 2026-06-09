@@ -10,6 +10,8 @@ type LinkedProduct = {
   is_active: boolean | null;
   trendyol_active: boolean | null;
   trendyol_barcode: string | null;
+  trendyol_stock_code: string | null;
+  sku: string | null;
 };
 
 export type DailyStockReconcileResult =
@@ -30,9 +32,9 @@ export type DailyStockReconcileResult =
   | { ok: false; message: string };
 
 /**
- * Günlük stok eşitleme:
+ * Günlük stok eşitleme (Trendyol = kaynak):
  * 1) Son N gün Trendyol siparişlerini işle (Zelula stok düş)
- * 2) Trendyol API stok snapshot'ı ile barkod eşleşen ürünlerde hedef = min(Zelula, TY)
+ * 2) Trendyol API stok snapshot'ı ile barkod/stok kodu/SKU eşleşen ürünlerde site stoğu = TY stoğu (azalır da artar da)
  * 3) Trendyol'a açık ürünlerde güncel stoku gönder
  */
 export async function reconcileDailyStockWithTrendyol(
@@ -59,8 +61,8 @@ export async function reconcileDailyStockWithTrendyol(
 
   const { data: linkedRows } = await admin
     .from("products")
-    .select("id,stock_quantity,is_active,trendyol_active,trendyol_barcode")
-    .not("trendyol_barcode", "is", null);
+    .select("id,stock_quantity,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,sku")
+    .or("trendyol_barcode.not.is.null,trendyol_stock_code.not.is.null,sku.not.is.null");
 
   let stockAdjusted = 0;
   let siteDeactivated = 0;
@@ -69,33 +71,37 @@ export async function reconcileDailyStockWithTrendyol(
 
   for (const row of (linkedRows ?? []) as LinkedProduct[]) {
     const id = String(row.id ?? "").trim();
-    const barcode = String(row.trendyol_barcode ?? "").trim();
-    if (!id || !barcode) continue;
-
-    if (!snapshot.stockByBarcode.has(barcode)) {
+    if (!id) continue;
+    /** Sipariş akışıyla tutarlı: barkod / stok kodu / SKU üçlüsünden TY feed'inde eşleşeni bul. */
+    const matchKey = [row.trendyol_barcode, row.trendyol_stock_code, row.sku]
+      .map((v) => String(v ?? "").trim())
+      .find((c) => c && snapshot.stockByBarcode.has(c));
+    if (!matchKey) {
       skippedNotInTrendyolFeed += 1;
       continue;
     }
 
-    const tyStock = snapshot.stockByBarcode.get(barcode) ?? 0;
+    const tyStock = snapshot.stockByBarcode.get(matchKey) ?? 0;
     const zelulaStock = Math.max(0, Math.trunc(Number(row.stock_quantity ?? 0)));
-    const target = Math.min(zelulaStock, tyStock);
+    /** Trendyol kaynak kabul edilir: site stoğu TY ile birebir eşitlenir (azalır da artar da). */
+    const target = tyStock;
     const wasActive = Boolean(row.is_active);
-    const needsUpdate = target !== zelulaStock || (target === 0 && wasActive);
+    const willBeActive = target > 0;
+    const needsUpdate = target !== zelulaStock || willBeActive !== wasActive;
 
     if (needsUpdate) {
       await admin
         .from("products")
         .update({
           stock_quantity: target,
-          is_active: target > 0,
+          is_active: willBeActive,
         })
         .eq("id", id);
       stockAdjusted += 1;
       if (target === 0) siteDeactivated += 1;
     }
 
-    if (Boolean(row.trendyol_active) && barcode) {
+    if (Boolean(row.trendyol_active)) {
       pushIds.push(id);
     }
   }
