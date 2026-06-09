@@ -13,7 +13,7 @@ import type {
  */
 
 const GET_TOKEN_URL = "https://www.paytr.com/odeme/api/get-token";
-const IFRAME_BASE = "https://www.paytr.com/odeme/guzelhosting";
+const IFRAME_BASE = "https://www.paytr.com/odeme/guvenli";
 
 export function getPaytrConfig() {
   return {
