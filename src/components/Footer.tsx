@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Building2, Mail, MapPin, Phone, Instagram } from "lucide-react";
+import { Building2, Mail, MapPin, Phone } from "lucide-react";
 import { openCookieSettingsFromUi } from "@/lib/cookies/consent";
 import {
   getSupportPhoneDisplay,
@@ -18,6 +18,27 @@ const linkClass =
 const whatsappDefaultText =
   "Merhaba Zelula, ürünler hakkında bilgi almak istiyorum.";
 const whatsappHref = getSupportWhatsAppHref(whatsappDefaultText);
+
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -163,7 +184,7 @@ export function Footer() {
               </div>
 
               <div className="flex items-start gap-2.5">
-                <Instagram className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <InstagramIcon className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-wide text-stone-400">Instagram</p>
                   <a
