@@ -120,12 +120,7 @@ export default async function PaytrPaymentStartPage({ params }: { params: Promis
 
     return (
       <main className="min-h-[60vh] bg-[#f9f6f2]">
-        <div className="mx-auto max-w-xl px-4 py-8">
-          <h1 className="mb-1 text-center text-lg font-medium text-stone-900">Güvenli Ödeme</h1>
-          <p className="mb-6 text-center text-sm text-stone-600">
-            Sipariş #{String(order.order_number ?? "")} · {Number(order.total ?? 0).toFixed(2)}{" "}
-            {String(order.currency ?? "TRY")}
-          </p>
+        <div className="mx-auto max-w-xl px-4 py-6">
           <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <PaytrIframe iframeUrl={tokenResult.iframeUrl} />
           </div>
