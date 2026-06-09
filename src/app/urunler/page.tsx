@@ -73,17 +73,19 @@ export default async function ProductsPage({ searchParams }: Props) {
         </p>
       </header>
 
-      <form className="mt-6 flex max-w-2xl gap-2" action="/urunler" method="get">
+      <form className="mt-6 flex w-full max-w-2xl items-center gap-2" action="/urunler" method="get">
         {categorySlug ? <input type="hidden" name="kategori" value={categorySlug} /> : null}
         {collectionSlug ? <input type="hidden" name="koleksiyon" value={collectionSlug} /> : null}
-        <input
-          type="search"
-          name="q"
-          defaultValue={searchQuery}
-          placeholder="Ürün, materyal veya renk ara…"
-          aria-label="Ürün ara"
-          className="min-w-0 flex-1 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-stone-400"
-        />
+        <div className="min-w-0 flex-1">
+          <input
+            type="search"
+            name="q"
+            defaultValue={searchQuery}
+            placeholder="Ürün, materyal veya renk ara…"
+            aria-label="Ürün ara"
+            className="w-full rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-stone-400"
+          />
+        </div>
         <button
           type="submit"
           className="shrink-0 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
