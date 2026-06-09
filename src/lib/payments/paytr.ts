@@ -117,6 +117,7 @@ export async function createPaytrIframeToken(input: PaytrTokenInput): Promise<Pa
     currency,
     test_mode: testMode,
     lang: "tr",
+    iframe_v2: "1",
   });
 
   let resp: Response;
