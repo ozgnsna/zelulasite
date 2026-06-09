@@ -12,6 +12,7 @@ import {
   MEGA_MENU_GROUPS,
 } from "@/lib/categories/taxonomy";
 import { cn } from "@/lib/utils";
+import { HeaderSearch } from "@/components/header/HeaderSearch";
 
 const AUTH_NEXT = encodeURIComponent("/hesabim");
 const GIRIS_HREF = `/giris?next=${AUTH_NEXT}`;
@@ -173,6 +174,8 @@ export function HeaderShell({
         </nav>
 
         <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2">
+          <HeaderSearch />
+
           <button
             type="button"
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 md:hidden"

@@ -81,6 +81,8 @@ export async function getProducts(params: {
   max?: number;
   /** Çok satanlar vb.: yalnızca featured=true */
   featuredOnly?: boolean;
+  /** Serbest metin araması (ad, açıklama, materyal, renk) */
+  q?: string;
 }) {
   try {
     const supabase = await createServerClient();
@@ -118,6 +120,22 @@ export async function getProducts(params: {
     if (params.featuredOnly) query = query.eq("featured", true);
     if (params.min) query = query.gte("price", params.min);
     if (params.max) query = query.lte("price", params.max);
+
+    // Serbest metin araması: PostgREST or() sözdizimini bozan karakterleri temizle.
+    const rawQuery = (params.q ?? "").trim();
+    const safeQuery = rawQuery.replace(/[,()*%]/g, " ").trim().slice(0, 80);
+    if (safeQuery) {
+      const pattern = `%${safeQuery}%`;
+      query = query.or(
+        [
+          `name.ilike.${pattern}`,
+          `short_description.ilike.${pattern}`,
+          `full_description.ilike.${pattern}`,
+          `material.ilike.${pattern}`,
+          `color.ilike.${pattern}`,
+        ].join(","),
+      );
+    }
 
     switch (params.sort) {
       case "oldest":

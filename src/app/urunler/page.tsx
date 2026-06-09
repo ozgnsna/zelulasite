@@ -22,6 +22,7 @@ export default async function ProductsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const categorySlug = sp.kategori ?? "";
   const collectionSlug = sp.koleksiyon ?? "";
+  const searchQuery = (sp.q ?? "").trim();
   const sort = sp.sirala ?? "newest";
   const min = sp.min ? Number(sp.min) : undefined;
   const max = sp.max ? Number(sp.max) : undefined;
@@ -31,6 +32,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     sort,
     min,
     max,
+    q: searchQuery,
   });
   const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
 
@@ -62,13 +64,33 @@ export default async function ProductsPage({ searchParams }: Props) {
       />
       <header className="max-w-2xl">
         <h1 className="font-serif text-3xl font-medium text-stone-900 sm:text-4xl">
-          Tüm ürünler
+          {searchQuery ? `“${searchQuery}” için sonuçlar` : "Tüm ürünler"}
         </h1>
         <p className="mt-3 text-stone-600">
-          Kategori ve arama ile daraltın. Her ürün için özet, detay ve sepet akışı
-          aynı yerde.
+          {searchQuery
+            ? `${products.length} ürün bulundu. Kategori ve filtrelerle daraltabilirsiniz.`
+            : "Kategori ve arama ile daraltın. Her ürün için özet, detay ve sepet akışı aynı yerde."}
         </p>
       </header>
+
+      <form className="mt-6 flex max-w-2xl gap-2" action="/urunler" method="get">
+        {categorySlug ? <input type="hidden" name="kategori" value={categorySlug} /> : null}
+        {collectionSlug ? <input type="hidden" name="koleksiyon" value={collectionSlug} /> : null}
+        <input
+          type="search"
+          name="q"
+          defaultValue={searchQuery}
+          placeholder="Ürün, materyal veya renk ara…"
+          aria-label="Ürün ara"
+          className="min-w-0 flex-1 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-stone-400"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
+        >
+          Ara
+        </button>
+      </form>
 
       <div className="mt-10 flex flex-col gap-8 lg:flex-row">
         <aside className="lg:w-56 lg:shrink-0">
@@ -115,6 +137,7 @@ export default async function ProductsPage({ searchParams }: Props) {
         <div className="min-w-0 flex-1">
           <form className="mb-8 grid gap-2 sm:grid-cols-4" action="/urunler" method="get">
             <input type="hidden" name="kategori" value={categorySlug} />
+            {searchQuery ? <input type="hidden" name="q" value={searchQuery} /> : null}
             <select name="koleksiyon" defaultValue={collectionSlug} className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm">
               <option value="">Tüm koleksiyonlar</option>
               {collections.map((c) => (
