@@ -1110,7 +1110,9 @@ export function CheckoutForm({
               {error}
             </p>
           ) : null}
-          {CHECKOUT_CLIENT_HANDOFF_DEBUG && checkoutHandoffUrlDebug ? (
+          {CHECKOUT_CLIENT_HANDOFF_DEBUG &&
+          checkoutHandoffUrlDebug &&
+          process.env.NODE_ENV !== "production" ? (
             <div
               className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950 break-all"
               role="status"
