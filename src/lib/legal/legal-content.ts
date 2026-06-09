@@ -12,6 +12,7 @@ const SITE_LABEL = "www.zeluladesign.com";
 const SUPPORT_EMAIL = "destek@zeluladesign.com";
 const SELLER_ADDRESS = "Beylerbeyi Mah. Arabacılar Sok. No:39/1 Üsküdar / İstanbul";
 const SELLER_PHONE = "+90 553 371 00 24";
+const SELLER_TAX_OFFICE = "Üsküdar Vergi Dairesi";
 
 const RETURN_CARRIER_RULE =
   "Cayma hakkı kapsamında yapılan iadelerde, SATICI tarafından belirtilen anlaşmalı kargo firmasının kullanılması durumunda iade kargo ücreti SATICI tarafından karşılanır.";
@@ -22,7 +23,7 @@ export function getDistanceSalesContractText(): string {
 
 ## 1. Taraflar
 
-Satıcı: ${SELLER_LEGAL_TITLE}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. İnternet sitesi: ${SITE_HREF} (${SITE_LABEL}).
+Satıcı: ${SELLER_LEGAL_TITLE}. Adres: ${SELLER_ADDRESS}. Vergi Dairesi: ${SELLER_TAX_OFFICE}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. İnternet sitesi: ${SITE_HREF} (${SITE_LABEL}).
 
 Alıcı: Sipariş sırasında iletişim bilgilerini paylaşan ve ödeme yükümlülüğünü üstlenen tüketici.
 
@@ -75,7 +76,7 @@ export function getPreContractInfoText(): string {
 
 ## 1. Satıcı bilgileri
 
-Satıcı: ${SELLER_LEGAL_TITLE}. Adres: ${SELLER_ADDRESS}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. Web sitesi: ${SITE_HREF} (${SITE_LABEL}).
+Satıcı: ${SELLER_LEGAL_TITLE}. Adres: ${SELLER_ADDRESS}. Vergi Dairesi: ${SELLER_TAX_OFFICE}. Telefon: ${SELLER_PHONE}. E-posta: ${SUPPORT_EMAIL}. Web sitesi: ${SITE_HREF} (${SITE_LABEL}).
 
 ## 2. Ürün bilgileri
 
