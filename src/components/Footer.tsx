@@ -230,6 +230,17 @@ export function Footer() {
             <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white/80 px-3 py-1 text-[11px] font-medium text-neutral-700">
               Hızlı Kargo
             </span>
+            <a
+              href="https://www.eticaret.gov.tr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#c6a15b]/50 bg-white px-3 py-1 text-[11px] font-semibold text-[#8b5a2b] transition hover:border-[#c6a15b] hover:bg-[#fbf7f0]"
+            >
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+              ETBİS&apos;e Kayıtlıdır
+            </a>
           </div>
         </div>
       </div>
