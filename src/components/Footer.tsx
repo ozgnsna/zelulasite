@@ -231,7 +231,7 @@ export function Footer() {
               Hızlı Kargo
             </span>
             <a
-              href="https://www.eticaret.gov.tr/"
+              href="https://etbis.ticaret.gov.tr/tr/SiteSorgulamaSonuc?siteId=a9896602-4d10-4e94-ae5c-ad5e17d43c3b"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full border border-[#c6a15b]/50 bg-white px-3 py-1 text-[11px] font-semibold text-[#8b5a2b] transition hover:border-[#c6a15b] hover:bg-[#fbf7f0]"
