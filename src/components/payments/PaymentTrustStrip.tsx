@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -7,15 +8,15 @@ type PaymentTrustStripProps = {
 };
 
 const CARD_PROGRAMS = [
-  { name: "Axess", className: "border-stone-300 text-stone-800" },
-  { name: "Maximum", className: "border-fuchsia-200 text-fuchsia-700" },
-  { name: "Bankkart", className: "border-red-200 text-red-700" },
-  { name: "Bonus", className: "border-emerald-200 text-emerald-700" },
-  { name: "World", className: "border-violet-200 text-violet-700" },
-  { name: "QNB", className: "border-blue-200 text-blue-800" },
-  { name: "Advantage", className: "border-orange-200 text-orange-700" },
-  { name: "Paraf", className: "border-sky-200 text-sky-700" },
-  { name: "Sağlam Kart", className: "border-lime-200 text-lime-800" },
+  { name: "Axess", src: "/payment-logos/axess.png", width: 88, height: 24 },
+  { name: "Maximum", src: "/payment-logos/maximum.svg", width: 88, height: 22 },
+  { name: "Bankkart", src: "/payment-logos/bankkart.png", width: 92, height: 22 },
+  { name: "Bonus", src: "/payment-logos/bonus.png", width: 92, height: 24 },
+  { name: "World", src: "/payment-logos/world.webp", width: 88, height: 24 },
+  { name: "QNB", src: "/payment-logos/qnb.png", width: 88, height: 24 },
+  { name: "Advantage", src: "/payment-logos/advantage.png", width: 56, height: 36 },
+  { name: "Paraf", src: "/payment-logos/paraf.png", width: 72, height: 28 },
+  { name: "Sağlam Kart", src: "/payment-logos/saglam.svg", width: 88, height: 24 },
 ] as const;
 
 export function PaymentTrustStrip({ variant = "footer", className }: PaymentTrustStripProps) {
@@ -67,16 +68,32 @@ export function PaymentTrustStrip({ variant = "footer", className }: PaymentTrus
             </span>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
+          <div
+            className={cn(
+              "mt-3 flex flex-wrap gap-1.5 sm:gap-2",
+              compact ? "gap-2" : "gap-2 sm:gap-2.5",
+            )}
+          >
             {CARD_PROGRAMS.map((card) => (
               <span
                 key={card.name}
+                title={card.name}
                 className={cn(
-                  "inline-flex items-center rounded-lg border bg-white px-2.5 py-1 text-[11px] font-semibold tracking-tight sm:px-3 sm:py-1.5 sm:text-xs",
-                  card.className,
+                  "inline-flex h-9 items-center justify-center rounded-lg border border-neutral-200/90 bg-white px-2 sm:h-10 sm:px-2.5",
+                  compact && "h-10 px-2.5 sm:h-11 sm:px-3",
                 )}
               >
-                {card.name}
+                <Image
+                  src={card.src}
+                  alt={card.name}
+                  width={card.width}
+                  height={card.height}
+                  className={cn(
+                    "h-auto max-h-5 w-auto object-contain sm:max-h-6",
+                    compact && "max-h-6 sm:max-h-7",
+                  )}
+                  unoptimized
+                />
               </span>
             ))}
           </div>
