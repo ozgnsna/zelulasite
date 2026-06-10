@@ -220,13 +220,10 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-neutral-200/90 pt-6">
+        <div className="mt-8 border-t border-neutral-200/90 pt-5">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white/80 px-3 py-1 text-[11px] font-medium text-neutral-700">
               14 Gün Kolay İade
-            </span>
-            <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white/80 px-3 py-1 text-[11px] font-medium text-neutral-700">
-              Güvenli Ödeme
             </span>
             <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white/80 px-3 py-1 text-[11px] font-medium text-neutral-700">
               Hızlı Kargo
@@ -251,7 +248,7 @@ export function Footer() {
             </a>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-4">
             <PaymentTrustStrip />
           </div>
         </div>
