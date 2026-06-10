@@ -234,12 +234,19 @@ export function Footer() {
               href="https://etbis.ticaret.gov.tr/tr/SiteSorgulamaSonuc?siteId=a9896602-4d10-4e94-ae5c-ad5e17d43c3b"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#c6a15b]/50 bg-white px-3 py-1 text-[11px] font-semibold text-[#8b5a2b] transition hover:border-[#c6a15b] hover:bg-[#fbf7f0]"
+              title="Sitemizin ETBİS kaydını T.C. Ticaret Bakanlığı sisteminde doğrulayın"
+              className="inline-flex items-center gap-2 rounded-full border border-[#c6a15b] bg-gradient-to-r from-[#f6edda] to-[#fbf7f0] px-3.5 py-1.5 shadow-sm transition hover:from-[#f0e2c5] hover:to-[#f6edda]"
             >
-              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M20 6 9 17l-5-5" />
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#8b5a2b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
               </svg>
-              ETBİS&apos;e Kayıtlıdır
+              <span className="flex flex-col leading-tight text-left">
+                <span className="text-[11px] font-bold text-[#7a5320]">ETBİS&apos;e Kayıtlıdır</span>
+                <span className="text-[8.5px] font-medium uppercase tracking-[0.08em] text-[#a07d4a]">
+                  T.C. Ticaret Bakanlığı
+                </span>
+              </span>
             </a>
           </div>
         </div>
