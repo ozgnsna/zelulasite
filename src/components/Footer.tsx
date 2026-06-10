@@ -11,6 +11,7 @@ import {
   getSupportWhatsAppNumber,
 } from "@/lib/support-contact";
 import { trackInstagramClick, trackWhatsAppClick } from "@/lib/analytics";
+import { PaymentTrustStrip } from "@/components/payments/PaymentTrustStrip";
 
 const linkClass =
   "text-sm text-stone-600 transition hover:text-stone-900 hover:underline underline-offset-2 decoration-stone-400/80";
@@ -248,6 +249,10 @@ export function Footer() {
                 </span>
               </span>
             </a>
+          </div>
+
+          <div className="mt-5">
+            <PaymentTrustStrip />
           </div>
         </div>
       </div>

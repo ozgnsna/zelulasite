@@ -11,6 +11,7 @@ import type { SavedAddress } from "@/lib/types";
 import { getDistrictOptions, TURKIYE_CITIES } from "@/lib/turkiye-addresses";
 import Link from "next/link";
 import { CheckoutLegalModal } from "@/components/checkout/CheckoutLegalModal";
+import { PaymentTrustStrip } from "@/components/payments/PaymentTrustStrip";
 import {
   getDistanceSalesContractText,
   getPreContractInfoText,
@@ -348,7 +349,9 @@ export function CheckoutForm({
               <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
                 Havale/EFT seçiminde siparişin oluşturulur; ödeme onayı admin panelinden işlenir.
               </p>
-            ) : null}
+            ) : (
+              <PaymentTrustStrip variant="checkout" />
+            )}
           </section>
 
           {isSignedIn && resolvedAccountEmail ? (
