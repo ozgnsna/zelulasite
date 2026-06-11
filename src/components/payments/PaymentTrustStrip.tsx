@@ -143,11 +143,11 @@ export function PaymentTrustStrip({ variant = "footer", className }: PaymentTrus
           ))}
         </div>
 
-        <div className="shrink-0 sm:ml-auto sm:max-w-[9rem] sm:border-l sm:border-neutral-200/80 sm:pl-2.5 lg:max-w-[9.5rem] lg:pl-3">
-          <p className="text-[8px] leading-snug text-stone-600 sm:text-right sm:text-[9px]">
+        <div className="flex-1 text-center sm:px-2 lg:px-4">
+          <p className="text-[9px] leading-snug text-stone-600 sm:text-[10px]">
             {paytrText}
           </p>
-          <p className="mt-0.5 text-[7.5px] leading-snug text-stone-500 sm:text-right sm:text-[8px]">
+          <p className="mt-0.5 text-[8px] leading-snug text-stone-500 sm:text-[9px]">
             {installmentText}
           </p>
         </div>
