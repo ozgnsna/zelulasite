@@ -126,9 +126,9 @@ export function PaymentTrustStrip({ variant = "footer", className }: PaymentTrus
         className,
       )}
     >
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-[auto_minmax(0,1fr)_8.25rem] sm:items-center sm:gap-x-2 lg:gap-x-3">
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 lg:gap-3">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <p className="shrink-0 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
             Güvenli ödeme
           </p>
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-200 bg-green-50 px-1.5 py-0.5 text-[9px] font-medium text-green-700 sm:px-2 sm:text-[10px]">
@@ -137,13 +137,13 @@ export function PaymentTrustStrip({ variant = "footer", className }: PaymentTrus
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-start sm:gap-1 [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:shrink-0 sm:gap-1 sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden">
           {CARD_PROGRAMS.map((card) => (
             <CardLogoBadge key={card.name} card={card} compact={false} dense />
           ))}
         </div>
 
-        <div className="shrink-0 sm:border-l sm:border-neutral-200/80 sm:pl-2 lg:pl-2.5">
+        <div className="shrink-0 sm:ml-auto sm:max-w-[9rem] sm:border-l sm:border-neutral-200/80 sm:pl-2.5 lg:max-w-[9.5rem] lg:pl-3">
           <p className="text-[8px] leading-snug text-stone-600 sm:text-right sm:text-[9px]">
             {paytrText}
           </p>
