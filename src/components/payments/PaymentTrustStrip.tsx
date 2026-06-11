@@ -14,7 +14,7 @@ const CARD_PROGRAMS = [
   { name: "Bonus", src: "/payment-logos/bonus.png", width: 92, height: 24 },
   { name: "World", src: "/payment-logos/world.webp", width: 88, height: 24 },
   { name: "QNB", src: "/payment-logos/qnb.png", width: 88, height: 24 },
-  { name: "Advantage", src: "/payment-logos/advantage.png", width: 56, height: 36 },
+  { name: "Advantage", src: "/payment-logos/advantage.png", width: 48, height: 40 },
   { name: "Paraf", src: "/payment-logos/paraf.png", width: 72, height: 28 },
   { name: "Sağlam Kart", src: "/payment-logos/saglam.svg", width: 88, height: 24 },
 ] as const;
