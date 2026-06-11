@@ -7,7 +7,14 @@ type PaymentTrustStripProps = {
   className?: string;
 };
 
-const CARD_PROGRAMS = [
+type CardProgram = {
+  name: string;
+  src: string;
+  width: number;
+  height: number;
+};
+
+const CARD_PROGRAMS: CardProgram[] = [
   { name: "Axess", src: "/payment-logos/axess.png", width: 88, height: 24 },
   { name: "Maximum", src: "/payment-logos/maximum.svg", width: 88, height: 22 },
   { name: "Bankkart", src: "/payment-logos/bankkart.png", width: 92, height: 22 },
@@ -15,9 +22,36 @@ const CARD_PROGRAMS = [
   { name: "World", src: "/payment-logos/world.webp", width: 88, height: 24 },
   { name: "QNB", src: "/payment-logos/qnb.png", width: 88, height: 24 },
   { name: "Advantage", src: "/payment-logos/advantage.png", width: 48, height: 40 },
+];
+
+const PAIRED_CARD_PROGRAMS: CardProgram[] = [
   { name: "Paraf", src: "/payment-logos/paraf.png", width: 72, height: 28 },
   { name: "Sağlam Kart", src: "/payment-logos/saglam.svg", width: 88, height: 24 },
-] as const;
+];
+
+function CardLogoBadge({ card, compact }: { card: CardProgram; compact: boolean }) {
+  return (
+    <span
+      title={card.name}
+      className={cn(
+        "inline-flex h-9 items-center justify-center rounded-lg border border-neutral-200/90 bg-white px-2 sm:h-10 sm:px-2.5",
+        compact && "h-10 px-2.5 sm:h-11 sm:px-3",
+      )}
+    >
+      <Image
+        src={card.src}
+        alt={card.name}
+        width={card.width}
+        height={card.height}
+        className={cn(
+          "h-auto max-h-5 w-auto object-contain sm:max-h-6",
+          compact && "max-h-6 sm:max-h-7",
+        )}
+        unoptimized
+      />
+    </span>
+  );
+}
 
 export function PaymentTrustStrip({ variant = "footer", className }: PaymentTrustStripProps) {
   const compact = variant === "checkout";
@@ -75,27 +109,13 @@ export function PaymentTrustStrip({ variant = "footer", className }: PaymentTrus
             )}
           >
             {CARD_PROGRAMS.map((card) => (
-              <span
-                key={card.name}
-                title={card.name}
-                className={cn(
-                  "inline-flex h-9 items-center justify-center rounded-lg border border-neutral-200/90 bg-white px-2 sm:h-10 sm:px-2.5",
-                  compact && "h-10 px-2.5 sm:h-11 sm:px-3",
-                )}
-              >
-                <Image
-                  src={card.src}
-                  alt={card.name}
-                  width={card.width}
-                  height={card.height}
-                  className={cn(
-                    "h-auto max-h-5 w-auto object-contain sm:max-h-6",
-                    compact && "max-h-6 sm:max-h-7",
-                  )}
-                  unoptimized
-                />
-              </span>
+              <CardLogoBadge key={card.name} card={card} compact={compact} />
             ))}
+            <span className="inline-flex shrink-0 items-center gap-1.5 sm:gap-2">
+              {PAIRED_CARD_PROGRAMS.map((card) => (
+                <CardLogoBadge key={card.name} card={card} compact={compact} />
+              ))}
+            </span>
           </div>
         </div>
 
