@@ -37,8 +37,8 @@ type GraphResponse = {
   error?: GraphError;
 };
 
-/** Varsayılan: 1 saat — tüm kullanıcılar aynı önbelleği paylaşır (~1 Graph isteği / saat). */
-const DEFAULT_REVALIDATE_SECONDS = 3600;
+/** Varsayılan: 30 dk — media_url geçici olduğu için uzun önbellek kırık görsellere yol açar. */
+const DEFAULT_REVALIDATE_SECONDS = 1800;
 
 const isDev = process.env.NODE_ENV === "development";
 

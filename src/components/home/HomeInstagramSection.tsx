@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { FadeIn } from "@/components/home/FadeIn";
+import { InstagramFeedImage } from "@/components/home/InstagramFeedImage";
 import { TrackedExternalLink } from "@/components/analytics/TrackedExternalLink";
 import { getInstagramFeed } from "@/lib/instagram";
 
@@ -52,7 +53,7 @@ export async function HomeInstagramSection() {
           </div>
           {instagramPosts.length > 0 ? (
             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-              {instagramPosts.map((post) => (
+              {instagramPosts.map((post, index) => (
                 <TrackedExternalLink
                   key={post.id}
                   href={post.permalink}
@@ -60,11 +61,10 @@ export async function HomeInstagramSection() {
                   location="home_instagram_feed"
                   className="group overflow-hidden rounded-xl border border-[#ebe6df] shadow-sm transition duration-500 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-[#e0d5c8] motion-safe:hover:shadow-[0_12px_32px_rgba(55,48,40,0.08)]"
                 >
-                  <Image
+                  <InstagramFeedImage
                     src={post.imageUrl}
                     alt={post.caption}
-                    width={500}
-                    height={500}
+                    fallbackSrc={FALLBACK_IMAGES[index % FALLBACK_IMAGES.length]}
                     className="aspect-square object-cover transition duration-[700ms] ease-out motion-safe:group-hover:scale-[1.04]"
                   />
                 </TrackedExternalLink>
