@@ -67,29 +67,28 @@ export function HeaderShell({
 
   return (
     <>
-      <div className="container-premium relative z-[41] grid h-[3.25rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 py-1.5 sm:h-[3.5rem] sm:gap-x-4 md:h-14 md:gap-x-6 md:py-2 lg:gap-x-8">
-        <div className="flex min-w-0 justify-start">
-          <Link
-            href="/"
-            className="header-logo-link flex h-8 max-w-[min(168px,46vw)] shrink-0 items-center py-1 sm:h-9 sm:max-w-[min(200px,40vw)] md:h-10 md:max-w-[220px]"
-            aria-label="Zelula — Ana sayfa"
-          >
-            <Image
-              src="/zelula-logo-header.svg"
-              alt="Zelula"
-              width={220}
-              height={42}
-              className="header-logo-img h-full w-auto object-contain object-left"
-              sizes="(max-width: 768px) 168px, 220px"
-              priority
-            />
-          </Link>
-        </div>
-
-        <nav
-          className="relative hidden min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 md:flex md:px-1 lg:gap-1 xl:gap-1.5"
-          aria-label="Kategoriler"
+      <div className="container-premium relative z-[41] flex h-[3.25rem] items-center gap-3 py-1.5 sm:h-[3.5rem] md:h-14 md:gap-5 md:py-2 lg:gap-8">
+        <Link
+          href="/"
+          className="header-logo-link flex h-8 max-w-[min(168px,46vw)] shrink-0 items-center py-1 sm:h-9 sm:max-w-[min(200px,40vw)] md:h-10 md:max-w-[220px]"
+          aria-label="Zelula — Ana sayfa"
         >
+          <Image
+            src="/zelula-logo-header.svg"
+            alt="Zelula"
+            width={220}
+            height={42}
+            className="header-logo-img h-full w-auto object-contain object-left"
+            sizes="(max-width: 768px) 168px, 220px"
+            priority
+          />
+        </Link>
+
+        <div className="hidden min-w-0 flex-1 justify-center md:flex md:px-3 lg:px-6">
+          <nav
+            className="relative flex max-w-full flex-wrap items-center justify-center gap-x-0.5 gap-y-1 lg:gap-1 xl:gap-1.5"
+            aria-label="Kategoriler"
+          >
           {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
             const t = getTaxonBySlug(slug);
             if (!t) return null;
@@ -171,9 +170,10 @@ export function HeaderShell({
               </div>
             ) : null}
           </div>
-        </nav>
+          </nav>
+        </div>
 
-        <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2 md:pl-4 lg:pl-6">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 sm:gap-2 md:pl-4 lg:pl-6">
           <HeaderSearch />
 
           <button
