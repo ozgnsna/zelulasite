@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition, useState } from "react";
@@ -38,7 +38,7 @@ export function CartUpsellStrip({ items }: { items: CartUpsellItem[] }) {
             className="cart-upsell-card flex flex-col overflow-hidden rounded-xl border border-[#e8e0d6]/90 bg-white/90 shadow-[0_6px_16px_rgba(62,52,38,0.05)]"
           >
             <Link href={`/urunler/${p.slug}`} className="relative aspect-square bg-stone-100">
-              <Image src={p.imageUrl} alt={p.name} fill className="object-cover" sizes="200px" />
+              <ProductImage src={p.imageUrl} alt={p.name} fill className="object-cover" sizes="200px" />
             </Link>
             <div className="flex flex-1 flex-col gap-2 p-3">
               <Link href={`/urunler/${p.slug}`} className="line-clamp-2 text-sm font-medium text-stone-900 hover:underline">

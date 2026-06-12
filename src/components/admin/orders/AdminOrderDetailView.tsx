@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { paymentStatusLabelTr, orderStatusLabelTr } from "@/lib/account/order-status";
@@ -614,7 +614,7 @@ export function AdminOrderDetailView({
                   <div className="flex gap-4">
                     <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl border border-[#dfd2c4]/90 bg-[#f5ede1]">
                       {img ? (
-                        <Image src={img} alt={name} fill className="object-cover" sizes="72px" />
+                        <ProductImage src={img} alt={name} fill className="object-cover" sizes="72px" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-xs text-stone-500">—</span>
                       )}

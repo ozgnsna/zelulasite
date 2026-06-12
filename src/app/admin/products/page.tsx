@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -681,7 +681,7 @@ export default async function AdminProductsPage({
                         >
                           <div className="relative size-11 shrink-0 overflow-hidden rounded-md border border-stone-200/80 bg-stone-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.4)]">
                             {previewImageUrl ? (
-                              <Image src={previewImageUrl} alt="" fill sizes="44px" className="object-cover" />
+                              <ProductImage src={previewImageUrl} alt="" fill sizes="44px" className="object-cover" />
                             ) : (
                               <span className="flex h-full items-center justify-center text-[9px] text-stone-400">—</span>
                             )}

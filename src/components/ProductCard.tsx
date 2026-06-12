@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import Link from "next/link";
 import { formatMoney } from "@/lib/money";
 import { QuickAddButton } from "@/components/QuickAddButton";
@@ -77,7 +77,7 @@ export function ProductCard({
       )}
     >
       <div className={`relative ${aspectClass} overflow-hidden bg-white`}>
-        <Image
+        <ProductImage
           src={imageUrl}
           alt={name}
           fill

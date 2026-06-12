@@ -7,7 +7,7 @@ import {
 } from "@/lib/images/product-image-upload";
 import { sortProductImages } from "@/lib/products/cover-image";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Img = { id: string; image_url: string; is_cover?: boolean | null; sort_order?: number | null };
@@ -249,7 +249,7 @@ export function ProductImageManager({
               <video src={selectedPreview} controls playsInline className="h-full w-full object-contain" preload="metadata" />
             ) : (
               <div className="relative min-h-[180px] flex-1">
-                <Image
+                <ProductImage
                   src={selectedPreview}
                   alt="Önizleme"
                   fill
@@ -325,7 +325,7 @@ export function ProductImageManager({
                         </span>
                       </>
                     ) : (
-                      <Image src={img.image_url} alt="" fill sizes="72px" className="object-contain bg-white p-0.5" />
+                      <ProductImage src={img.image_url} alt="" fill sizes="72px" className="object-contain bg-white p-0.5" />
                     )}
                     {isCover ? (
                       <span className="absolute left-0.5 top-0.5 rounded bg-stone-900/90 px-1 py-px text-[7px] font-bold uppercase tracking-wide text-white">

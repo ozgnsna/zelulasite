@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { addToCart, updateCartItem } from "@/app/actions/store";
@@ -61,7 +61,7 @@ function CartDrawerLine({
         onClick={onNavigate}
         className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-stone-100"
       >
-        <Image src={line.imageUrl} alt={line.name} fill className="object-cover" sizes="80px" />
+        <ProductImage src={line.imageUrl} alt={line.name} fill className="object-cover" sizes="80px" />
       </Link>
       <div className="min-w-0 flex-1">
         <Link
@@ -188,7 +188,7 @@ export function CartDrawer({
                           href={`/urunler/${item.slug}`}
                           className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-stone-100"
                         >
-                          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="44px" />
+                          <ProductImage src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="44px" />
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link href={`/urunler/${item.slug}`} className="block truncate text-xs font-medium text-stone-900">

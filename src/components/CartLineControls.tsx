@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import { useRouter } from "next/navigation";
 import { updateCartItem } from "@/app/actions/store";
 import { formatTry } from "@/lib/money";
@@ -65,7 +65,7 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
         href={`/urunler/${line.product.slug}`}
         className="relative h-32 w-32 shrink-0 overflow-hidden rounded-xl bg-stone-100 sm:h-36 sm:w-36"
       >
-        <Image
+        <ProductImage
           src={line.product.imageUrl}
           alt={line.product.name}
           fill

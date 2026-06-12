@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import { ProductGalleryZoomTrigger, ProductImageLightbox } from "@/components/product/ProductImageLightbox";
 import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
 
@@ -60,7 +60,7 @@ export function ProductGallery({
     <div className="space-y-4">
       <div className="group relative aspect-[4/5] overflow-hidden rounded-3xl border border-[#e8dfd3] bg-white shadow-[0_16px_40px_rgba(70,53,38,0.08)] transition duration-200 hover:border-[#d8ccb9] hover:shadow-[0_20px_48px_rgba(70,53,38,0.1)]">
         <div key={mainSrc} className="gallery-main-fade absolute inset-0 bg-white">
-          <Image
+          <ProductImage
             src={mainSrc}
             alt={alt}
             fill
@@ -130,11 +130,10 @@ export function ProductGallery({
                       : "border-[#e6dccf] bg-white hover:border-brand-gold/35"
                   }`}
                 >
-                  <Image
+                  <ProductImage
                     src={img.image_url}
                     alt=""
                     fill
-                    unoptimized={img.image_url.includes("/storage/v1/object/public/")}
                     className="object-contain bg-white p-0.5"
                     sizes="120px"
                   />

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ProductImage } from "@/components/product/ProductImage";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
@@ -103,7 +103,7 @@ export function RelatedProductsCarousel({ items }: { items: RelatedItem[] }) {
                 <div className="relative aspect-[4/5] overflow-hidden rounded-t-2xl bg-stone-100">
                   <Link href={`/urunler/${item.slug}`} className="absolute inset-0 z-[1]" aria-label={`${item.name} — ürünü aç`}>
                     <span className="sr-only">{item.name}</span>
-                    <Image
+                    <ProductImage
                       src={pickProductCoverImageUrl(item.product_images, "https://picsum.photos/id/99/900/900")}
                       alt={item.name}
                       fill
