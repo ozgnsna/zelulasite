@@ -7,6 +7,7 @@ import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getCategoryPageData } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
+import { absoluteUrl } from "@/lib/seo/site";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -18,6 +19,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: data.taxon.name,
     description: `${data.taxon.name} — Zelula seçkisinde ürünleri keşfedin.`,
+    alternates: { canonical: absoluteUrl(`/kategori/${slug}`) },
+    openGraph: {
+      title: `${data.taxon.name} | Zelula Design`,
+      description: `${data.taxon.name} — Zelula seçkisinde ürünleri keşfedin.`,
+      url: absoluteUrl(`/kategori/${slug}`),
+      type: "website",
+      locale: "tr_TR",
+      siteName: "Zelula Design",
+    },
   };
 }
 

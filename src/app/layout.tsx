@@ -13,6 +13,9 @@ import { MicrosoftClarityLoader } from "@/components/analytics/MicrosoftClarityL
 import { CookieBanner } from "@/components/CookieBanner";
 import { ReferralTrackingBridge } from "@/components/referral/ReferralTrackingBridge";
 import { AddToCartShareHost } from "@/components/referral/AddToCartShareHost";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { buildOrganizationJsonLd } from "@/lib/seo/product";
+import { DEFAULT_SITE_ORIGIN } from "@/lib/seo/site";
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -32,12 +35,15 @@ const siteDescription =
 const ogImage = "/zelula-logo.png";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://zeluladesign.com"),
+  metadataBase: new URL(DEFAULT_SITE_ORIGIN),
   title: {
     default: "Zelula Design",
     template: "%s | Zelula",
   },
   description: siteDescription,
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Zelula Design",
     description: "Günlük ışıltını tamamlayan seçkiler.",
@@ -85,6 +91,7 @@ export default async function RootLayout({
   return (
     <html lang="tr" className={`${display.variable} ${sans.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-[color:var(--background)] font-sans text-stone-900 antialiased">
+        <JsonLd data={buildOrganizationJsonLd()} />
         <GoogleAnalyticsLoader gaId={gaId} />
         <MicrosoftClarityLoader projectId={clarityId} />
         <Suspense fallback={null}>

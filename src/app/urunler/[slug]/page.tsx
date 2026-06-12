@@ -24,6 +24,12 @@ import { buildPdpShippingPromise } from "@/lib/storefront/pdp-shipping";
 import { resolvePdpTraitGroups } from "@/lib/storefront/pdp-traits";
 import { fetchProductVariants } from "@/lib/products/variants";
 import { normalizeProductImages } from "@/lib/products/cover-image";
+import {
+  buildProductBreadcrumbJsonLd,
+  buildProductJsonLd,
+  buildProductPageMetadata,
+} from "@/lib/seo/product";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -120,20 +126,11 @@ function productDescriptionParagraphs(shortRaw: string, fullRaw: string): string
   return dedupeDescriptionParagraphs(paragraphs);
 }
 
-function metaDescriptionFromParagraphs(paragraphs: string[]) {
-  const flat = (paragraphs[0] ?? "").replace(/\s+/g, " ").trim();
-  return flat.length > 160 ? `${flat.slice(0, 157)}…` : flat;
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) return { title: "Ürün" };
-  const storyParagraphs = productDescriptionParagraphs(product.short_description, product.full_description);
-  return {
-    title: product.name,
-    description: metaDescriptionFromParagraphs(storyParagraphs),
-  };
+  return buildProductPageMetadata(product);
 }
 
 export default async function ProductPage({ params }: Props) {
@@ -168,6 +165,19 @@ export default async function ProductPage({ params }: Props) {
   ]);
   return (
     <main className="container-premium pb-28 pt-8 sm:pb-16 sm:pt-10">
+      <JsonLd
+        data={[
+          buildProductJsonLd({
+            ...product,
+            categoryName: product.category?.name ?? null,
+          }),
+          buildProductBreadcrumbJsonLd({
+            ...product,
+            categorySlug: product.category?.slug ?? product.categorySlug ?? null,
+            categoryName: product.category?.name ?? null,
+          }),
+        ]}
+      />
      <ProductVariantProvider variants={variants}>
       <ViewItemTracker
         item={{

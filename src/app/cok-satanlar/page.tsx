@@ -6,9 +6,12 @@ import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
+import { absoluteUrl } from "@/lib/seo/site";
+
 export const metadata: Metadata = {
   title: "Çok satanlar",
   description: "Zelula’da en çok tercih edilen öne çıkan parçalar.",
+  alternates: { canonical: absoluteUrl("/cok-satanlar") },
 };
 
 export default async function BestSellersPage() {

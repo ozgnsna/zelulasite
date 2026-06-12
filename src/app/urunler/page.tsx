@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
@@ -6,6 +7,13 @@ import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker"
 import { SearchUsageTracker } from "@/components/analytics/SearchUsageTracker";
 import { CategoryClickLink } from "@/components/analytics/CategoryClickLink";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
+import { absoluteUrl } from "@/lib/seo/site";
+
+export const metadata: Metadata = {
+  title: "Tüm ürünler",
+  description: "Zelula Design takı ve aksesuar seçkisini keşfedin.",
+  alternates: { canonical: absoluteUrl("/urunler") },
+};
 
 type Props = {
   searchParams: Promise<{
