@@ -34,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${siteUrl}/urunler/${p.slug}`,
     changeFrequency: "weekly",
     priority: 0.7,
-    lastModified: p.updated_at ? new Date(p.updated_at) : undefined,
+    lastModified: p.created_at ? new Date(p.created_at) : undefined,
   }));
 
   return [...staticRoutes, ...categoryRoutes, ...productRoutes];
