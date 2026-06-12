@@ -67,7 +67,7 @@ export function HeaderShell({
 
   return (
     <>
-      <div className="container-premium relative z-[41] grid h-[3.25rem] grid-cols-[1fr_auto_1fr] items-center gap-2 py-1.5 sm:h-[3.5rem] md:h-14 md:py-2">
+      <div className="container-premium relative z-[41] grid h-[3.25rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 py-1.5 sm:h-[3.5rem] sm:gap-x-4 md:h-14 md:gap-x-6 md:py-2 lg:gap-x-8">
         <div className="flex min-w-0 justify-start">
           <Link
             href="/"
@@ -87,7 +87,7 @@ export function HeaderShell({
         </div>
 
         <nav
-          className="relative hidden min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 md:flex lg:gap-1 xl:gap-1.5"
+          className="relative hidden min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 md:flex md:px-1 lg:gap-1 xl:gap-1.5"
           aria-label="Kategoriler"
         >
           {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
@@ -173,7 +173,7 @@ export function HeaderShell({
           </div>
         </nav>
 
-        <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2">
+        <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2 md:pl-4 lg:pl-6">
           <HeaderSearch />
 
           <button
