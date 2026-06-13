@@ -4,6 +4,7 @@ import { moderateProductReviewAction } from "@/app/actions/reviews-admin";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { listReviewsForAdmin, reviewStatusLabelTr, type ProductReviewStatus } from "@/lib/account/reviews";
 import { StarRatingDisplay } from "@/components/reviews/StarRating";
+import { ReviewPhoto } from "@/components/reviews/ReviewPhoto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -153,6 +154,11 @@ export default async function AdminReviewsPage({
                 </div>
                 {review.title ? <p className="mt-3 text-sm font-medium text-stone-900">{review.title}</p> : null}
                 <p className="mt-2 text-sm leading-relaxed text-stone-700">{review.body}</p>
+                {review.image_url ? (
+                  <div className="mt-3">
+                    <ReviewPhoto src={review.image_url} alt="Yorum fotoğrafı" className="size-32" sizes="128px" />
+                  </div>
+                ) : null}
               </li>
             );
           })}

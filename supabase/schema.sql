@@ -265,6 +265,7 @@ create table if not exists customer_product_reviews (
   title text,
   body text not null check (char_length(trim(body)) >= 10),
   reviewer_display_name text not null default 'Zelula müşterisi',
+  image_url text,
   status text not null default 'pending'
     check (status in ('pending', 'approved', 'rejected', 'hidden')),
   created_at timestamptz not null default now(),

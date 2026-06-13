@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { submitProductReview } from "@/app/actions/reviews";
 import type { ProductReviewRow } from "@/lib/account/reviews";
 import { reviewStatusLabelTr } from "@/lib/account/reviews";
+import { REVIEW_IMAGE_MAX_BYTES } from "@/lib/reviews/review-image-upload";
+import { ReviewPhoto } from "@/components/reviews/ReviewPhoto";
 import { StarRatingInput } from "@/components/reviews/StarRating";
 
 export function ProductReviewForm({
@@ -19,14 +21,26 @@ export function ProductReviewForm({
   loginNext: string;
 }) {
   const [rating, setRating] = useState(existingReview?.rating ?? 0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   if (existingReview?.status === "approved") {
     return (
       <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
-        Yorumun yayında. Teşekkürler ✨
+        <p>Yorumun yayında. Teşekkürler ✨</p>
+        {existingReview.image_url ? (
+          <div className="mt-3">
+            <ReviewPhoto src={existingReview.image_url} alt="Yorum fotoğrafın" className="size-24" />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -34,13 +48,19 @@ export function ProductReviewForm({
   if (existingReview?.status === "pending") {
     return (
       <div className="rounded-2xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
-        Yorumun inceleniyor. Onaylandığında bu sayfada görünecek.
+        <p>Yorumun inceleniyor. Onaylandığında bu sayfada görünecek.</p>
+        {existingReview.image_url ? (
+          <div className="mt-3">
+            <ReviewPhoto src={existingReview.image_url} alt="Yüklediğin fotoğraf" className="size-24" />
+          </div>
+        ) : null}
       </div>
     );
   }
 
   return (
     <form
+      encType="multipart/form-data"
       className="rounded-2xl border border-[#e8dfd3] bg-[#fffdfb] p-5 shadow-[0_10px_26px_rgba(70,53,38,0.05)]"
       onSubmit={(e) => {
         e.preventDefault();
@@ -93,6 +113,46 @@ export function ProductReviewForm({
           placeholder="Ürün hakkındaki deneyimini birkaç cümleyle anlat…"
         />
       </label>
+
+      <div className="mt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Fotoğraf (isteğe bağlı, en fazla 1)</p>
+        <div className="mt-2 flex flex-wrap items-start gap-3">
+          {previewUrl ? (
+            <ReviewPhoto src={previewUrl} alt="Seçilen fotoğraf önizlemesi" className="size-24" sizes="96px" />
+          ) : existingReview?.image_url ? (
+            <ReviewPhoto src={existingReview.image_url} alt="Önceki fotoğraf" className="size-24" sizes="96px" />
+          ) : null}
+          <label className="inline-flex cursor-pointer flex-col gap-1 rounded-xl border border-dashed border-stone-300 bg-white px-4 py-3 text-sm text-stone-700 hover:border-[#c6a15b]/60">
+            <span className="font-medium text-stone-800">Fotoğraf seç</span>
+            <span className="text-[11px] text-stone-500">JPG, PNG veya WebP · max 4 MB</span>
+            <input
+              type="file"
+              name="image"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={pending}
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) {
+                  setPreviewUrl(null);
+                  return;
+                }
+                if (file.size > REVIEW_IMAGE_MAX_BYTES) {
+                  setError("Fotoğraf en fazla 4 MB olabilir.");
+                  e.target.value = "";
+                  setPreviewUrl(null);
+                  return;
+                }
+                setError(null);
+                setPreviewUrl((prev) => {
+                  if (prev) URL.revokeObjectURL(prev);
+                  return URL.createObjectURL(file);
+                });
+              }}
+            />
+          </label>
+        </div>
+      </div>
 
       <input type="hidden" name="productId" value={productId} />
       <input type="hidden" name="productSlug" value={productSlug} />

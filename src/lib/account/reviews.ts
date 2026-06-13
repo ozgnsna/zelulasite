@@ -11,6 +11,7 @@ export type ProductReviewRow = {
   title: string | null;
   body: string;
   reviewer_display_name: string;
+  image_url: string | null;
   status: ProductReviewStatus;
   created_at: string;
   updated_at: string;
@@ -23,7 +24,7 @@ export type ProductReviewSummary = {
 
 export type PublicProductReview = Pick<
   ProductReviewRow,
-  "id" | "rating" | "title" | "body" | "reviewer_display_name" | "created_at"
+  "id" | "rating" | "title" | "body" | "reviewer_display_name" | "image_url" | "created_at"
 >;
 
 export function maskReviewerDisplayName(fullName: string | null | undefined): string {
@@ -82,7 +83,7 @@ export async function listApprovedProductReviews(
 ): Promise<PublicProductReview[]> {
   const { data } = await supabase
     .from("customer_product_reviews")
-    .select("id, rating, title, body, reviewer_display_name, created_at")
+    .select("id, rating, title, body, reviewer_display_name, image_url, created_at")
     .eq("product_id", productId)
     .eq("status", "approved")
     .order("created_at", { ascending: false })
@@ -115,7 +116,7 @@ export async function fetchFeaturedReviewsForHome(
 ): Promise<PublicProductReview[]> {
   const { data } = await supabase
     .from("customer_product_reviews")
-    .select("id, rating, title, body, reviewer_display_name, created_at")
+    .select("id, rating, title, body, reviewer_display_name, image_url, created_at")
     .eq("status", "approved")
     .order("created_at", { ascending: false })
     .limit(limit);

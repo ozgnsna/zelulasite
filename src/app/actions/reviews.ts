@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
   findQualifyingOrderIdForProduct,
   getUserProductReview,
   maskReviewerDisplayName,
 } from "@/lib/account/reviews";
+import { removeReviewImageIfStored, uploadReviewImage } from "@/lib/reviews/review-image-upload";
 
 export type SubmitProductReviewResult = { ok: true; status: "pending" } | { ok: false; error: string };
 
@@ -55,6 +57,19 @@ export async function submitProductReview(formData: FormData): Promise<SubmitPro
     return { ok: false, error: "Bu ürün için yorumun zaten yayında." };
   }
 
+  const imageFile = formData.get("image");
+  let imageUrl = existing?.image_url ?? null;
+
+  if (imageFile instanceof File && imageFile.size > 0) {
+    const admin = createAdminClient();
+    const uploaded = await uploadReviewImage(admin, { userId: user.id, productId, file: imageFile });
+    if (!uploaded.ok) return uploaded;
+    if (existing?.image_url && existing.image_url !== uploaded.url) {
+      await removeReviewImageIfStored(admin, existing.image_url);
+    }
+    imageUrl = uploaded.url;
+  }
+
   const payload = {
     user_id: user.id,
     product_id: productId,
@@ -62,6 +77,7 @@ export async function submitProductReview(formData: FormData): Promise<SubmitPro
     rating,
     title: title || null,
     body,
+    image_url: imageUrl,
     reviewer_display_name: reviewerDisplayName,
     status: "pending" as const,
     updated_at: new Date().toISOString(),

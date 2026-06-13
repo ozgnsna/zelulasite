@@ -10,6 +10,7 @@ import {
   type PublicProductReview,
 } from "@/lib/account/reviews";
 import { ProductReviewForm } from "@/components/reviews/ProductReviewForm";
+import { ReviewPhoto } from "@/components/reviews/ReviewPhoto";
 import { StarRatingDisplay } from "@/components/reviews/StarRating";
 
 function formatReviewDate(iso: string) {
@@ -124,6 +125,11 @@ export function ProductReviewsSection({
               </div>
               {review.title ? <p className="mt-2 text-sm font-semibold text-stone-900">{review.title}</p> : null}
               <p className="mt-2 text-sm leading-relaxed text-stone-700">{review.body}</p>
+              {review.image_url ? (
+                <div className="mt-3">
+                  <ReviewPhoto src={review.image_url} alt={`${review.reviewer_display_name} yorum fotoğrafı`} className="size-32 sm:size-36" sizes="144px" />
+                </div>
+              ) : null}
               <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">
                 {review.reviewer_display_name}
               </p>
