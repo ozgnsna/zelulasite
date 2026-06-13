@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { OrderLegalAgreementsSection } from "@/components/account/OrderLegalAgreementsSection";
+import { OrderLineReviewPrompts } from "@/components/reviews/OrderLineReviewPrompts";
 import { createClient } from "@/lib/supabase/server";
 import { orderStatusLabel } from "@/lib/account/order-status";
 import { parseLegalContractSnapshot } from "@/lib/legal/legal-snapshot";
@@ -141,6 +142,17 @@ export default async function SiparisDetayPage({ params }: Props) {
         </div>
 
         <OrderLegalAgreementsSection snapshot={legalSnapshot} hash={legalHash} />
+
+        <OrderLineReviewPrompts
+          supabase={supabase}
+          userId={user.id}
+          paymentStatus={String(order.payment_status ?? "")}
+          orderStatus={String(order.order_status ?? "")}
+          lines={(lines ?? []).map((row) => ({
+            product_id: String(row.product_id ?? ""),
+            products: row.products as { name?: string | null; slug?: string | null } | null,
+          }))}
+        />
       </div>
     </main>
   );

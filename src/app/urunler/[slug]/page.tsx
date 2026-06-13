@@ -30,8 +30,12 @@ import {
   buildProductPageMetadata,
 } from "@/lib/seo/product";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { loadProductReviewSectionData, ProductReviewsSection } from "@/components/reviews/ProductReviewsSection";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ yorum?: string }>;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -133,8 +137,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildProductPageMetadata(product);
 }
 
-export default async function ProductPage({ params }: Props) {
+export default async function ProductPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const sp = await searchParams;
+  const highlightReviewForm = String(sp.yorum ?? "").trim() === "1";
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
@@ -156,12 +162,15 @@ export default async function ProductPage({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
   const admin = createAdminClient();
-  const [favorited, referralCode, traitGroups, shippingPromise, variants] = await Promise.all([
+  const [favorited, referralCode, traitGroups, shippingPromise, variants, reviewSection] = await Promise.all([
     user?.id ? isProductFavorited(supabase, user.id, product.id) : Promise.resolve(false),
     user?.id ? ensureUserReferralCode(admin, user.id) : Promise.resolve(null),
     resolvePdpTraitGroups(product, admin),
     Promise.resolve(buildPdpShippingPromise()),
     fetchProductVariants(supabase, product.id),
+    loadProductReviewSectionData(supabase, { id: product.id, slug: product.slug, name: product.name }, user?.id, {
+      highlightForm: highlightReviewForm,
+    }),
   ]);
   return (
     <main className="container-premium pb-28 pt-8 sm:pb-16 sm:pt-10">
@@ -170,6 +179,7 @@ export default async function ProductPage({ params }: Props) {
           buildProductJsonLd({
             ...product,
             categoryName: product.category?.name ?? null,
+            reviewSummary: reviewSection.summary,
           }),
           buildProductBreadcrumbJsonLd({
             ...product,
@@ -407,6 +417,21 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </section>
         </section>
+      </div>
+
+      <div className="mt-12 border-t border-brand-gold/20 pt-10">
+        <ProductReviewsSection
+          productName={product.name}
+          productId={product.id}
+          productSlug={product.slug}
+          reviews={reviewSection.reviews}
+          summary={reviewSection.summary}
+          userReview={reviewSection.userReview}
+          canReview={reviewSection.canReview}
+          isLoggedIn={Boolean(user?.id)}
+          highlightForm={reviewSection.highlightForm}
+          loginNext={reviewSection.loginNext}
+        />
       </div>
 
       <RelatedProducts currentProductId={product.id} />

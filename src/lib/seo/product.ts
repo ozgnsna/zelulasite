@@ -92,7 +92,13 @@ export function buildProductPageMetadata(product: ProductSeoInput): Metadata {
   };
 }
 
-export function buildProductJsonLd(product: ProductSeoInput & { id: string; categoryName?: string | null }) {
+export function buildProductJsonLd(
+  product: ProductSeoInput & {
+    id: string;
+    categoryName?: string | null;
+    reviewSummary?: { count: number; average: number } | null;
+  },
+) {
   const paragraphs = productDescriptionParagraphs(
     product.short_description ?? "",
     product.full_description ?? "",
@@ -107,6 +113,7 @@ export function buildProductJsonLd(product: ProductSeoInput & { id: string; cate
     .slice(0, 8);
   const image = images.length > 0 ? images : [pickSeoProductImageUrl(product.product_images)];
   const inStock = Number(product.stock_quantity ?? 0) > 0;
+  const reviewSummary = product.reviewSummary;
 
   return {
     "@context": "https://schema.org",
@@ -117,6 +124,17 @@ export function buildProductJsonLd(product: ProductSeoInput & { id: string; cate
     sku: product.sku ?? undefined,
     brand: { "@type": "Brand", name: "Zelula Design" },
     ...(product.material ? { material: product.material } : {}),
+    ...(reviewSummary && reviewSummary.count > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: reviewSummary.average.toFixed(1),
+            reviewCount: reviewSummary.count,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
     offers: {
       "@type": "Offer",
       url: pageUrl,

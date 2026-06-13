@@ -256,6 +256,50 @@ drop policy if exists "product_favorites_delete_own" on customer_product_favorit
 create policy "product_favorites_delete_own" on customer_product_favorites
   for delete using (auth.uid() is not null and user_id = auth.uid());
 
+create table if not exists customer_product_reviews (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  product_id uuid not null references products(id) on delete cascade,
+  order_id uuid references orders(id) on delete set null,
+  rating smallint not null check (rating between 1 and 5),
+  title text,
+  body text not null check (char_length(trim(body)) >= 10),
+  reviewer_display_name text not null default 'Zelula müşterisi',
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'hidden')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, product_id)
+);
+
+create index if not exists idx_customer_product_reviews_product_approved
+  on customer_product_reviews(product_id, created_at desc)
+  where status = 'approved';
+
+create index if not exists idx_customer_product_reviews_user_id on customer_product_reviews(user_id);
+create index if not exists idx_customer_product_reviews_status on customer_product_reviews(status, created_at desc);
+
+alter table customer_product_reviews enable row level security;
+
+drop policy if exists "product_reviews_select_approved" on customer_product_reviews;
+create policy "product_reviews_select_approved" on customer_product_reviews
+  for select using (status = 'approved');
+
+drop policy if exists "product_reviews_select_own" on customer_product_reviews;
+create policy "product_reviews_select_own" on customer_product_reviews
+  for select using (auth.uid() is not null and user_id = auth.uid());
+
+drop policy if exists "product_reviews_insert_own" on customer_product_reviews;
+create policy "product_reviews_insert_own" on customer_product_reviews
+  for insert with check (auth.uid() is not null and user_id = auth.uid() and status = 'pending');
+
+drop policy if exists "product_reviews_update_own" on customer_product_reviews;
+create policy "product_reviews_update_own" on customer_product_reviews
+  for update using (auth.uid() is not null and user_id = auth.uid())
+  with check (auth.uid() is not null and user_id = auth.uid());
+
+revoke delete on table customer_product_reviews from anon, authenticated;
+
 drop policy if exists "orders_select_own" on orders;
 create policy "orders_select_own" on orders for select using (auth.uid() is not null and user_id = auth.uid());
 
