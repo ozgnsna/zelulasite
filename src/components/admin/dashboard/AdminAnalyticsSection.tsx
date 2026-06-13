@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowDown, ChevronRight } from "lucide-react";
-import { ProductImage } from "@/components/product/ProductImage";
+import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
 import type { DashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
 import {
   buildAnalyticsFilterHref,
@@ -355,18 +355,12 @@ export function AdminAnalyticsSection({ data }: { data: AnalyticsSectionData }) 
         {metrics.topViewedProducts.length === 0 ? (
           <p className="mt-2 text-[11px] text-stone-500">Seçili dönemde görüntülenme yok.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-stone-200/50 overflow-hidden rounded-xl border border-stone-200/50 bg-white/80">
+          <ul className="mt-2 divide-y divide-stone-200/50 overflow-visible rounded-xl border border-stone-200/50 bg-white/80">
             {metrics.topViewedProducts.map((row) => {
               const imageUrl = productImages[row.productId];
               return (
-                <li key={row.productId} className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="relative size-11 shrink-0 overflow-hidden rounded-lg border border-stone-200/70 bg-stone-100">
-                    {imageUrl ? (
-                      <ProductImage src={imageUrl} alt="" fill className="object-cover" sizes="44px" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-[9px] font-semibold text-stone-400">—</div>
-                    )}
-                  </div>
+                <li key={row.productId} className="flex items-center gap-3 overflow-visible px-3 py-2.5">
+                  <AdminProductListThumbnail src={imageUrl ?? null} alt={row.productName} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-medium text-stone-800">{row.productName}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-stone-500">
