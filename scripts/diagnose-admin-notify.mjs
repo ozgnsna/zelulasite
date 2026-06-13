@@ -138,3 +138,27 @@ if (url && key) {
 }
 
 console.log("\nAdmin panel: Sipariş detay → Ödeme bildirimleri → Kayıt geçmişi (internal_notify).\n");
+
+if (process.argv.includes("--checklist")) {
+  console.log(`=== Meta WhatsApp Business kurulum checklist (Trendyol tarzı otomatik mesaj) ===
+
+1) business.facebook.com → İşletme portföyü oluştur (Zelula Design)
+2) developers.facebook.com → Uygulama → WhatsApp ürününü ekle
+3) WhatsApp → API Setup:
+   - Phone Number ID → Vercel: WHATSAPP_CLOUD_PHONE_NUMBER_ID
+   - Kalıcı token (System User) → Vercel: WHATSAPP_CLOUD_ACCESS_TOKEN
+4) WhatsApp → Phone numbers → işletme hattı al (yeni numara önerilir; kişisel WA ile aynı olmaz)
+5) WhatsApp Manager → Message templates → Türkçe şablonları oluştur ve onaylat:
+   Admin: zelula_admin_new_order
+     Gövde: Yeni sipariş {{1}} — Müşteri: {{2}} — Toplam: {{3}}
+   Müşteri kargoda: zelula_order_shipped
+     Gövde: Gönderinle ilgili bir haberimiz var 📦 {{1}} numaralı gönderin kargoya verildi...
+     Düğme URL: https://www.zeluladesign.com/siparis/{{1}}/basarili
+   (Benzer: zelula_order_paid, zelula_order_delivered)
+6) Vercel Production env — hepsini ekle, redeploy
+7) Test: node scripts/diagnose-admin-notify.mjs
+
+NOT: Sitedeki wa.me linki (footer destek) ≠ Cloud API. Trendyol mesajları API + onaylı şablondur.
+Mavi tik (verified business) ayrı başvuru; şablonlar onaylanmadan müşteriye otomatik mesaj gitmez.
+`);
+}

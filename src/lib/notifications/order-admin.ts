@@ -1,3 +1,9 @@
+import {
+  getWhatsAppTemplateLanguage,
+  sendWhatsAppTemplateMessage,
+  sendWhatsAppTextMessage,
+} from "@/lib/notifications/whatsapp-cloud";
+
 type OrderNotifyItem = {
   name: string;
   quantity: number;
@@ -248,53 +254,28 @@ async function sendAdminEmail(payload: OrderNotifyPayload): Promise<void> {
 }
 
 async function sendAdminWhatsApp(payload: OrderNotifyPayload): Promise<void> {
-  const accessToken = process.env.WHATSAPP_CLOUD_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID?.trim();
   const recipients = getAdminWhatsAppRecipients();
-  if (!accessToken || !phoneNumberId || recipients.length === 0) return;
+  if (recipients.length === 0) return;
 
   const text = buildPlainText(payload).slice(0, 3900);
   const templateName = process.env.WHATSAPP_CLOUD_TEMPLATE_NAME?.trim();
-  const templateLang = process.env.WHATSAPP_CLOUD_TEMPLATE_LANG?.trim() || "tr";
+  const templateLang = getWhatsAppTemplateLanguage();
+  const bodyParameters = [
+    payload.orderNumber,
+    payload.customerName,
+    toTry(payload.total, payload.currency),
+  ];
+
   for (const to of recipients) {
     if (templateName) {
-      const templateRes = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to,
-          type: "template",
-          template: {
-            name: templateName,
-            language: { code: templateLang },
-          },
-        }),
+      await sendWhatsAppTemplateMessage({
+        to,
+        templateName,
+        languageCode: templateLang,
+        bodyParameters,
       });
-      if (templateRes.ok) continue;
-      const templateBody = await templateRes.text().catch(() => "");
-      throw new Error(`whatsapp_template_notify_failed:${templateRes.status}:${templateBody}`);
     } else {
-      const res = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to,
-          type: "text",
-          text: { body: text },
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new Error(`whatsapp_notify_failed:${res.status}:${body}`);
-      }
+      await sendWhatsAppTextMessage({ to, body: text });
     }
   }
 }

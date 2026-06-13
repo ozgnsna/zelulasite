@@ -1,5 +1,4 @@
-import { Fragment, type ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import { type ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DashboardRecentOrdersPanel } from "@/components/admin/DashboardRecentOrdersPanel";
@@ -17,6 +16,9 @@ import {
   buildDashboardAnalyticsMetrics,
   collectVisitorIds,
 } from "@/lib/admin/analytics-dashboard";
+import { AdminAnalyticsSection } from "@/components/admin/dashboard/AdminAnalyticsSection";
+import { resolveAnalyticsRange } from "@/lib/admin/analytics-range";
+import { fetchAnalyticsSectionData } from "@/lib/admin/fetch-analytics-section";
 import { fetchClientIdsSeenBefore } from "@/lib/admin/fetch-analytics-returning-clients";
 
 export const dynamic = "force-dynamic";
@@ -129,6 +131,9 @@ export default async function AdminPage({
     trendyolOrderUnmatched?: string;
     trendyolOrderDuplicate?: string;
     trendyolOrderRestored?: string;
+    analyticsRange?: string;
+    analyticsFrom?: string;
+    analyticsTo?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -150,10 +155,15 @@ export default async function AdminPage({
   if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
 
   const admin = createAdminClient();
+  const analyticsRange = resolveAnalyticsRange({
+    analyticsRange: sp.analyticsRange,
+    analyticsFrom: sp.analyticsFrom,
+    analyticsTo: sp.analyticsTo,
+  });
   const { start: dayStart, end: dayEnd } = istanbulDayUtcRange();
   const { start: yStart, end: yEnd } = istanbulYesterdayUtcRange();
 
-  const [todayOrdersRes, todayAnalyticsRes, productsRes, todayOrderItemsRes, recentOrdersListRes, yesterdayOrdersRes, pendingShipCountRes, pendingShipListRes] =
+  const [todayOrdersRes, todayAnalyticsRes, productsRes, todayOrderItemsRes, recentOrdersListRes, yesterdayOrdersRes, pendingShipCountRes, pendingShipListRes, analyticsSectionData] =
     await Promise.all([
     admin
       .from("orders")
@@ -205,6 +215,7 @@ export default async function AdminPage({
       .in("order_status", ["pending", "confirmed", "processing"])
       .order("created_at", { ascending: true })
       .limit(8),
+    fetchAnalyticsSectionData(admin, analyticsRange),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
@@ -236,10 +247,6 @@ export default async function AdminPage({
   const addToCartToday = dashboardAnalytics.addToCarts;
   const viewItemToday = dashboardAnalytics.productViews;
   const purchaseToday = dashboardAnalytics.purchases;
-  const topViewedMaxViews =
-    dashboardAnalytics.topViewedProducts.length > 0
-      ? Math.max(...dashboardAnalytics.topViewedProducts.map((r) => r.views))
-      : 1;
 
   const lowStockCount = products.filter((p) => Boolean(p.is_active) && Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= 3).length;
   const missingMarketplaceCount = products.filter((p) => {
@@ -963,98 +970,7 @@ export default async function AdminPage({
             </div>
           </section>
 
-          <section
-            id="analytics-detail"
-            aria-label="Analitik özeti"
-            className="rounded-xl border border-stone-200/45 bg-stone-50/35 p-2 shadow-sm ring-1 ring-stone-900/[0.02] sm:p-2.5"
-          >
-            <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-              <div>
-                <h2 className="text-[11px] font-semibold tracking-tight text-stone-700">Analitik özeti</h2>
-                <p className="text-[10px] leading-tight text-stone-500">
-                  Bugün · vitrin olayları · ziyaretçi = tarayıcı profili (client_id)
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-1 text-[10px] text-stone-500">
-              Ziyaretçi özeti yukarıda ·{" "}
-              <a href="#visitor-analytics" className="font-semibold text-[#8a734f] underline-offset-2 hover:underline">
-                Ziyaretçilere git ↑
-              </a>
-            </p>
-
-            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
-              <Metric compact title="Ürün Görüntüleme" value={dashboardAnalytics.productViews.toLocaleString("tr-TR")} />
-              <Metric compact title="Sepete Ekleme" value={dashboardAnalytics.addToCarts.toLocaleString("tr-TR")} />
-              <Metric compact title="Ödeme Adımı" value={dashboardAnalytics.checkoutStarts.toLocaleString("tr-TR")} />
-              <Metric compact title="Satın Alma" value={dashboardAnalytics.purchases.toLocaleString("tr-TR")} />
-              <Metric
-                compact
-                title="Dönüşüm"
-                value={`${dashboardAnalytics.conversionRate.toLocaleString("tr-TR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}%`}
-              />
-            </div>
-
-            <div className="mt-1.5 rounded-lg border border-stone-200/40 bg-white/60 p-1.5">
-              <p className="mb-1 text-[9px] font-semibold tracking-tight text-stone-400">Dönüşüm hunisi</p>
-              <div className="flex min-w-0 items-stretch gap-0.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:gap-0 sm:overflow-visible sm:pb-0">
-                {(
-                  [
-                    { key: "view", label: "Ürün Görüntüleme", value: dashboardAnalytics.funnel.view_item },
-                    { key: "cart", label: "Sepete Ekleme", value: dashboardAnalytics.funnel.add_to_cart },
-                    { key: "pay", label: "Ödeme Adımı", value: dashboardAnalytics.funnel.begin_checkout },
-                    { key: "buy", label: "Satın Alma", value: dashboardAnalytics.funnel.purchase },
-                  ] as const
-                ).map((step, i) => (
-                  <Fragment key={step.key}>
-                    {i > 0 ? (
-                      <span className="flex shrink-0 items-center justify-center px-0.5 text-stone-300 sm:px-0" aria-hidden>
-                        <ChevronRight className="size-3.5 sm:size-3" strokeWidth={2} />
-                      </span>
-                    ) : null}
-                    <div className="flex min-w-[5.25rem] flex-1 flex-col justify-center rounded-md border border-stone-200/55 bg-white px-1.5 py-0.5 text-center shadow-[0_1px_0_0_rgba(28,25,23,0.03)] sm:min-w-0">
-                      <span className="text-[7.5px] font-semibold leading-[1.15] tracking-tight text-stone-500">
-                        {step.label}
-                      </span>
-                      <span className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-stone-900">
-                        {step.value.toLocaleString("tr-TR")}
-                      </span>
-                    </div>
-                  </Fragment>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-2">
-              <p className="text-[9px] font-semibold tracking-tight text-stone-400">En çok görüntülenen ürünler</p>
-              {dashboardAnalytics.topViewedProducts.length === 0 ? (
-                <p className="mt-1 text-[11px] text-stone-500">Henüz görüntülenme yok.</p>
-              ) : (
-                <ul className="mt-1 divide-y divide-stone-200/50 rounded-md border border-stone-200/40 bg-white/70">
-                  {dashboardAnalytics.topViewedProducts.map((row) => (
-                    <li key={row.productId} className="flex items-center gap-2 px-2 py-1 sm:py-1">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[11px] font-medium leading-tight text-stone-800">{row.productName}</p>
-                        <div className="mt-0.5 h-0.5 w-full max-w-[8rem] overflow-hidden rounded-full bg-stone-200/90">
-                          <div
-                            className="h-full rounded-full bg-stone-400/90"
-                            style={{ width: `${Math.round((row.views / topViewedMaxViews) * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-stone-900/[0.06] px-1.5 py-px text-[10px] font-bold tabular-nums text-stone-800">
-                        {row.views.toLocaleString("tr-TR")}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
+          <AdminAnalyticsSection data={analyticsSectionData} />
         </section>
 
     </main>

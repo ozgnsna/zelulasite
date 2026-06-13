@@ -9,6 +9,7 @@ function revalidateAdminOrderPaths(orderId: string) {
 import { redirect } from "next/navigation";
 import { normalizeEmailInput } from "@/lib/account/email-input";
 import { purgeAllOrdersAndResetCounter } from "@/lib/admin/purge-orders";
+import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
@@ -870,6 +871,7 @@ export async function updateOrderStatus(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const order_status = String(formData.get("order_status") ?? "pending");
   const payment_status = String(formData.get("payment_status") ?? "pending");
+  const { data: before } = await supabase.from("orders").select("order_status").eq("id", id).maybeSingle();
   await supabase
     .from("orders")
     .update({ order_status, payment_status, updated_at: new Date().toISOString() })
@@ -884,6 +886,9 @@ export async function updateOrderStatus(formData: FormData) {
     verification_status: "passed",
     processed_at: new Date().toISOString(),
   });
+  if (order_status === "shipped" && before?.order_status !== "shipped") {
+    await notifyCustomerOrderWhatsApp(supabase, id, "order_shipped");
+  }
   revalidateAdminOrderPaths(id);
 }
 
@@ -914,6 +919,8 @@ export async function markOrderHandDelivered(formData: FormData) {
     verification_status: "passed",
     processed_at: new Date().toISOString(),
   });
+
+  await notifyCustomerOrderWhatsApp(supabase, id, "order_delivered");
 
   revalidateAdminOrderPaths(id);
 }
@@ -1316,6 +1323,8 @@ export async function markOrderPaidManually(formData: FormData) {
   await syncLoyaltyLedgersForOrder(supabase, id);
   await captureGiftCardRedemptionForOrder(supabase, id);
   await issueGiftCardsForPaidOrder(supabase, id);
+
+  await notifyCustomerOrderWhatsApp(supabase, id, "order_paid");
 
   revalidateAdminOrderPaths(id);
 }

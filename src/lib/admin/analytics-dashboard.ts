@@ -20,7 +20,13 @@ export type DashboardAnalyticsMetrics = {
   checkoutStarts: number;
   purchases: number;
   conversionRate: number;
-  topViewedProducts: Array<{ productId: string; productName: string; views: number }>;
+  topViewedProducts: Array<{
+    productId: string;
+    productName: string;
+    views: number;
+    addToCarts: number;
+    addToCartRate: number;
+  }>;
   funnel: {
     view_item: number;
     add_to_cart: number;
@@ -93,7 +99,7 @@ export function buildDashboardAnalyticsMetrics(
   let addToCarts = 0;
   let checkoutStarts = 0;
   let purchases = 0;
-  const topViewed = new Map<string, { productName: string; views: number }>();
+  const topViewed = new Map<string, { productName: string; views: number; addToCarts: number }>();
 
   for (const event of events) {
     const name = String(event.event_name ?? "");
@@ -101,7 +107,7 @@ export function buildDashboardAnalyticsMetrics(
     if (name === "view_item") {
       productViews += 1;
       for (const item of parseItems(event.ecommerce)) {
-        const row = topViewed.get(item.item_id) ?? { productName: item.item_name, views: 0 };
+        const row = topViewed.get(item.item_id) ?? { productName: item.item_name, views: 0, addToCarts: 0 };
         row.views += 1;
         topViewed.set(item.item_id, row);
       }
@@ -109,6 +115,11 @@ export function buildDashboardAnalyticsMetrics(
     }
     if (name === "add_to_cart") {
       addToCarts += 1;
+      for (const item of parseItems(event.ecommerce)) {
+        const row = topViewed.get(item.item_id) ?? { productName: item.item_name, views: 0, addToCarts: 0 };
+        row.addToCarts += 1;
+        topViewed.set(item.item_id, row);
+      }
       continue;
     }
     if (name === "begin_checkout") {
@@ -135,6 +146,8 @@ export function buildDashboardAnalyticsMetrics(
         productId,
         productName: row.productName,
         views: row.views,
+        addToCarts: row.addToCarts,
+        addToCartRate: pct(row.addToCarts, row.views),
       }))
       .sort((a, b) => b.views - a.views)
       .slice(0, 5),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
 import { createShipmentForOrder } from "@/lib/shipping/provider";
 import type { OrderShippingSource } from "@/lib/shipping/types";
 
@@ -88,6 +89,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   if (updErr) {
     return NextResponse.json({ ok: false, error: "Sipariş güncellenemedi.", detail: updErr.message }, { status: 500 });
   }
+
+  await notifyCustomerOrderWhatsApp(admin, orderId, "order_shipped", {
+    trackingNumber: result.trackingNumber,
+  });
 
   return NextResponse.json({
     ok: true,

@@ -7,6 +7,7 @@ import {
 
 type PaymentLogRow = {
   id: string;
+  provider?: string | null;
   event_type: string | null;
   status: string;
   verification_status: string | null;
@@ -18,6 +19,25 @@ type PaymentLogRow = {
   request_payload: unknown;
   response_payload?: unknown;
 };
+
+function customerWhatsAppDetail(log: PaymentLogRow): string | null {
+  if (String(log.provider ?? "") !== "internal_customer_whatsapp") return null;
+  const payload = log.response_payload as
+    | { attempted?: boolean; ok?: boolean; error?: string; skippedReason?: string }
+    | null
+    | undefined;
+  if (!payload) return log.verification_error ?? null;
+  const event = String(log.event_type ?? "");
+  const label =
+    event === "order_paid"
+      ? "Müşteri WA · sipariş alındı"
+      : event === "order_shipped"
+        ? "Müşteri WA · kargoda"
+        : event === "order_delivered"
+          ? "Müşteri WA · teslim"
+          : "Müşteri WA";
+  return `${label}: ${payload.ok ? "gitti" : payload.attempted ? "hata" : "atlandı"}${payload.error ? ` (${payload.error})` : payload.skippedReason ? ` (${payload.skippedReason})` : ""}`;
+}
 
 function adminNotifyDetail(log: PaymentLogRow): string | null {
   if (String(log.event_type ?? "").toLowerCase() !== "admin_notify") return null;
@@ -113,7 +133,7 @@ export function AdminOrderCallbackHistory({
               const kind = callbackEventKindLabelTr(log.event_type);
               const st = callbackLogStatusLabelTr(log.status);
               const ver = callbackVerificationLabelTr(log.verification_status);
-              const notifyLine = adminNotifyDetail(log);
+              const notifyLine = customerWhatsAppDetail(log) ?? adminNotifyDetail(log);
               const rawPayload =
                 log.response_payload ?? log.callback_payload ?? log.request_payload ?? {};
               const payloadLabel =

@@ -4,6 +4,7 @@ import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inven
 import type { PaymentCallbackPayload } from "@/lib/payments/types";
 import { logPayment } from "@/lib/payments/logger";
 import { notifyAdminOrderEventWithResult } from "@/lib/notifications/order-admin";
+import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
 import { sendCustomerOrderEmail } from "@/lib/notifications/order-customer";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
 import {
@@ -370,6 +371,8 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
         verification_error: customerResult.error || customerResult.skippedReason || null,
         processed_at: new Date().toISOString(),
       });
+
+      await notifyCustomerOrderWhatsApp(admin, payload.orderId, "order_paid");
     }
   } else {
     await releaseGiftCardHoldsForOrder(admin, payload.orderId);
