@@ -1,3 +1,8 @@
+import {
+  fulfillmentStageBadgeClasses,
+  resolveOrderFulfillmentStage,
+} from "@/lib/orders/fulfillment-stage";
+
 export function formatAdminMoney(amount: number, currency: string) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: currency || "TRY" }).format(amount);
 }
@@ -37,19 +42,22 @@ export function verificationBadgeClasses(status: string | null | undefined): str
   return "bg-stone-100 text-stone-700 ring-stone-500/12";
 }
 
-export function orderBadgeClasses(status: string): string {
+export function orderBadgeClasses(status: string, paymentStatus?: string): string {
+  if (paymentStatus !== undefined) {
+    return fulfillmentStageBadgeClasses(resolveOrderFulfillmentStage(paymentStatus, status));
+  }
   switch (status) {
     case "hand_delivered":
       return "bg-emerald-50 text-emerald-950 ring-emerald-600/25";
-    case "confirmed":
-      return "bg-emerald-50 text-emerald-950 ring-emerald-600/25";
-    case "processing":
     case "shipped":
-      return "bg-emerald-50/80 text-emerald-900 ring-emerald-600/20";
-    case "cancelled":
-      return "bg-rose-50 text-rose-950 ring-rose-600/30";
+      return "bg-sky-50 text-sky-950 ring-sky-600/20";
+    case "processing":
+      return "bg-violet-50 text-violet-950 ring-violet-600/20";
+    case "confirmed":
     case "pending":
       return "bg-amber-50 text-amber-950 ring-amber-500/30";
+    case "cancelled":
+      return "bg-rose-50 text-rose-950 ring-rose-600/30";
     default:
       return "bg-stone-100 text-stone-800 ring-stone-500/15";
   }

@@ -14,7 +14,13 @@ export type DashboardOrderRow = {
   created_at: string;
 };
 
-type FilterId = "all" | "ship_ready" | "payment_pending" | "today";
+import {
+  fulfillmentStageListChipClasses,
+  fulfillmentStageLabelTr,
+  resolveOrderFulfillmentStage,
+} from "@/lib/orders/fulfillment-stage";
+
+type FilterId = "all" | "new" | "payment_pending" | "today";
 
 function shortenOrderNumberDisplay(orderNumber: string): string {
   const s = String(orderNumber ?? "").trim();
@@ -40,11 +46,8 @@ function formatTryCompact(n: number): string {
   return `${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
 }
 
-function isShipReadyQueue(o: DashboardOrderRow): boolean {
-  if (String(o.order_status ?? "") === "cancelled") return false;
-  if (o.payment_status !== "paid") return false;
-  const os = String(o.order_status ?? "");
-  return os === "pending" || os === "confirmed" || os === "processing";
+function isNewOrdersQueue(o: DashboardOrderRow): boolean {
+  return resolveOrderFulfillmentStage(o.payment_status, o.order_status) === "new";
 }
 
 function isPaymentPending(o: DashboardOrderRow): boolean {
@@ -57,50 +60,12 @@ function isTodayOrder(o: DashboardOrderRow, dayStartMs: number, dayEndMs: number
   return Number.isFinite(t) && t >= dayStartMs && t <= dayEndMs;
 }
 
-/** Tek operasyon chip’i: Ödendi | Hazırlanıyor | Kargoya hazır | Beklemede (+ iptal / ödeme hatası). */
+/** Tek operasyon chip’i: dört aşamalı akış + ödeme/iptal. */
 function operationsChip(o: DashboardOrderRow): { label: string; className: string } {
-  const pay = String(o.payment_status ?? "");
-  const ord = String(o.order_status ?? "");
-
-  if (ord === "cancelled") {
-    return {
-      label: "İptal",
-      className: "border-rose-200/70 bg-rose-50/80 text-rose-800/90 ring-rose-400/12",
-    };
-  }
-  if (pay === "failed") {
-    return {
-      label: "Ödeme hatası",
-      className: "border-rose-200/80 bg-rose-50 text-rose-900 ring-rose-500/20",
-    };
-  }
-  if (pay !== "paid") {
-    return {
-      label: "Beklemede",
-      className: "border-amber-200/80 bg-amber-50/85 text-amber-900/85 ring-amber-300/15",
-    };
-  }
-  if (ord === "shipped" || ord === "hand_delivered") {
-    return {
-      label: "Ödendi",
-      className: "border-emerald-300/70 bg-emerald-50/90 text-emerald-900 ring-emerald-600/10",
-    };
-  }
-  if (ord === "processing") {
-    return {
-      label: "Hazırlanıyor",
-      className: "border-slate-400/45 bg-slate-100/90 text-slate-800 ring-slate-500/12",
-    };
-  }
-  if (ord === "pending" || ord === "confirmed") {
-    return {
-      label: "Kargoya hazır",
-      className: "border-emerald-600/35 bg-emerald-100/95 text-emerald-950 ring-emerald-700/18",
-    };
-  }
+  const stage = resolveOrderFulfillmentStage(o.payment_status, o.order_status);
   return {
-    label: "Kargoya hazır",
-    className: "border-emerald-600/35 bg-emerald-100/95 text-emerald-950 ring-emerald-700/18",
+    label: fulfillmentStageLabelTr(stage),
+    className: fulfillmentStageListChipClasses(stage),
   };
 }
 
@@ -109,7 +74,7 @@ const chipBase =
 
 const FILTERS: { id: FilterId; label: string }[] = [
   { id: "all", label: "Tümü" },
-  { id: "ship_ready", label: "Kargoya hazır" },
+  { id: "new", label: "Yeni gelen" },
   { id: "payment_pending", label: "Ödeme bekleyen" },
   { id: "today", label: "Bugün" },
 ];
@@ -130,7 +95,7 @@ export function DashboardRecentOrdersPanel({
   const filtered = useMemo(() => {
     return orders.filter((o) => {
       if (filter === "all") return true;
-      if (filter === "ship_ready") return isShipReadyQueue(o);
+      if (filter === "new") return isNewOrdersQueue(o);
       if (filter === "payment_pending") return isPaymentPending(o);
       if (filter === "today") return isTodayOrder(o, dayStartMs, dayEndMs);
       return true;
@@ -158,7 +123,7 @@ export function DashboardRecentOrdersPanel({
             href="/admin/orders?queue=ship"
             className="rounded-lg border border-stone-800/15 bg-stone-900 px-2 py-1 text-[10px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
           >
-            Kargo kuyruğu
+            Kuyruk
           </Link>
           <Link
             href="/admin/products/new"

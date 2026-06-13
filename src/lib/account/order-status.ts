@@ -1,3 +1,9 @@
+import {
+  fulfillmentStageCustomerLabel,
+  fulfillmentStageLabelTr,
+  resolveOrderFulfillmentStage,
+} from "@/lib/orders/fulfillment-stage";
+
 /** Ödeme satırı (sipariş kartında ayrı gösterim). */
 export function paymentStatusLabelTr(status: string): string {
   switch (status) {
@@ -14,19 +20,21 @@ export function paymentStatusLabelTr(status: string): string {
   }
 }
 
-/** Sipariş durumu satırı (ayrı gösterim). */
-export function orderStatusLabelTr(status: string): string {
+/** Sipariş operasyon aşaması (admin rozet / liste). */
+export function orderStatusLabelTr(status: string, paymentStatus?: string): string {
+  if (paymentStatus !== undefined) {
+    return fulfillmentStageLabelTr(resolveOrderFulfillmentStage(paymentStatus, status));
+  }
   switch (status) {
     case "hand_delivered":
-      return "Elden Teslim";
+      return "Teslim edildi";
     case "shipped":
-      return "Kargoda";
+      return "Taşımada";
     case "processing":
       return "Hazırlanıyor";
     case "confirmed":
-      return "Onaylandı";
     case "pending":
-      return "Beklemede";
+      return "Yeni sipariş";
     case "cancelled":
       return "İptal";
     default:
@@ -39,23 +47,6 @@ export function orderStatusLabel(row: {
   payment_status: string;
   order_status: string;
 }): string {
-  const { payment_status, order_status } = row;
-
-  if (payment_status === "failed") {
-    return "Ödeme başarısız";
-  }
-  if (payment_status === "pending") {
-    return "Ödeme bekleniyor";
-  }
-  if (payment_status === "paid") {
-    if (order_status === "hand_delivered") return "Elden Teslim";
-    if (order_status === "shipped") return "Kargoda";
-    if (order_status === "processing") return "Hazırlanıyor";
-    if (order_status === "confirmed" || order_status === "pending") {
-      return "Ödendi";
-    }
-    return "Hazırlanıyor";
-  }
-
-  return "İşlemde";
+  const stage = resolveOrderFulfillmentStage(row.payment_status, row.order_status);
+  return fulfillmentStageCustomerLabel(stage);
 }

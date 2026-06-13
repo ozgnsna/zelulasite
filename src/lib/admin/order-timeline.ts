@@ -1,3 +1,9 @@
+import {
+  fulfillmentStageLabelTr,
+  resolveOrderFulfillmentStage,
+  type OrderFulfillmentStage,
+} from "@/lib/orders/fulfillment-stage";
+
 export type AdminOrderTimelineStep = {
   key: string;
   label: string;
@@ -5,16 +11,56 @@ export type AdminOrderTimelineStep = {
   state: "complete" | "active" | "pending";
 };
 
-/** Oluşturuldu → Ödeme → Hazırlık: teknik terim yok, günlük iş dili. */
+const FULFILLMENT_STEPS: { key: OrderFulfillmentStage; label: string }[] = [
+  { key: "new", label: "Yeni sipariş" },
+  { key: "preparing", label: "Hazırlanıyor" },
+  { key: "in_transit", label: "Taşımada" },
+  { key: "delivered", label: "Teslim edildi" },
+];
+
+const STAGE_ORDER: OrderFulfillmentStage[] = ["new", "preparing", "in_transit", "delivered"];
+
+function stageIndex(stage: OrderFulfillmentStage): number {
+  const i = STAGE_ORDER.indexOf(stage);
+  return i >= 0 ? i : 0;
+}
+
+function stepState(current: OrderFulfillmentStage, step: OrderFulfillmentStage): AdminOrderTimelineStep["state"] {
+  const cur = stageIndex(current);
+  const idx = stageIndex(step);
+  if (cur > idx) return "complete";
+  if (cur === idx) return "active";
+  return "pending";
+}
+
+function stepDetail(stage: OrderFulfillmentStage, step: OrderFulfillmentStage): string {
+  if (stage === "cancelled") {
+    if (step === "new") return "Sipariş oluşturuldu";
+    return "Sipariş iptal edildi";
+  }
+  switch (step) {
+    case "new":
+      return stage === "new" ? "Ödeme alındı, sıraya alındı" : "Tamamlandı";
+    case "preparing":
+      if (stage === "preparing") return "Paketleniyor";
+      return stageIndex(stage) > stageIndex("preparing") ? "Hazırlık bitti" : "Sırada";
+    case "in_transit":
+      if (stage === "in_transit") return "Kargo yolda";
+      return stage === "delivered" ? "Teslimat tamamlandı" : "Kargo bekleniyor";
+    case "delivered":
+      return stage === "delivered" ? "Müşteriye ulaştı" : "Teslimat bekleniyor";
+    default:
+      return fulfillmentStageLabelTr(step);
+  }
+}
+
+/** Ödeme sonrası: Yeni sipariş → Hazırlanıyor → Taşımada → Teslim edildi. */
 export function buildAdminOrderTimeline(order: {
   created_at: string;
   payment_status: string;
   order_status: string;
 }): AdminOrderTimelineStep[] {
-  const paid = order.payment_status === "paid";
-  const cancelled = String(order.order_status ?? "") === "cancelled";
-  const os = String(order.order_status ?? "");
-
+  const stage = resolveOrderFulfillmentStage(order.payment_status, order.order_status);
   const createdDetail = new Date(order.created_at).toLocaleString("tr-TR", {
     day: "numeric",
     month: "short",
@@ -23,53 +69,42 @@ export function buildAdminOrderTimeline(order: {
     minute: "2-digit",
   });
 
-  let paymentDetail: string;
-  let paymentState: AdminOrderTimelineStep["state"];
-  if (cancelled && !paid) {
-    paymentDetail = "İptal — ödeme alınmadı";
-    paymentState = "complete";
-  } else if (cancelled && paid) {
-    paymentDetail = "Ödeme alındı, sipariş iptal";
-    paymentState = "complete";
-  } else if (paid) {
-    paymentDetail = "Ödeme tamamlandı";
-    paymentState = "complete";
-  } else {
-    paymentDetail = "Ödeme bekleniyor";
-    paymentState = "active";
+  if (stage === "payment_pending" || stage === "payment_failed") {
+    return [
+      {
+        key: "created",
+        label: "Oluşturuldu",
+        detail: createdDetail,
+        state: "complete",
+      },
+      {
+        key: "payment",
+        label: "Ödeme",
+        detail: stage === "payment_failed" ? "Ödeme başarısız" : "Ödeme bekleniyor",
+        state: "active",
+      },
+      ...FULFILLMENT_STEPS.map((s) => ({
+        key: s.key,
+        label: s.label,
+        detail: "Ödeme sonrası başlayacak",
+        state: "pending" as const,
+      })),
+    ];
   }
 
-  let processingDetail: string;
-  let processingState: AdminOrderTimelineStep["state"];
-  if (cancelled) {
-    processingDetail = "Bu sipariş iptal edildi";
-    processingState = "complete";
-  } else if (os === "hand_delivered") {
-    processingDetail = "Elden teslim edildi";
-    processingState = "complete";
-  } else if (os === "shipped") {
-    processingDetail = "Kargoya verildi";
-    processingState = "complete";
-  } else if (os === "processing") {
-    processingDetail = "Hazırlanıyor (paketleme)";
-    processingState = "complete";
-  } else if (os === "confirmed") {
-    processingDetail = paid ? "Onaylandı, hazırlık sırada" : "Onay bekliyor";
-    processingState = paid ? "complete" : "active";
-  } else if (paid && os === "pending") {
-    processingDetail = "Ödeme tamam — depo / onay sırası";
-    processingState = "active";
-  } else if (!paid) {
-    processingDetail = "Ödeme sonrası başlayacak";
-    processingState = "pending";
-  } else {
-    processingDetail = "İşleniyor";
-    processingState = "active";
+  if (stage === "cancelled") {
+    return FULFILLMENT_STEPS.map((s, i) => ({
+      key: s.key,
+      label: s.label,
+      detail: stepDetail(stage, s.key),
+      state: (i === 0 ? "complete" : "pending") as AdminOrderTimelineStep["state"],
+    }));
   }
 
-  return [
-    { key: "created", label: "Oluşturuldu", detail: createdDetail, state: "complete" },
-    { key: "payment", label: "Ödeme", detail: paymentDetail, state: paymentState },
-    { key: "processing", label: "Hazırlık", detail: processingDetail, state: processingState },
-  ];
+  return FULFILLMENT_STEPS.map((s) => ({
+    key: s.key,
+    label: s.label,
+    detail: stepDetail(stage, s.key),
+    state: stepState(stage, s.key),
+  }));
 }

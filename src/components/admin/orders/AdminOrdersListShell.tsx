@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { updateOrderStatus } from "@/app/actions/admin";
+import {
+  fulfillmentStageListChipClasses,
+  fulfillmentStageLabelTr,
+  resolveOrderFulfillmentStage,
+} from "@/lib/orders/fulfillment-stage";
 import { paymentStatusLabelTr } from "@/lib/account/order-status";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -25,10 +30,11 @@ export type AdminOrderListRow = {
 const FILTERS: { id: string; label: string }[] = [
   { id: "all", label: "Tümü" },
   { id: "today", label: "Bugün" },
-  { id: "ship_ready", label: "Kargoya hazır" },
+  { id: "new", label: "Yeni gelen" },
+  { id: "preparing", label: "Hazırlanıyor" },
+  { id: "in_transit", label: "Taşımada" },
+  { id: "delivered", label: "Teslim edildi" },
   { id: "payment_pending", label: "Ödeme bekleyen" },
-  { id: "processing", label: "Hazırlanıyor" },
-  { id: "done", label: "Tamamlanan" },
 ];
 
 function shortenOrderNumberDisplay(orderNumber: string): string {
@@ -45,41 +51,13 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Operasyon satırı: sipariş yaşam döngüsü (kompakt, tarama hiyerarşisi). */
+/** Operasyon satırı: dört aşamalı sipariş akışı. */
 function opsStatusChip(o: AdminOrderListRow): { label: string; className: string } {
-  const os = String(o.order_status ?? "");
-  const pay = String(o.payment_status ?? "");
-  if (os === "cancelled") {
-    return {
-      label: "İptal",
-      className: "border-rose-200/55 bg-rose-50/65 text-rose-800/80 ring-rose-300/12",
-    };
-  }
-  if (pay !== "paid") {
-    return {
-      label: "Beklemede",
-      className: "border-amber-300/55 bg-amber-50/90 text-amber-950/90 ring-amber-400/14",
-    };
-  }
-  if (os === "shipped" || os === "hand_delivered") {
-    return {
-      label: "Tamamlandı",
-      className: "border-emerald-200/70 bg-emerald-50/55 text-emerald-900/85 ring-emerald-400/10",
-    };
-  }
-  if (os === "processing") {
-    return {
-      label: "Hazırlanıyor",
-      className: "border-slate-400/45 bg-slate-200/40 text-slate-800 ring-slate-500/12",
-    };
-  }
-  if (os === "pending" || os === "confirmed") {
-    return {
-      label: "Kargoya hazır",
-      className: "border-emerald-500/40 bg-emerald-100/70 text-emerald-950 ring-emerald-600/14",
-    };
-  }
-  return { label: os || "—", className: "border-stone-200 bg-stone-50 text-stone-700" };
+  const stage = resolveOrderFulfillmentStage(o.payment_status, o.order_status);
+  return {
+    label: fulfillmentStageLabelTr(stage),
+    className: fulfillmentStageListChipClasses(stage),
+  };
 }
 
 function paymentChipClass(paymentStatus: string): string {
@@ -91,10 +69,10 @@ function paymentChipClass(paymentStatus: string): string {
 function cargoShort(o: AdminOrderListRow): string {
   const tr = String(o.shipping_tracking_number ?? "").trim();
   if (tr) return "Takip var";
-  const st = String(o.shipping_status ?? "").trim();
-  if (st) return st.length > 14 ? `${st.slice(0, 12)}…` : st;
-  const os = String(o.order_status ?? "");
-  if (os === "shipped" || os === "hand_delivered") return "Sevk";
+  const stage = resolveOrderFulfillmentStage(o.payment_status, o.order_status);
+  if (stage === "in_transit") return "Yolda";
+  if (stage === "delivered") return "Teslim";
+  if (stage === "preparing") return "Hazırlık";
   return "—";
 }
 
@@ -186,16 +164,11 @@ export function AdminOrdersListShell({
         intent === "prepare"
           ? selectedRows.filter(
               (o) =>
-                o.payment_status === "paid" &&
-                o.order_status !== "cancelled" &&
-                (o.order_status === "pending" || o.order_status === "confirmed"),
+                resolveOrderFulfillmentStage(o.payment_status, o.order_status) === "new",
             )
           : selectedRows.filter(
               (o) =>
-                o.payment_status === "paid" &&
-                o.order_status !== "cancelled" &&
-                o.order_status !== "shipped" &&
-                o.order_status !== "hand_delivered",
+                resolveOrderFulfillmentStage(o.payment_status, o.order_status) === "preparing",
             );
       if (targets.length === 0) {
         toast.message("Bu işlem için uygun sipariş seçilmedi.");
@@ -212,8 +185,8 @@ export function AdminOrdersListShell({
           }
           toast.success(
             intent === "prepare"
-              ? `${targets.length} sipariş hazırlanıyor olarak işlendi.`
-              : `${targets.length} sipariş kargoda olarak işlendi.`,
+              ? `${targets.length} sipariş hazırlanıyor aşamasına alındı.`
+              : `${targets.length} sipariş taşımada olarak işlendi.`,
           );
           setSelected(new Set());
           router.refresh();

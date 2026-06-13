@@ -254,8 +254,8 @@ export function AdminOrderDetailView({
               <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${paymentBadgeClasses(paymentStatus)}`}>
                 {paymentStatusLabelTr(paymentStatus)}
               </span>
-              <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${orderBadgeClasses(orderStatus)}`}>
-                {orderStatusLabelTr(orderStatus)}
+              <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${orderBadgeClasses(orderStatus, paymentStatus)}`}>
+                {orderStatusLabelTr(orderStatus, paymentStatus)}
               </span>
             </div>
           </div>

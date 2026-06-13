@@ -70,7 +70,7 @@ export async function OrdersList() {
                   Ödeme: {paymentStatusLabelTr(o.payment_status ?? "")}
                 </span>
                 <span className="inline-flex rounded-full border border-[#e8dfd3] bg-white/90 px-2.5 py-0.5 text-[11px] font-medium text-stone-600">
-                  Sipariş: {orderStatusLabelTr(o.order_status ?? "")}
+                  Sipariş: {orderStatusLabelTr(o.order_status ?? "", o.payment_status ?? "")}
                 </span>
                 <span className="inline-flex rounded-full border border-[#e8dfd3]/80 bg-[#faf8f5] px-2.5 py-0.5 text-[11px] font-medium text-stone-700">
                   {orderStatusLabel({

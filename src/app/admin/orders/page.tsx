@@ -9,14 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const FILTER_IDS = new Set([
-  "all",
-  "today",
-  "ship_ready",
-  "payment_pending",
-  "processing",
-  "done",
-]);
+import { ORDER_LIST_FILTER_IDS, normalizeOrdersListFilter } from "@/lib/orders/fulfillment-stage";
 
 export default async function AdminOrdersListPage({
   searchParams,
@@ -30,10 +23,12 @@ export default async function AdminOrdersListPage({
   const purgeErr = sp.purgeErr;
   const filterRaw = String(sp.filter ?? "").trim();
   if (queue === "ship" && !filterRaw) {
-    redirect("/admin/orders?filter=ship_ready");
+    redirect("/admin/orders?filter=new");
   }
 
-  const activeFilter = FILTER_IDS.has(filterRaw) ? filterRaw : "all";
+  const activeFilter = ORDER_LIST_FILTER_IDS.has(filterRaw)
+    ? normalizeOrdersListFilter(filterRaw)
+    : "all";
 
   const supabase = await createClient();
   const {
@@ -60,15 +55,16 @@ export default async function AdminOrdersListPage({
     paymentPending: ordersForQueueCounts.filter(
       (o) => o.order_status !== "cancelled" && String(o.payment_status ?? "") !== "paid",
     ).length,
-    shipReady: ordersForQueueCounts.filter(
+    newOrders: ordersForQueueCounts.filter(
       (o) =>
         o.payment_status === "paid" &&
         o.order_status !== "cancelled" &&
         (o.order_status === "pending" || o.order_status === "confirmed"),
     ).length,
-    processing: ordersForQueueCounts.filter(
+    preparing: ordersForQueueCounts.filter(
       (o) => o.payment_status === "paid" && o.order_status === "processing",
     ).length,
+    inTransit: ordersForQueueCounts.filter((o) => o.order_status === "shipped").length,
   };
 
   return (
@@ -87,16 +83,22 @@ export default async function AdminOrdersListPage({
             Ödeme bekleyen · {queueCounts.paymentPending.toLocaleString("tr-TR")}
           </Link>
           <Link
-            href="/admin/orders?filter=ship_ready"
-            className="rounded-full border border-emerald-200/90 bg-emerald-50/70 px-3 py-1 text-[11px] font-semibold text-emerald-950 hover:bg-emerald-100/80"
+            href="/admin/orders?filter=new"
+            className="rounded-full border border-amber-200/90 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold text-amber-950 hover:bg-amber-100/90"
           >
-            Kargoya hazır · {queueCounts.shipReady.toLocaleString("tr-TR")}
+            Yeni gelen · {queueCounts.newOrders.toLocaleString("tr-TR")}
           </Link>
           <Link
-            href="/admin/orders?filter=processing"
-            className="rounded-full border border-stone-200/90 bg-stone-50 px-3 py-1 text-[11px] font-semibold text-stone-800 hover:bg-white"
+            href="/admin/orders?filter=preparing"
+            className="rounded-full border border-violet-200/90 bg-violet-50/70 px-3 py-1 text-[11px] font-semibold text-violet-950 hover:bg-violet-100/80"
           >
-            Hazırlanıyor · {queueCounts.processing.toLocaleString("tr-TR")}
+            Hazırlanıyor · {queueCounts.preparing.toLocaleString("tr-TR")}
+          </Link>
+          <Link
+            href="/admin/orders?filter=in_transit"
+            className="rounded-full border border-sky-200/90 bg-sky-50/70 px-3 py-1 text-[11px] font-semibold text-sky-950 hover:bg-sky-100/80"
+          >
+            Taşımada · {queueCounts.inTransit.toLocaleString("tr-TR")}
           </Link>
         </div>
       </header>

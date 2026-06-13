@@ -77,6 +77,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const { error: updErr } = await admin
     .from("orders")
     .update({
+      order_status: "shipped",
       shipping_provider: result.provider,
       shipping_tracking_number: result.trackingNumber,
       shipping_label_url: result.labelUrl,

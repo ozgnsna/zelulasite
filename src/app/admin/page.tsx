@@ -207,12 +207,12 @@ export default async function AdminPage({
       .from("orders")
       .select("*", { count: "exact", head: true })
       .eq("payment_status", "paid")
-      .in("order_status", ["pending", "confirmed", "processing"]),
+      .in("order_status", ["pending", "confirmed"]),
     admin
       .from("orders")
       .select("id,order_number,total,customer_name,created_at,order_status")
       .eq("payment_status", "paid")
-      .in("order_status", ["pending", "confirmed", "processing"])
+      .in("order_status", ["pending", "confirmed"])
       .order("created_at", { ascending: true })
       .limit(8),
     fetchAnalyticsSectionData(admin, analyticsRange),
@@ -426,7 +426,7 @@ export default async function AdminPage({
               <p className="mt-0.5 text-[10px] leading-snug text-stone-600">{kpiCountDeltaTr(ordersToday, ordersYesterday)}</p>
             </div>
             <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Kargoya hazır</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Yeni gelen</p>
               <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
                 {pendingShipmentCount.toLocaleString("tr-TR")}
               </p>
@@ -519,8 +519,8 @@ export default async function AdminPage({
             <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h2 className="text-sm font-semibold text-stone-900">Kargoya hazır siparişler</h2>
-                  <p className="mt-0.5 text-[11px] text-stone-500">Ödendi · paketleme / kargo bekliyor</p>
+                  <h2 className="text-sm font-semibold text-stone-900">Yeni gelen siparişler</h2>
+                  <p className="mt-0.5 text-[11px] text-stone-500">Ödendi · henüz hazırlığa alınmadı</p>
                 </div>
                 <Link
                   href="/admin/orders?queue=ship"
