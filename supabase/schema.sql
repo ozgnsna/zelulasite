@@ -399,6 +399,10 @@ alter table public.orders
   add column if not exists shipping_status text;
 alter table public.orders
   add column if not exists shipping_created_at timestamptz;
+alter table public.orders
+  add column if not exists invoice_pdf_url text;
+alter table public.orders
+  add column if not exists invoice_uploaded_at timestamptz;
 
 create table if not exists public.loyalty_points_ledger (
   id uuid primary key default gen_random_uuid(),

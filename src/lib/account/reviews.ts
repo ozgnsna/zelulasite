@@ -43,6 +43,18 @@ export function isQualifyingPaidOrder(paymentStatus: string | null | undefined, 
   return paymentStatus === "paid" && String(orderStatus ?? "") !== "cancelled";
 }
 
+/** Yorum yazılabilir: ödendi + teslim edildi (eldan veya admin “Elden Teslim Edildi” işaretledi). */
+export function isOrderDeliveredForReview(orderStatus: string | null | undefined): boolean {
+  return String(orderStatus ?? "") === "hand_delivered";
+}
+
+export function canWriteProductReview(
+  paymentStatus: string | null | undefined,
+  orderStatus: string | null | undefined,
+): boolean {
+  return isQualifyingPaidOrder(paymentStatus, orderStatus) && isOrderDeliveredForReview(orderStatus);
+}
+
 export async function findQualifyingOrderIdForProduct(
   supabase: SupabaseClient,
   userId: string,
@@ -53,7 +65,7 @@ export async function findQualifyingOrderIdForProduct(
     .select("id, created_at, order_items!inner(product_id)")
     .eq("user_id", userId)
     .eq("payment_status", "paid")
-    .neq("order_status", "cancelled")
+    .eq("order_status", "hand_delivered")
     .eq("order_items.product_id", productId)
     .order("created_at", { ascending: false })
     .limit(1);

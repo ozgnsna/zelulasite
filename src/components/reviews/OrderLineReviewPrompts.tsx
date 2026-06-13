@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getUserProductReview, isQualifyingPaidOrder } from "@/lib/account/reviews";
+import { getUserProductReview, canWriteProductReview } from "@/lib/account/reviews";
 
 type OrderLine = {
   product_id: string;
@@ -20,7 +20,7 @@ export async function OrderLineReviewPrompts({
   orderStatus: string;
   lines: OrderLine[];
 }) {
-  if (!isQualifyingPaidOrder(paymentStatus, orderStatus)) return null;
+  if (!canWriteProductReview(paymentStatus, orderStatus)) return null;
 
   const uniqueProducts = new Map<string, { name: string; slug: string }>();
   for (const line of lines) {
@@ -45,7 +45,7 @@ export async function OrderLineReviewPrompts({
   return (
     <div className="mt-8 rounded-2xl border border-[#e8dfd3] bg-[#fffdfb] p-5">
       <h2 className="font-serif text-lg text-stone-900">Deneyimini paylaş</h2>
-      <p className="mt-1 text-sm text-stone-600">Satın aldığın ürünler hakkında yorum bırakabilirsin.</p>
+      <p className="mt-1 text-sm text-stone-600">Teslim aldığın ürünler hakkında yorum bırakabilirsin.</p>
       <ul className="mt-4 space-y-2">
         {actionable.map(({ productId, product, review }) => (
           <li key={productId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#eadfce] bg-white px-4 py-3">

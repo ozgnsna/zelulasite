@@ -78,7 +78,7 @@ export function ProductReviewForm({
       }}
     >
       <h3 className="font-serif text-lg text-stone-900">Deneyimini paylaş</h3>
-      <p className="mt-1 text-sm text-stone-600">Yalnızca bu ürünü satın alan müşteriler yorum yazabilir.</p>
+      <p className="mt-1 text-sm text-stone-600">Yalnızca teslim aldığın ürünler için yorum yazabilirsin.</p>
 
       <div className="mt-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Puanın</p>

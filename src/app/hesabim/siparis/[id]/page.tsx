@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { OrderInvoiceSection } from "@/components/account/OrderInvoiceSection";
 import { OrderLegalAgreementsSection } from "@/components/account/OrderLegalAgreementsSection";
 import { OrderLineReviewPrompts } from "@/components/reviews/OrderLineReviewPrompts";
 import { createClient } from "@/lib/supabase/server";
@@ -30,7 +31,7 @@ export default async function SiparisDetayPage({ params }: Props) {
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, order_number, created_at, customer_name, email, phone, subtotal, discount_amount, discount_label, total, currency, payment_status, order_status, shipping_address_json, legal_contract_snapshot, legal_contract_hash",
+      "id, order_number, created_at, customer_name, email, phone, subtotal, discount_amount, discount_label, total, currency, payment_status, order_status, shipping_address_json, legal_contract_snapshot, legal_contract_hash, invoice_pdf_url, invoice_uploaded_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -142,6 +143,13 @@ export default async function SiparisDetayPage({ params }: Props) {
         </div>
 
         <OrderLegalAgreementsSection snapshot={legalSnapshot} hash={legalHash} />
+
+        <OrderInvoiceSection
+          orderNumber={String(order.order_number ?? "")}
+          invoicePdfUrl={order.invoice_pdf_url ? String(order.invoice_pdf_url) : null}
+          invoiceUploadedAt={order.invoice_uploaded_at ? String(order.invoice_uploaded_at) : null}
+          paymentStatus={String(order.payment_status ?? "")}
+        />
 
         <OrderLineReviewPrompts
           supabase={supabase}

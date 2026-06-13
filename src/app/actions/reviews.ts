@@ -46,7 +46,7 @@ export async function submitProductReview(formData: FormData): Promise<SubmitPro
 
   const orderId = await findQualifyingOrderIdForProduct(supabase, user.id, productId);
   if (!orderId) {
-    return { ok: false, error: "Bu ürün için yorum yalnızca ödenmiş siparişlerde yapılabilir." };
+    return { ok: false, error: "Bu ürün için yorum, siparişin teslim edilmesinden sonra açılır." };
   }
 
   const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();

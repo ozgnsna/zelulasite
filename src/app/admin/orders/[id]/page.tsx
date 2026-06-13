@@ -12,6 +12,7 @@ import {
   type AdminCustomerOrderInsight,
   type AdminOrderLine,
 } from "@/components/admin/orders/AdminOrderDetailView";
+import { AdminOrderInvoicePanel } from "@/components/admin/orders/AdminOrderInvoicePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +41,13 @@ function normalizeOrderLines(raw: unknown[] | null): AdminOrderLine[] {
 
 export default async function AdminOrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ invoiceOk?: string; invoiceError?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -197,6 +201,16 @@ export default async function AdminOrderDetailPage({
           timeline={timeline ?? []}
           customerInsight={customerInsight ?? null}
         />
+        <div className="mt-6">
+          <AdminOrderInvoicePanel
+            orderId={String(order.id)}
+            orderNumber={String(order.order_number ?? "")}
+            invoicePdfUrl={order.invoice_pdf_url ? String(order.invoice_pdf_url) : null}
+            invoiceUploadedAt={order.invoice_uploaded_at ? String(order.invoice_uploaded_at) : null}
+            invoiceOk={String(sp.invoiceOk ?? "").trim() === "1"}
+            invoiceError={sp.invoiceError ? decodeURIComponent(String(sp.invoiceError)) : null}
+          />
+        </div>
       </div>
     </main>
   );

@@ -102,11 +102,11 @@ export function ProductReviewsSection({
           <Link href={`/giris?next=${encodeURIComponent(loginNext)}`} className="font-semibold text-[#8a734f] underline-offset-2 hover:underline">
             giriş yap
           </Link>{" "}
-          ve bu ürünü satın almış olmalısın.
+          ve bu ürünü teslim almış olmalısın.
         </div>
       ) : !canReview ? (
         <div className="rounded-2xl border border-[#e8dfd3] bg-[#faf8f5] px-4 py-4 text-sm text-stone-600">
-          Bu ürün için yorum yalnızca ödenmiş siparişlerden sonra açılır.
+          Bu ürün için yorum, siparişin sana ulaştıktan sonra açılır.
         </div>
       ) : null}
 
