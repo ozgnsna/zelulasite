@@ -40,6 +40,7 @@ export function AdminOrderActionBar({
   const stage = resolveOrderFulfillmentStage(paymentStatus, orderStatus);
   const cancelled = stage === "cancelled";
   const delivered = stage === "delivered";
+  const showPaymentReconcile = !cancelled && paymentStatus !== "paid";
 
   return (
     <div className={`flex flex-wrap items-center justify-start gap-2 ${className ?? ""}`}>
@@ -104,7 +105,7 @@ export function AdminOrderActionBar({
         </form>
       ) : null}
 
-      {!cancelled ? (
+      {showPaymentReconcile ? (
         <form action={reconcileOrderStatus}>
           <input type="hidden" name="id" value={orderId} />
           <PendingButton
