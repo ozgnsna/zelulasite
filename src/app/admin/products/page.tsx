@@ -545,9 +545,12 @@ export default async function AdminProductsPage({
         </section>
 
         <section className="rounded-lg border border-stone-200/60 bg-white p-2 shadow-sm sm:p-2.5">
-          <div className="mb-2 border-b border-stone-100/90 pb-2.5">
-            <h2 className="text-xs font-semibold leading-none text-stone-900">Liste</h2>
-            <p className="mt-1 text-[10px] tabular-nums leading-none text-stone-500">{rangeLabel}</p>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-stone-100/90 pb-2.5">
+            <div className="min-w-0">
+              <h2 className="text-xs font-semibold leading-none text-stone-900">Liste</h2>
+              <p className="mt-1 text-[10px] tabular-nums leading-none text-stone-500">{rangeLabel}</p>
+            </div>
+            {listFooterControls}
           </div>
           <form
             id={BULK_FORM_ID}
