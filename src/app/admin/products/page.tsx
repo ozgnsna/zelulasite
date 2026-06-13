@@ -291,6 +291,58 @@ export default async function AdminProductsPage({
       maximumFractionDigits: 2,
     }).format(value);
 
+  const listFooterControls = (
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      {totalPages > 1 ? (
+        <nav className="flex items-center gap-px" aria-label="Sayfalama">
+          {currentPage > 1 ? (
+            <Link
+              href={listQuery({ page: String(currentPage - 1) })}
+              className="rounded-md border border-stone-200/50 bg-stone-50/60 px-1 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/70 hover:bg-stone-100/80 hover:text-stone-800"
+            >
+              ‹
+            </Link>
+          ) : null}
+          {pageNums.map((n) => (
+            <Link
+              key={n}
+              href={listQuery({ page: String(n) })}
+              className={`min-w-[1.375rem] rounded-md border px-1 py-0.5 text-center text-[10px] font-medium tabular-nums transition-colors ${
+                n === currentPage
+                  ? "border-stone-600/40 bg-stone-600 text-white hover:bg-stone-600"
+                  : "border-stone-200/50 bg-stone-50/40 text-stone-600 hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
+              }`}
+            >
+              {n}
+            </Link>
+          ))}
+          {currentPage < totalPages ? (
+            <Link
+              href={listQuery({ page: String(currentPage + 1) })}
+              className="rounded-md border border-stone-200/50 bg-stone-50/60 px-1 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/70 hover:bg-stone-100/80 hover:text-stone-800"
+            >
+              ›
+            </Link>
+          ) : null}
+        </nav>
+      ) : null}
+      <form action={sendAllProductsToTrendyolAction} data-save-scroll-on-submit="true" className="inline">
+        <button
+          type="submit"
+          className="rounded-md border border-stone-200/50 bg-stone-50/40 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
+        >
+          Tüm kataloğu TY
+        </button>
+      </form>
+      <Link
+        href="/admin/products/new"
+        className="rounded-md border border-stone-200/50 bg-stone-50/40 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
+      >
+        + Yeni
+      </Link>
+    </div>
+  );
+
   const filterHidden = (
     <>
       <input type="hidden" name="q" value={sp.q ?? ""} />
@@ -493,60 +545,9 @@ export default async function AdminProductsPage({
         </section>
 
         <section className="rounded-lg border border-stone-200/60 bg-white p-2 shadow-sm sm:p-2.5">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-stone-100/90 pb-2.5">
-            <div className="min-w-0">
-              <h2 className="text-xs font-semibold leading-none text-stone-900">Liste</h2>
-              <p className="mt-1 text-[10px] tabular-nums leading-none text-stone-500">{rangeLabel}</p>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-1">
-              {totalPages > 1 ? (
-                <nav className="flex items-center gap-px" aria-label="Sayfalama">
-                  {currentPage > 1 ? (
-                    <Link
-                      href={listQuery({ page: String(currentPage - 1) })}
-                      className="rounded-md border border-stone-200/50 bg-stone-50/60 px-1 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/70 hover:bg-stone-100/80 hover:text-stone-800"
-                    >
-                      ‹
-                    </Link>
-                  ) : null}
-                  {pageNums.map((n) => (
-                    <Link
-                      key={n}
-                      href={listQuery({ page: String(n) })}
-                      className={`min-w-[1.375rem] rounded-md border px-1 py-0.5 text-center text-[10px] font-medium tabular-nums transition-colors ${
-                        n === currentPage
-                          ? "border-stone-600/40 bg-stone-600 text-white hover:bg-stone-600"
-                          : "border-stone-200/50 bg-stone-50/40 text-stone-600 hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
-                      }`}
-                    >
-                      {n}
-                    </Link>
-                  ))}
-                  {currentPage < totalPages ? (
-                    <Link
-                      href={listQuery({ page: String(currentPage + 1) })}
-                      className="rounded-md border border-stone-200/50 bg-stone-50/60 px-1 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/70 hover:bg-stone-100/80 hover:text-stone-800"
-                    >
-                      ›
-                    </Link>
-                  ) : null}
-                </nav>
-              ) : null}
-              <form action={sendAllProductsToTrendyolAction} data-save-scroll-on-submit="true" className="inline">
-                <button
-                  type="submit"
-                  className="rounded-md border border-stone-200/50 bg-stone-50/40 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
-                >
-                  Tüm kataloğu TY
-                </button>
-              </form>
-              <Link
-                href="/admin/products/new"
-                className="rounded-md border border-stone-200/50 bg-stone-50/40 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 transition-colors hover:border-stone-300/60 hover:bg-stone-100/70 hover:text-stone-800"
-              >
-                + Yeni
-              </Link>
-            </div>
+          <div className="mb-2 border-b border-stone-100/90 pb-2.5">
+            <h2 className="text-xs font-semibold leading-none text-stone-900">Liste</h2>
+            <p className="mt-1 text-[10px] tabular-nums leading-none text-stone-500">{rangeLabel}</p>
           </div>
           <form
             id={BULK_FORM_ID}
@@ -883,6 +884,11 @@ export default async function AdminProductsPage({
               background: rgba(255, 252, 247, 0.95);
             }
           `}</style>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100/90 pt-3">
+            <p className="text-[10px] tabular-nums text-stone-500">{rangeLabel}</p>
+            {listFooterControls}
+          </div>
         </section>
       </div>
     </main>
