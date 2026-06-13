@@ -111,33 +111,6 @@ function initialsFromName(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function IconPhone({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M6.38 4.5h2.4c.2 0 .38.12.46.3l1.52 3.36c.08.18.02.4-.14.52l-1.58 1.26a12.12 12.12 0 005.22 5.22l1.26-1.58c.12-.16.34-.22.52-.14l3.36 1.52c.18.08.3.26.3.46v2.4c0 1.1-.9 2-2 2h-.4C9.5 20 4 14.5 4 7.9V7.5c0-1.1.9-2 2-2z"
-        stroke="currentColor"
-        strokeWidth="1.35"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconMail({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 6h16v12H4V6zm0 0l8 6 8-6"
-        stroke="currentColor"
-        strokeWidth="1.35"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function productAttributeRows(row: AdminOrderLine): { label: string; value: string }[] {
   const p = row.products;
   const rows: { label: string; value: string }[] = [];
@@ -196,6 +169,7 @@ export function AdminOrderDetailView({
   lines,
   logs,
   referralSlot,
+  invoiceSlot,
   timeline = [],
   customerInsight = null,
 }: {
@@ -203,6 +177,7 @@ export function AdminOrderDetailView({
   lines: AdminOrderLine[];
   logs: PaymentLogRow[];
   referralSlot?: ReactNode;
+  invoiceSlot?: ReactNode;
   timeline?: AdminOrderTimelineStep[];
   customerInsight?: AdminCustomerOrderInsight | null;
 }) {
@@ -247,427 +222,334 @@ export function AdminOrderDetailView({
   return (
     <div className="mx-auto w-full min-w-0 space-y-6 pb-16">
       <Link
-        href="/admin"
+        href="/admin/orders"
         className="inline-block text-sm font-medium text-stone-700 transition hover:text-stone-950"
       >
-        ← Admina dön
+        ← Siparişlere dön
       </Link>
 
-      <div>
-        <h1 className="font-serif text-2xl font-medium tracking-tight text-stone-950 sm:text-3xl">Sipariş Detayı</h1>
-        <p className="mt-1.5 text-xs text-stone-600">
-          {new Date(order.created_at).toLocaleString("tr-TR", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </p>
-      </div>
-
-      <div className={controlBar}>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch lg:justify-between lg:gap-10">
-          <div className="flex min-w-0 flex-1 flex-col gap-5">
-            <div>
-              <p className={kicker}>Sipariş no</p>
-              <p className="mt-0.5 text-[11px] leading-snug text-stone-600">Tam numara: kopyala veya üzerine gel.</p>
-              <div className="mt-2">
-                <AdminCopyableSecret value={order.order_number} shortenStart={6} shortenEnd={4} />
-              </div>
-            </div>
-
-            <div className="border-t border-[#e8dfd3] pt-5">
-              <p className={kicker}>Sipariş tutarı</p>
-              <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-950 sm:text-[2rem] sm:leading-tight">
-                {formatAdminMoney(total, currency)}
-              </p>
-              <p className="mt-2 text-xs font-medium text-stone-600">
-                Ödeme:{" "}
-                <span className={`inline-flex align-middle rounded-md px-2 py-0.5 text-[11px] font-bold ring-1 ring-inset ${paymentBadgeClasses(paymentStatus)}`}>
-                  {paymentStatusLabelTr(paymentStatus)}
-                </span>
-              </p>
-            </div>
-
-            <div className="border-t border-[#e8dfd3] pt-5">
-              <p className={kicker}>Sipariş durumu</p>
-              <div className="mt-2">
-                <span
-                  className={`inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset ${orderBadgeClasses(orderStatus)}`}
-                >
-                  {orderStatusLabelTr(orderStatus)}
-                </span>
-              </div>
-            </div>
+      <header className={`${card} bg-[linear-gradient(165deg,#fffdfb_0%,#ffffff_55%)]`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className={kicker}>Sipariş detayı</p>
+            <h1 className="mt-1 font-serif text-2xl font-medium tracking-tight text-stone-950 sm:text-3xl">
+              {order.order_number}
+            </h1>
+            <p className="mt-1.5 text-xs text-stone-600">
+              {new Date(order.created_at).toLocaleString("tr-TR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
           </div>
-
-          <div className="flex flex-col justify-end border-t border-[#e8dfd3] pt-5 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
-            <AdminOrderActionBar
-              orderId={order.id}
-              paymentStatus={paymentStatus}
-              orderStatus={orderStatus}
-              className="w-full lg:max-w-md lg:justify-end"
-            />
-            <AdminDhlCreateShipmentButton
-              orderId={order.id}
-              paymentStatus={paymentStatus}
-              shippingTrackingNumber={order.shipping_tracking_number}
-              shippingStatus={order.shipping_status}
-            />
-            {order.shipping_tracking_number || order.shipping_status ? (
-              <dl className="mt-4 space-y-2 text-xs text-stone-700">
-                {order.shipping_provider ? (
-                  <div className="flex flex-wrap gap-2">
-                    <dt className="font-medium text-stone-500">Sağlayıcı</dt>
-                    <dd className="font-mono uppercase">{order.shipping_provider}</dd>
-                  </div>
-                ) : null}
-                {order.shipping_tracking_number ? (
-                  <div className="flex flex-wrap gap-2">
-                    <dt className="font-medium text-stone-500">Takip</dt>
-                    <dd className="font-mono">{order.shipping_tracking_number}</dd>
-                  </div>
-                ) : null}
-                {order.shipping_status ? (
-                  <div className="flex flex-wrap gap-2">
-                    <dt className="font-medium text-stone-500">Kargo durumu</dt>
-                    <dd>{order.shipping_status}</dd>
-                  </div>
-                ) : null}
-                {order.shipping_label_url ? (
-                  <div>
-                    <a
-                      href={order.shipping_label_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-amber-900 underline-offset-2 hover:underline"
-                    >
-                      Etiket bağlantısı
-                    </a>
-                  </div>
-                ) : null}
-              </dl>
-            ) : null}
+          <div className="text-right">
+            <p className={kicker}>Toplam</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-stone-950 sm:text-3xl">
+              {formatAdminMoney(total, currency)}
+            </p>
+            <div className="mt-2 flex flex-wrap justify-end gap-2">
+              <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${paymentBadgeClasses(paymentStatus)}`}>
+                {paymentStatusLabelTr(paymentStatus)}
+              </span>
+              <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${orderBadgeClasses(orderStatus)}`}>
+                {orderStatusLabelTr(orderStatus)}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+        <div className="mt-4 border-t border-[#eadfce] pt-4">
+          <AdminCopyableSecret value={order.order_number} shortenStart={6} shortenEnd={4} />
+        </div>
+      </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <InfoCard title="Müşteri">
-          <div className="flex gap-4">
-            <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#e8dfd3] bg-[linear-gradient(145deg,#fffdfb,#f5ede1)] text-base font-bold tracking-tight text-[#6b5344]"
-              aria-hidden
-            >
-              {initials}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+        <div className="min-w-0 space-y-6">
+          <section className={controlBar}>
+            <p className={kicker}>Operasyon</p>
+            <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1 space-y-4">
+                <AdminOrderActionBar
+                  orderId={order.id}
+                  paymentStatus={paymentStatus}
+                  orderStatus={orderStatus}
+                  className="w-full justify-start"
+                />
+                <AdminDhlCreateShipmentButton
+                  orderId={order.id}
+                  paymentStatus={paymentStatus}
+                  shippingTrackingNumber={order.shipping_tracking_number}
+                  shippingStatus={order.shipping_status}
+                />
+              </div>
+              {order.shipping_tracking_number || order.shipping_status || order.shipping_label_url ? (
+                <dl className="min-w-[14rem] space-y-2 rounded-xl border border-[#eadfce]/80 bg-[#fffdfb]/80 px-4 py-3 text-xs text-stone-700">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">Kargo</p>
+                  {order.shipping_provider ? (
+                    <div className="flex flex-wrap gap-2">
+                      <dt className="font-medium text-stone-500">Sağlayıcı</dt>
+                      <dd className="font-mono uppercase">{order.shipping_provider}</dd>
+                    </div>
+                  ) : null}
+                  {order.shipping_tracking_number ? (
+                    <div className="flex flex-wrap gap-2">
+                      <dt className="font-medium text-stone-500">Takip</dt>
+                      <dd className="font-mono">{order.shipping_tracking_number}</dd>
+                    </div>
+                  ) : null}
+                  {order.shipping_status ? (
+                    <div className="flex flex-wrap gap-2">
+                      <dt className="font-medium text-stone-500">Durum</dt>
+                      <dd>{order.shipping_status}</dd>
+                    </div>
+                  ) : null}
+                  {order.shipping_label_url ? (
+                    <div>
+                      <a
+                        href={order.shipping_label_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-amber-900 underline-offset-2 hover:underline"
+                      >
+                        Etiket bağlantısı
+                      </a>
+                    </div>
+                  ) : null}
+                </dl>
+              ) : null}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className={kicker}>Ad soyad</p>
-              <p className="mt-1 text-lg font-bold leading-snug text-stone-900">{order.customer_name}</p>
-            </div>
-          </div>
+          </section>
 
-          <div className="space-y-5 border-t border-[#eadfce] pt-5">
-            <div className="flex gap-3">
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f5ede1] text-[#8a6a3d]">
-                <IconPhone />
-              </span>
-              <div className="min-w-0">
-                <p className={kicker}>Telefon</p>
+          <section className={card}>
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Ürünler</h2>
+              {lines.length > 0 ? <span className="text-xs text-stone-500">{lines.length} kalem</span> : null}
+            </div>
+
+            {lines.length === 0 ? (
+              <p className="mt-8 pb-2 text-center text-sm text-stone-600">Bu sipariş için ürün bilgisi bulunamadı.</p>
+            ) : (
+              <ul className="mt-5 divide-y divide-[#eadfce]/90">
+                {lines.map((row) => {
+                  const p = row.products;
+                  const name = p?.name ?? "Ürün";
+                  const attrs = productAttributeRows(row);
+                  const img = pickCoverImageUrl(p?.product_images ?? null);
+                  const editHref = p?.id ? `/admin/products/${p.id}/edit` : null;
+                  return (
+                    <li key={row.id} className="py-5 first:pt-2">
+                      <div className="flex gap-4">
+                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl border border-[#dfd2c4]/90 bg-[#f5ede1]">
+                          {img ? (
+                            <ProductImage src={img} alt={name} fill className="object-cover" sizes="72px" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-xs text-stone-500">—</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          {editHref ? (
+                            <Link
+                              href={editHref}
+                              className="text-base font-bold text-stone-950 underline-offset-2 hover:text-[#8a6a3d] hover:underline"
+                            >
+                              {name}
+                            </Link>
+                          ) : (
+                            <span className="text-base font-bold text-stone-950">{name}</span>
+                          )}
+                          {attrs.length > 0 ? (
+                            <dl className="mt-3 grid max-w-md grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
+                              {attrs.map((a) => (
+                                <div key={a.label} className="contents">
+                                  <dt className="text-stone-500">{a.label}</dt>
+                                  <dd className="font-medium text-stone-900">{a.value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : null}
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfce]/70 pt-3">
+                            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-stone-600">
+                              <span>
+                                Adet: <span className="font-bold text-stone-900">{row.quantity}</span>
+                              </span>
+                              <span>
+                                Birim:{" "}
+                                <span className="font-semibold tabular-nums text-stone-900">
+                                  {formatAdminMoney(Number(row.unit_price), currency)}
+                                </span>
+                              </span>
+                            </div>
+                            <p className="text-lg font-bold tabular-nums tracking-tight text-stone-900">
+                              {formatAdminMoney(Number(row.total_price), currency)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {invoiceSlot}
+
+          <AdminOrderCallbackHistory logs={logs} paymentStatus={paymentStatus} />
+        </div>
+
+        <aside className="min-w-0 space-y-6 xl:sticky xl:top-6">
+          <InfoCard title="Müşteri">
+            <div className="flex gap-4">
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#e8dfd3] bg-[linear-gradient(145deg,#fffdfb,#f5ede1)] text-sm font-bold tracking-tight text-[#6b5344]"
+                aria-hidden
+              >
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-bold leading-snug text-stone-900">{order.customer_name}</p>
                 {telHref ? (
-                  <a
-                    href={telHref}
-                    className="mt-1 block text-sm font-semibold text-[#6b5a45] underline-offset-2 hover:underline"
-                  >
+                  <a href={telHref} className="mt-2 block text-sm font-semibold text-[#6b5a45] underline-offset-2 hover:underline">
                     {phone}
                   </a>
-                ) : (
-                  <p className="mt-1 text-sm text-stone-500">—</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f5ede1] text-[#8a6a3d]">
-                <IconMail />
-              </span>
-              <div className="min-w-0">
-                <p className={kicker}>E-posta</p>
+                ) : null}
                 {mailHref ? (
-                  <a
-                    href={mailHref}
-                    className="mt-1 block break-all text-sm font-semibold text-[#6b5a45] underline-offset-2 hover:underline"
-                  >
+                  <a href={mailHref} className="mt-1 block break-all text-sm font-semibold text-[#6b5a45] underline-offset-2 hover:underline">
                     {email}
                   </a>
-                ) : (
-                  <p className="mt-1 text-sm text-stone-500">—</p>
-                )}
+                ) : null}
               </div>
             </div>
-          </div>
-
-          {addr ? (
-            <div className="border-t border-[#eadfce] pt-5">
-              <p className={kicker}>Teslimat</p>
-              <p className="mt-2 text-sm leading-relaxed text-stone-800">
-                {addr.address_line}
-                <br />
-                <span className="text-stone-600">
-                  {[addr.district, addr.city].filter(Boolean).join(", ")}
-                  {addr.postal_code ? ` · ${addr.postal_code}` : ""}
-                </span>
-              </p>
-              {addr.delivery_note ? <p className="mt-2 text-xs text-stone-600">{addr.delivery_note}</p> : null}
-            </div>
-          ) : null}
-        </InfoCard>
-
-        <InfoCard title="Ödeme">
-          <div className="space-y-5">
-            <div>
-              <p className={kicker}>Sipariş ödemesi</p>
-              <div className="mt-2">
-                <span
-                  className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${paymentBadgeClasses(paymentStatus)}`}
-                >
-                  {paymentStatusLabelTr(paymentStatus)}
-                </span>
+            {addr ? (
+              <div className="border-t border-[#eadfce] pt-4">
+                <p className={kicker}>Teslimat</p>
+                <p className="mt-2 text-sm leading-relaxed text-stone-800">
+                  {addr.address_line}
+                  <br />
+                  <span className="text-stone-600">
+                    {[addr.district, addr.city].filter(Boolean).join(", ")}
+                    {addr.postal_code ? ` · ${addr.postal_code}` : ""}
+                  </span>
+                </p>
+                {addr.delivery_note ? <p className="mt-2 text-xs text-stone-600">{addr.delivery_note}</p> : null}
               </div>
-            </div>
+            ) : null}
+          </InfoCard>
 
-            <div className="border-t border-[#eadfce] pt-5">
-              <p className={kicker}>Sağlayıcı bildirimi</p>
-              {latestLog ? (
-                <div className="mt-2 space-y-2">
-                  <p className="text-xs text-stone-600">
-                    Son kayıt:{" "}
-                    <span className="font-semibold text-stone-800">
-                      {callbackLogStatusLabelTr(latestLog.status)}
-                    </span>
-                  </p>
-                  <div>
-                    <span
-                      className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${
-                        verRaw.toLowerCase() === "passed"
-                          ? "bg-emerald-50 text-emerald-900 ring-emerald-600/25"
-                          : verRaw.toLowerCase() === "failed"
-                            ? "bg-rose-50 text-rose-900 ring-rose-600/25"
-                            : "bg-stone-100 text-stone-700 ring-stone-500/12"
-                      }`}
-                    >
-                      Doğrulama: {callbackVerificationLabelTr(verRaw)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-stone-500">Henüz bildirim yok.</p>
-              )}
-            </div>
-
-            <div className="border-t border-[#eadfce] pt-5">
-              <p className={kicker}>Sağlayıcı</p>
-              <p className="mt-1 text-base font-semibold text-stone-900">{order.payment_provider ?? "—"}</p>
-            </div>
-            <div>
-              <p className={kicker}>Referans</p>
-              <div className="mt-1">
-                {ref ? <AdminCopyableSecret value={ref} shortenStart={10} shortenEnd={6} /> : <span className="text-sm text-stone-400">—</span>}
+          <section className={card}>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Fiyat özeti</h2>
+            <dl className="mt-4 space-y-2 text-[13px]">
+              <div className="flex justify-between gap-4 text-stone-600">
+                <dt>Ara toplam</dt>
+                <dd className="font-semibold tabular-nums text-stone-900">{formatAdminMoney(subtotal, currency)}</dd>
               </div>
-            </div>
-          </div>
-        </InfoCard>
-
-        <InfoCard title="Sipariş" className="lg:col-span-2">
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className={kicker}>Sipariş ID</p>
-              <p className="mt-0.5 text-[10px] leading-snug text-stone-400">
-                Veritabanı UUID’si; her sipariş için sabit uzunlukta.
-              </p>
-              <div className="mt-1">
-                <AdminCopyableSecret value={order.id} shortenStart={6} shortenEnd={4} />
-              </div>
-            </div>
-            <div>
-              <p className={kicker}>Durum</p>
-              <div className="mt-2">
-                <span
-                  className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${orderBadgeClasses(orderStatus)}`}
-                >
-                  {orderStatusLabelTr(orderStatus)}
-                </span>
-              </div>
-            </div>
-            <div>
-              <p className={kicker}>Oluşturulma</p>
-              <p className="mt-1 text-sm font-medium text-stone-900">
-                {new Date(order.created_at).toLocaleString("tr-TR")}
-              </p>
-            </div>
-            <div>
-              <p className={kicker}>Son güncelleme</p>
-              <p className="mt-1 text-sm font-medium text-stone-900">
-                {order.updated_at ? new Date(order.updated_at).toLocaleString("tr-TR") : "—"}
-              </p>
-            </div>
-          </div>
-        </InfoCard>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <InfoCard title="Durum akışı" className={customerInsight ? "" : "lg:col-span-2"}>
-          <TimelineVisual steps={timelineSteps} />
-        </InfoCard>
-        {customerInsight ? (
-          <InfoCard title="Müşteri özeti">
-            <p className="text-[13px] leading-relaxed text-stone-700">
-              Aynı {customerInsight.matchBy === "user" ? "hesap" : "e-posta adresi"} ile kayıtlı tüm siparişler.
-            </p>
-            <dl className="mt-5 space-y-0 divide-y divide-[#eadfce]/90 rounded-xl border border-[#eadfce]/80 bg-[#fffdfb]/60">
-              <div className="flex items-baseline justify-between gap-4 px-4 py-3.5">
-                <dt className="text-sm font-medium text-stone-700">Sipariş sayısı</dt>
-                <dd className="text-lg font-bold tabular-nums text-stone-950">{customerInsight.orderCount}</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 px-4 py-3.5">
-                <dt className="text-sm font-medium text-stone-700">Toplam ciro</dt>
-                <dd className="text-lg font-bold tabular-nums text-stone-950">
-                  {formatAdminMoney(customerInsight.lifetimeTotalTry, currency)}
+              <div className="flex justify-between gap-4 text-stone-600">
+                <dt>Kargo</dt>
+                <dd className="font-semibold tabular-nums text-stone-900">
+                  {shipping > 0 ? formatAdminMoney(shipping, currency) : "Ücretsiz"}
                 </dd>
               </div>
-              {avgOrderTry != null ? (
-                <div className="flex items-baseline justify-between gap-4 px-4 py-3.5">
-                  <dt className="text-sm font-medium text-stone-700">Ortalama sepet</dt>
-                  <dd className="text-lg font-bold tabular-nums text-stone-950">{formatAdminMoney(avgOrderTry, currency)}</dd>
+              {discount > 0 ? (
+                <div className="flex justify-between gap-4 text-emerald-800">
+                  <dt>İndirim{order.discount_label ? ` (${order.discount_label})` : ""}</dt>
+                  <dd className="font-bold tabular-nums">−{formatAdminMoney(discount, currency)}</dd>
+                </div>
+              ) : null}
+              {loyaltyRedeem > 0 ? (
+                <div className="flex justify-between gap-4 text-stone-600">
+                  <dt>Zelula puan</dt>
+                  <dd className="font-semibold text-stone-900">{loyaltyRedeem} puan</dd>
                 </div>
               ) : null}
             </dl>
-            {customerInsight.sumCapped ? (
-              <p className="mt-3 text-[11px] leading-snug text-stone-600">Ciro, son kayıtlar üzerinden yaklaşık.</p>
-            ) : null}
+            <div className="mt-4 border-t border-[#eadfce] pt-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-600">Toplam</span>
+                <span className="text-xl font-bold tabular-nums text-stone-950">{formatAdminMoney(total, currency)}</span>
+              </div>
+              <p className="mt-2 text-[11px] font-medium text-stone-600">{paymentNote}</p>
+            </div>
+          </section>
+
+          <section className={card}>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Ödeme</h2>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div>
+                <dt className={kicker}>Sağlayıcı</dt>
+                <dd className="mt-1 font-semibold text-stone-900">{order.payment_provider ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className={kicker}>Referans</dt>
+                <dd className="mt-1">
+                  {ref ? <AdminCopyableSecret value={ref} shortenStart={10} shortenEnd={6} /> : <span className="text-stone-400">—</span>}
+                </dd>
+              </div>
+              {latestLog ? (
+                <div className="border-t border-[#eadfce] pt-3">
+                  <dt className={kicker}>Son bildirim</dt>
+                  <dd className="mt-1 text-xs text-stone-700">
+                    {callbackLogStatusLabelTr(latestLog.status)} · {callbackVerificationLabelTr(verRaw)}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </section>
+
+          <InfoCard title="Durum akışı">
+            <TimelineVisual steps={timelineSteps} />
           </InfoCard>
-        ) : null}
+
+          {customerInsight ? (
+            <InfoCard title="Müşteri özeti">
+              <dl className="space-y-0 divide-y divide-[#eadfce]/90 rounded-xl border border-[#eadfce]/80 bg-[#fffdfb]/60">
+                <div className="flex items-baseline justify-between gap-4 px-4 py-3">
+                  <dt className="text-sm text-stone-700">Sipariş sayısı</dt>
+                  <dd className="font-bold tabular-nums text-stone-950">{customerInsight.orderCount}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 px-4 py-3">
+                  <dt className="text-sm text-stone-700">Toplam ciro</dt>
+                  <dd className="font-bold tabular-nums text-stone-950">
+                    {formatAdminMoney(customerInsight.lifetimeTotalTry, currency)}
+                  </dd>
+                </div>
+                {avgOrderTry != null ? (
+                  <div className="flex items-baseline justify-between gap-4 px-4 py-3">
+                    <dt className="text-sm text-stone-700">Ort. sepet</dt>
+                    <dd className="font-bold tabular-nums text-stone-950">{formatAdminMoney(avgOrderTry, currency)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              {customerInsight.sumCapped ? (
+                <p className="mt-3 text-[11px] leading-snug text-stone-600">Ciro, son kayıtlar üzerinden yaklaşık.</p>
+              ) : null}
+            </InfoCard>
+          ) : null}
+
+          {referralSlot}
+        </aside>
       </div>
 
-      <section
-        className={`${card} border-[#dfd2c4]/95 bg-[linear-gradient(165deg,#fffdfb_0%,#ffffff_48%)] shadow-[0_6px_40px_-10px_rgba(45,37,33,0.12)] ring-1 ring-[#c6a15b]/18`}
-      >
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Fiyat özeti</h2>
-        <dl className="mt-5 space-y-3 text-[13px]">
-          <div className="flex justify-between gap-4 text-stone-600">
-            <dt className="font-medium">Ara toplam</dt>
-            <dd className="font-semibold tabular-nums text-stone-900">{formatAdminMoney(subtotal, currency)}</dd>
-          </div>
-          <div className="flex justify-between gap-4 text-stone-600">
-            <dt className="font-medium">Kargo</dt>
-            <dd className="font-semibold tabular-nums text-stone-900">
-              {shipping > 0 ? formatAdminMoney(shipping, currency) : "Ücretsiz"}
+      <details className={`${card} text-sm text-stone-600`}>
+        <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+          Teknik detay
+        </summary>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt className={kicker}>Sipariş ID</dt>
+            <dd className="mt-1">
+              <AdminCopyableSecret value={order.id} shortenStart={6} shortenEnd={4} />
             </dd>
           </div>
-          {discount > 0 ? (
-            <div className="flex justify-between gap-4 text-emerald-800">
-              <dt className="font-medium">İndirim{order.discount_label ? ` (${order.discount_label})` : ""}</dt>
-              <dd className="font-bold tabular-nums">−{formatAdminMoney(discount, currency)}</dd>
-            </div>
-          ) : null}
-          {loyaltyRedeem > 0 ? (
-            <div className="flex justify-between gap-4 text-stone-600">
-              <dt className="font-medium">Zelula puan</dt>
-              <dd className="font-semibold text-stone-900">{loyaltyRedeem} puan</dd>
-            </div>
-          ) : null}
+          <div>
+            <dt className={kicker}>Son güncelleme</dt>
+            <dd className="mt-1 font-medium text-stone-900">
+              {order.updated_at ? new Date(order.updated_at).toLocaleString("tr-TR") : "—"}
+            </dd>
+          </div>
         </dl>
-
-        <div className="my-6 border-t border-[#eadfce]" />
-
-        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-3">
-          <dt className="text-xs font-bold uppercase tracking-[0.14em] text-stone-600">Toplam</dt>
-          <dd className="text-[2.6rem] font-bold leading-none tracking-tight text-stone-950 tabular-nums sm:text-5xl">
-            {formatAdminMoney(total, currency)}
-          </dd>
-        </div>
-
-        <div className="mt-3 rounded-xl border border-[#dfd2c4]/90 bg-white/80 px-4 py-2.5 text-center sm:text-left">
-          <p className="text-xs font-semibold text-stone-800">{paymentNote}</p>
-        </div>
-      </section>
-
-      <section className={card}>
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-600">Ürünler</h2>
-          {lines.length > 0 ? <span className="text-xs text-stone-500">{lines.length} kalem</span> : null}
-        </div>
-
-        {lines.length === 0 ? (
-          <p className="mt-8 pb-2 text-center text-sm text-stone-600">Bu sipariş için ürün bilgisi bulunamadı.</p>
-        ) : (
-          <ul className="mt-5 divide-y divide-[#eadfce]/90">
-            {lines.map((row) => {
-              const p = row.products;
-              const name = p?.name ?? "Ürün";
-              const attrs = productAttributeRows(row);
-              const img = pickCoverImageUrl(p?.product_images ?? null);
-              const editHref = p?.id ? `/admin/products/${p.id}/edit` : null;
-              return (
-                <li key={row.id} className="py-5 first:pt-2">
-                  <div className="flex gap-4">
-                    <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl border border-[#dfd2c4]/90 bg-[#f5ede1]">
-                      {img ? (
-                        <ProductImage src={img} alt={name} fill className="object-cover" sizes="72px" />
-                      ) : (
-                        <span className="flex h-full w-full items-center justify-center text-xs text-stone-500">—</span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      {editHref ? (
-                        <Link
-                          href={editHref}
-                          className="text-base font-bold text-stone-950 underline-offset-2 hover:text-[#8a6a3d] hover:underline"
-                        >
-                          {name}
-                        </Link>
-                      ) : (
-                        <span className="text-base font-bold text-stone-950">{name}</span>
-                      )}
-                      {attrs.length > 0 ? (
-                        <dl className="mt-3 grid max-w-md grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
-                          {attrs.map((a) => (
-                            <div key={a.label} className="contents">
-                              <dt className="text-stone-500">{a.label}</dt>
-                              <dd className="font-medium text-stone-900">{a.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      ) : null}
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfce]/70 pt-3">
-                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-stone-600">
-                          <span>
-                            Adet: <span className="font-bold text-stone-900">{row.quantity}</span>
-                          </span>
-                          <span>
-                            Birim:{" "}
-                            <span className="font-semibold tabular-nums text-stone-900">
-                              {formatAdminMoney(Number(row.unit_price), currency)}
-                            </span>
-                          </span>
-                        </div>
-                        <p className="text-lg font-bold tabular-nums tracking-tight text-stone-900">
-                          {formatAdminMoney(Number(row.total_price), currency)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      {referralSlot}
-
-      <AdminOrderCallbackHistory logs={logs} paymentStatus={paymentStatus} />
+      </details>
     </div>
   );
 }

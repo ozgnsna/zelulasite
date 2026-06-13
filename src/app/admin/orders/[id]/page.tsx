@@ -198,19 +198,19 @@ export default async function AdminOrderDetailPage({
           lines={lines}
           logs={logs ?? []}
           referralSlot={referralSlot}
+          invoiceSlot={
+            <AdminOrderInvoicePanel
+              orderId={String(order.id)}
+              orderNumber={String(order.order_number ?? "")}
+              invoicePdfUrl={order.invoice_pdf_url ? String(order.invoice_pdf_url) : null}
+              invoiceUploadedAt={order.invoice_uploaded_at ? String(order.invoice_uploaded_at) : null}
+              invoiceOk={String(sp.invoiceOk ?? "").trim() === "1"}
+              invoiceError={sp.invoiceError ? decodeURIComponent(String(sp.invoiceError)) : null}
+            />
+          }
           timeline={timeline ?? []}
           customerInsight={customerInsight ?? null}
         />
-        <div className="mt-6">
-          <AdminOrderInvoicePanel
-            orderId={String(order.id)}
-            orderNumber={String(order.order_number ?? "")}
-            invoicePdfUrl={order.invoice_pdf_url ? String(order.invoice_pdf_url) : null}
-            invoiceUploadedAt={order.invoice_uploaded_at ? String(order.invoice_uploaded_at) : null}
-            invoiceOk={String(sp.invoiceOk ?? "").trim() === "1"}
-            invoiceError={sp.invoiceError ? decodeURIComponent(String(sp.invoiceError)) : null}
-          />
-        </div>
       </div>
     </main>
   );
