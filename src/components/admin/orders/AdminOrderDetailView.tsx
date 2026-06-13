@@ -1,7 +1,7 @@
-import { ProductImage } from "@/components/product/ProductImage";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { paymentStatusLabelTr, orderStatusLabelTr } from "@/lib/account/order-status";
+import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
 import {
   formatAdminMoney,
   orderBadgeClasses,
@@ -331,7 +331,7 @@ export function AdminOrderDetailView({
             {lines.length === 0 ? (
               <p className="mt-8 pb-2 text-center text-sm text-stone-600">Bu sipariş için ürün bilgisi bulunamadı.</p>
             ) : (
-              <ul className="mt-5 divide-y divide-[#eadfce]/90">
+              <ul className="mt-5 divide-y divide-[#eadfce]/90 overflow-visible">
                 {lines.map((row) => {
                   const p = row.products;
                   const name = p?.name ?? "Ürün";
@@ -339,15 +339,9 @@ export function AdminOrderDetailView({
                   const img = pickCoverImageUrl(p?.product_images ?? null);
                   const editHref = p?.id ? `/admin/products/${p.id}/edit` : null;
                   return (
-                    <li key={row.id} className="py-5 first:pt-2">
+                    <li key={row.id} className="overflow-visible py-5 first:pt-2">
                       <div className="flex gap-4">
-                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl border border-[#dfd2c4]/90 bg-[#f5ede1]">
-                          {img ? (
-                            <ProductImage src={img} alt={name} fill className="object-cover" sizes="72px" />
-                          ) : (
-                            <span className="flex h-full w-full items-center justify-center text-xs text-stone-500">—</span>
-                          )}
-                        </div>
+                        <AdminProductListThumbnail src={img} alt={name} variant="order" />
                         <div className="min-w-0 flex-1">
                           {editHref ? (
                             <Link

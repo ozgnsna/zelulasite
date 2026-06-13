@@ -1,4 +1,3 @@
-import { ProductImage } from "@/components/product/ProductImage";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -7,6 +6,7 @@ import {
   sendAllProductsToTrendyolAction,
   syncTrendyolProductNow,
 } from "@/app/actions/admin";
+import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
 import { AdminProductDeleteMenuButton } from "@/components/admin/products/AdminProductDeleteMenuButton";
 import { AdminProductsScrollPersistence } from "@/components/admin/products/AdminProductsScrollPersistence";
 import { AdminProductsSelectionToolbar } from "@/components/admin/products/AdminProductsSelectionToolbar";
@@ -590,7 +590,7 @@ export default async function AdminProductsPage({
               </div>
             </div>
 
-            <div className="divide-y divide-stone-100 rounded-md border border-stone-200/50 bg-stone-50/30">
+            <div className="divide-y divide-stone-100 overflow-visible rounded-md border border-stone-200/50 bg-stone-50/30">
               {paginatedRows.map((p) => {
                 const stock = Number(p.stock_quantity ?? 0);
                 const importedNeedsReview = importedNeedsReviewFn(p);
@@ -668,7 +668,7 @@ export default async function AdminProductsPage({
                 return (
                   <div
                     key={p.id}
-                    className={`product-row group border-b border-stone-100/80 px-2.5 py-2.5 transition-colors last:border-b-0 sm:px-3 sm:py-3 hover:bg-white/90 ${rowClass}`}
+                    className={`product-row group overflow-visible border-b border-stone-100/80 px-2.5 py-2.5 transition-colors last:border-b-0 sm:px-3 sm:py-3 hover:bg-white/90 ${rowClass}`}
                   >
                     <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-stretch sm:justify-between sm:gap-2">
                       <div className="flex w-full min-w-0 flex-1 items-start gap-3">
@@ -679,18 +679,12 @@ export default async function AdminProductsPage({
                           className="mt-2.5 size-3.5 shrink-0 rounded border-stone-300 text-stone-900"
                           aria-label={`${p.name} ürününü seç`}
                         />
+                        <AdminProductListThumbnail src={previewImageUrl || null} alt={String(p.name ?? "Ürün")} />
                         <Link
                           href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                          className="flex min-w-0 flex-1 gap-3 rounded-md outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/30"
+                          className="min-w-0 flex-1 rounded-md pt-0.5 outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/30"
                         >
-                          <div className="relative size-11 shrink-0 overflow-hidden rounded-md border border-stone-200/80 bg-stone-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.4)]">
-                            {previewImageUrl ? (
-                              <ProductImage src={previewImageUrl} alt="" fill sizes="44px" className="object-cover" />
-                            ) : (
-                              <span className="flex h-full items-center justify-center text-[9px] text-stone-400">—</span>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1 pt-0.5">
+                          <div className="min-w-0">
                             <p className="truncate text-[15px] font-semibold leading-snug tracking-tight text-stone-900">{p.name}</p>
                             <p className="mt-1 font-mono text-[11px] font-normal uppercase tracking-wide text-stone-500">
                               {(p.sku || "—").toUpperCase()}
