@@ -317,16 +317,15 @@ export function AdminOrdersListShell({
             !hasVisibleRows && "sm:hidden",
           )}
         >
-          <label className="inline-flex cursor-pointer items-center gap-1 justify-self-start text-[10px] font-semibold normal-case tracking-normal text-stone-800">
+          <div className="flex justify-center">
             <input
               type="checkbox"
               checked={displayOrders.length > 0 && displayOrders.every((o) => selected.has(o.id))}
               onChange={toggleAllOnPage}
               className="size-3 rounded border-stone-400 text-stone-900"
+              aria-label="Sayfadaki tüm siparişleri seç"
             />
-            <span className="hidden lg:inline">Sayfadakiler</span>
-            <span className="lg:hidden">Tümü</span>
-          </label>
+          </div>
           <span className="text-left font-bold text-stone-800">Sipariş</span>
           <span className="text-left font-bold text-stone-800">Müşteri</span>
           <span className="font-bold text-stone-800">Durum</span>
