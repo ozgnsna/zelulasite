@@ -173,6 +173,7 @@ export function AdminOrderDetailView({
   invoiceSlot,
   timeline = [],
   customerInsight = null,
+  orderError = null,
 }: {
   order: OrderRow;
   lines: AdminOrderLine[];
@@ -181,6 +182,7 @@ export function AdminOrderDetailView({
   invoiceSlot?: ReactNode;
   timeline?: AdminOrderTimelineStep[];
   customerInsight?: AdminCustomerOrderInsight | null;
+  orderError?: string | null;
 }) {
   const timelineSteps = timeline ?? [];
   const currency = order.currency ?? "TRY";
@@ -282,6 +284,14 @@ export function AdminOrderDetailView({
         <div className="min-w-0 space-y-6">
           <section className={controlBar}>
             <p className={kicker}>Operasyon</p>
+            {orderError ? (
+              <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+                Teslim kaydedilemedi: {orderError}
+              </p>
+            ) : null}
+            <p className="mt-2 font-mono text-[10px] text-stone-500">
+              Durum: {orderStatus || "—"} · Ödeme: {paymentStatus || "—"}
+            </p>
             <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1 space-y-4">
                 <AdminOrderActionBar

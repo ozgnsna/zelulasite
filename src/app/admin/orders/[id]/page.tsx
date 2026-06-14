@@ -44,7 +44,7 @@ export default async function AdminOrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ invoiceOk?: string; invoiceError?: string }>;
+  searchParams: Promise<{ invoiceOk?: string; invoiceError?: string; orderError?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -213,6 +213,7 @@ export default async function AdminOrderDetailPage({
           }
           timeline={timeline ?? []}
           customerInsight={customerInsight ?? null}
+          orderError={sp.orderError ? decodeURIComponent(String(sp.orderError)) : null}
         />
       </div>
     </main>

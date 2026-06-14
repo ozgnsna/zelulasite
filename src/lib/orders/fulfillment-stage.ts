@@ -23,9 +23,9 @@ export function resolveOrderFulfillmentStage(
   const os = String(orderStatus ?? "").trim();
 
   if (os === "cancelled") return "cancelled";
+  if (os === "hand_delivered") return "delivered";
   if (pay === "failed") return "payment_failed";
   if (pay !== "paid") return "payment_pending";
-  if (os === "hand_delivered") return "delivered";
   if (os === "shipped") return "in_transit";
   if (os === "processing") return "preparing";
   return "new";

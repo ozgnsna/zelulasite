@@ -1,10 +1,11 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { markOrderHandDelivered, reconcileOrderStatus, updateOrderStatus } from "@/app/actions/admin";
+import { reconcileOrderStatus, updateOrderStatus } from "@/app/actions/admin";
 import { resolveOrderFulfillmentStage } from "@/lib/orders/fulfillment-stage";
 import { orderDeliveredLabelTr, resolveOrderDeliveryKind } from "@/lib/orders/delivery-method";
 import { orderHasShippingTracking } from "@/lib/orders/shipping-tracking";
+import { AdminOrderMarkDeliveredButton } from "@/components/admin/orders/AdminOrderMarkDeliveredButton";
 
 function PendingButton({
   children,
@@ -50,7 +51,7 @@ export function AdminOrderActionBar({
   const stage = resolveOrderFulfillmentStage(paymentStatus, orderStatus);
   const cancelled = stage === "cancelled";
   const delivered = stage === "delivered";
-  const showPaymentReconcile = !cancelled && paymentStatus !== "paid";
+  const showPaymentReconcile = !cancelled && !delivered && paymentStatus !== "paid";
   const hasShippingTracking = orderHasShippingTracking(shippingTrackingNumber, shippingStatus);
   const returnTo = `/admin/orders/${orderId}`;
   const deliveryKind = delivered
@@ -78,14 +79,12 @@ export function AdminOrderActionBar({
       ) : null}
 
       {stage === "preparing" && !hasShippingTracking ? (
-        <form action={markOrderHandDelivered}>
-          <input type="hidden" name="id" value={orderId} />
-          <input type="hidden" name="return_to" value={returnTo} />
-          <input type="hidden" name="payment_status" value={paymentStatus} />
-          <PendingButton pendingLabel="Kaydediliyor…" className={btnHandDeliver}>
-            Elden teslim edildi
-          </PendingButton>
-        </form>
+        <AdminOrderMarkDeliveredButton
+          orderId={orderId}
+          label="Elden teslim edildi"
+          pendingLabel="Kaydediliyor…"
+          className={btnHandDeliver}
+        />
       ) : null}
 
       {stage === "preparing" && hasShippingTracking ? (
@@ -101,14 +100,12 @@ export function AdminOrderActionBar({
       ) : null}
 
       {stage === "in_transit" ? (
-        <form action={markOrderHandDelivered}>
-          <input type="hidden" name="id" value={orderId} />
-          <input type="hidden" name="return_to" value={returnTo} />
-          <input type="hidden" name="payment_status" value={paymentStatus} />
-          <PendingButton pendingLabel="Kaydediliyor…" className={btnHandDeliver}>
-            Teslim edildi
-          </PendingButton>
-        </form>
+        <AdminOrderMarkDeliveredButton
+          orderId={orderId}
+          label="Teslim edildi"
+          pendingLabel="Kaydediliyor…"
+          className={btnHandDeliver}
+        />
       ) : null}
 
       {delivered ? (

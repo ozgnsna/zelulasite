@@ -9,6 +9,7 @@ function revalidateAdminOrderPaths(orderId: string) {
 import { redirect } from "next/navigation";
 import { normalizeEmailInput } from "@/lib/account/email-input";
 import { purgeAllOrdersAndResetCounter } from "@/lib/admin/purge-orders";
+import { markOrderHandDeliveredInDb } from "@/lib/admin/mark-order-hand-delivered";
 import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -912,49 +913,14 @@ export async function markOrderHandDelivered(formData: FormData) {
   await assertAdminSession();
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "");
-  const paymentStatus = String(formData.get("payment_status") ?? "pending");
   const returnTo = adminOrderReturnTo(formData, id) ?? (id ? `/admin/orders/${id}` : null);
   if (!id) return;
 
-  const { data: before } = await supabase
-    .from("orders")
-    .select("shipping_tracking_number,shipping_status,shipping_provider")
-    .eq("id", id)
-    .maybeSingle();
-
-  const hasTracking =
-    String(before?.shipping_tracking_number ?? "").trim().length > 0 ||
-    String(before?.shipping_status ?? "").trim() === "created";
-
-  const { error: updateErr } = await supabase
-    .from("orders")
-    .update({
-      order_status: "hand_delivered",
-      payment_status: paymentStatus,
-      ...(hasTracking ? {} : { shipping_provider: "manual" }),
-      shipping_status: "hand_delivered",
-      shipping_created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-  if (updateErr) {
-    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent(updateErr.message)}`);
-    throw new Error(updateErr.message);
+  const result = await markOrderHandDeliveredInDb(supabase, id);
+  if (!result.ok) {
+    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent(result.error)}`);
+    throw new Error(result.error);
   }
-
-  await syncLoyaltyLedgersForOrder(supabase, id);
-
-  await supabase.from("payment_logs").insert({
-    order_id: id,
-    provider: "manual",
-    event_type: "manual_hand_delivery",
-    status: "updated",
-    request_payload: { order_status: "hand_delivered", shipping_status: "hand_delivered" },
-    verification_status: "passed",
-    processed_at: new Date().toISOString(),
-  });
-
-  await notifyCustomerOrderWhatsApp(supabase, id, "order_delivered");
 
   revalidateAdminOrderPaths(id);
   if (returnTo) redirect(returnTo);
