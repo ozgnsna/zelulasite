@@ -13,9 +13,10 @@ export async function markOrderHandDeliveredInDb(
 ): Promise<MarkOrderHandDeliveredResult> {
   if (!orderId) return { ok: false, error: "Sipariş kimliği gerekli." };
 
+  // Prod DB’de kargo kolonları migration’sız olabilir — yalnızca temel alanlar.
   const { data: before, error: fetchErr } = await admin
     .from("orders")
-    .select("payment_status,order_status,shipping_tracking_number,shipping_status,shipping_provider")
+    .select("payment_status,order_status")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -26,33 +27,17 @@ export async function markOrderHandDeliveredInDb(
     return { ok: true, alreadyDelivered: true };
   }
 
-  const hasTracking =
-    String(before.shipping_tracking_number ?? "").trim().length > 0 ||
-    String(before.shipping_status ?? "").trim() === "created";
-
   const now = new Date().toISOString();
   const { error: updateErr } = await admin
     .from("orders")
     .update({
       order_status: "hand_delivered",
       payment_status: before.payment_status,
-      ...(hasTracking ? {} : { shipping_provider: "manual" }),
-      shipping_status: "hand_delivered",
       updated_at: now,
     })
     .eq("id", orderId);
 
-  if (updateErr) {
-    const { error: minimalErr } = await admin
-      .from("orders")
-      .update({
-        order_status: "hand_delivered",
-        payment_status: before.payment_status,
-        updated_at: now,
-      })
-      .eq("id", orderId);
-    if (minimalErr) return { ok: false, error: minimalErr.message };
-  }
+  if (updateErr) return { ok: false, error: updateErr.message };
 
   await syncLoyaltyLedgersForOrder(admin, orderId);
 
@@ -61,7 +46,7 @@ export async function markOrderHandDeliveredInDb(
     provider: "manual",
     event_type: "manual_hand_delivery",
     status: "updated",
-    request_payload: { order_status: "hand_delivered", shipping_status: "hand_delivered" },
+    request_payload: { order_status: "hand_delivered" },
     verification_status: "passed",
     processed_at: now,
   });
