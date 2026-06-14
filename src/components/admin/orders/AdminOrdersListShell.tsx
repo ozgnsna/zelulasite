@@ -212,7 +212,7 @@ export function AdminOrdersListShell({
   const searchActive = queryNorm.length > 0;
 
   const gridCols =
-    "sm:grid sm:grid-cols-[1.75rem_6.5rem_minmax(0,1fr)_7.25rem_5.5rem_3.75rem_5.75rem_3.25rem] sm:items-center sm:gap-x-1.5 sm:px-1.5";
+    "sm:grid sm:grid-cols-[2rem_7.25rem_minmax(0,1fr)_8.75rem_6.25rem_4.25rem_6.75rem_3.75rem] sm:items-center sm:gap-x-2 sm:px-2";
 
   return (
     <div className="min-w-0">
@@ -313,7 +313,7 @@ export function AdminOrdersListShell({
         <div
           className={cn(
             gridCols,
-            "hidden border-b border-stone-300/55 bg-gradient-to-b from-stone-100/95 to-stone-100/75 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-stone-700",
+            "hidden border-b border-stone-300/55 bg-gradient-to-b from-stone-100/95 to-stone-100/75 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-stone-700",
             !hasVisibleRows && "sm:hidden",
           )}
         >
@@ -419,7 +419,7 @@ export function AdminOrdersListShell({
                 minute: "2-digit",
               });
               return (
-                <li key={o.id} className={cn(gridCols, "py-1 sm:py-0.5")}>
+                <li key={o.id} className={cn(gridCols, "py-2.5 sm:py-2")}>
                   <div className="flex flex-col gap-0.5 sm:contents">
                     <div className="flex items-start gap-1.5 sm:contents">
                       <div className="flex shrink-0 items-center pt-0.5 sm:block sm:justify-self-center sm:pt-0">
@@ -433,25 +433,25 @@ export function AdminOrdersListShell({
                       </div>
                       <div className="min-w-0 flex-1 text-left sm:block sm:min-w-0 sm:justify-self-start">
                         <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:block">
-                          <p className="font-mono text-[10.5px] font-semibold tabular-nums tracking-tight text-stone-900 sm:text-[10px]">
+                          <p className="font-mono text-xs font-semibold tabular-nums tracking-tight text-stone-900 sm:text-[13px]">
                             {shortenOrderNumberDisplay(String(o.order_number ?? ""))}
                           </p>
-                          <p className="text-[10px] tabular-nums text-stone-500 sm:hidden">{when}</p>
+                          <p className="text-[11px] tabular-nums text-stone-500 sm:hidden">{when}</p>
                         </div>
-                        <p className="mt-0 hidden text-[9px] tabular-nums text-stone-500 sm:block">{when}</p>
+                        <p className="mt-0 hidden text-[11px] tabular-nums text-stone-500 sm:block">{when}</p>
                       </div>
                     </div>
                     <div className="min-w-0 pl-6 text-left sm:pl-0 sm:justify-self-start">
-                      <p className="truncate text-[11px] font-semibold leading-tight text-stone-900">
+                      <p className="truncate text-[13px] font-semibold leading-snug text-stone-900 sm:text-sm">
                         {o.customer_name || "—"}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-0.5 flex flex-wrap items-center gap-0.5 sm:mt-0 sm:contents">
+                  <div className="mt-1 flex flex-wrap items-center gap-1 sm:mt-0 sm:contents">
                     <span
                       className={cn(
-                        "inline-flex w-fit max-w-full shrink-0 rounded-full border px-1 py-px text-[8px] font-bold uppercase tracking-wide ring-1 ring-inset",
+                        "inline-flex w-fit max-w-full shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset",
                         ops.className,
                       )}
                     >
@@ -459,19 +459,19 @@ export function AdminOrdersListShell({
                     </span>
                     <span
                       className={cn(
-                        "inline-flex w-fit max-w-full shrink-0 rounded-full border px-1 py-px text-[8px] font-semibold ring-1 ring-inset",
+                        "inline-flex w-fit max-w-full shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset",
                         paymentChipClass(String(o.payment_status ?? "")),
                       )}
                     >
                       {payLabel}
                     </span>
                     <span
-                      className="inline-flex max-w-full truncate text-[10px] text-stone-600 sm:justify-self-start"
+                      className="inline-flex max-w-full truncate text-xs text-stone-600 sm:justify-self-start"
                       title={[o.shipping_provider, o.shipping_tracking_number].filter(Boolean).join(" · ") || undefined}
                     >
                       {cargoShort(o)}
                     </span>
-                    <span className="text-[10.5px] font-semibold tabular-nums tracking-tight text-stone-900 sm:text-right">
+                    <span className="text-[13px] font-semibold tabular-nums tracking-tight text-stone-900 sm:text-sm sm:text-right">
                       {Number(o.total ?? 0).toLocaleString("tr-TR", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
@@ -480,7 +480,7 @@ export function AdminOrdersListShell({
                     </span>
                     <Link
                       href={`/admin/orders/${o.id}`}
-                      className="inline-flex min-h-[30px] min-w-[2.25rem] items-center justify-center rounded border border-stone-800/12 bg-stone-900 px-1.5 text-[10px] font-semibold text-white hover:bg-stone-800 sm:min-h-0 sm:justify-self-end sm:py-0.5"
+                      className="inline-flex min-h-[30px] min-w-[2.5rem] items-center justify-center rounded-md border border-stone-800/12 bg-stone-900 px-2 text-xs font-semibold text-white hover:bg-stone-800 sm:min-h-0 sm:justify-self-end sm:py-1"
                     >
                       Aç
                     </Link>
