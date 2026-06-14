@@ -38,12 +38,21 @@ export async function markOrderHandDeliveredInDb(
       payment_status: before.payment_status,
       ...(hasTracking ? {} : { shipping_provider: "manual" }),
       shipping_status: "hand_delivered",
-      shipping_created_at: now,
       updated_at: now,
     })
     .eq("id", orderId);
 
-  if (updateErr) return { ok: false, error: updateErr.message };
+  if (updateErr) {
+    const { error: minimalErr } = await admin
+      .from("orders")
+      .update({
+        order_status: "hand_delivered",
+        payment_status: before.payment_status,
+        updated_at: now,
+      })
+      .eq("id", orderId);
+    if (minimalErr) return { ok: false, error: minimalErr.message };
+  }
 
   await syncLoyaltyLedgersForOrder(admin, orderId);
 
