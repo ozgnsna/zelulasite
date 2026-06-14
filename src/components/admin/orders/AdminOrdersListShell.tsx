@@ -7,9 +7,9 @@ import { useCallback, useMemo, useState, useTransition } from "react";
 import { updateOrderStatus } from "@/app/actions/admin";
 import {
   fulfillmentStageListChipClasses,
-  fulfillmentStageLabelTr,
   resolveOrderFulfillmentStage,
 } from "@/lib/orders/fulfillment-stage";
+import { orderOperationLabelTr } from "@/lib/orders/delivery-method";
 import { paymentStatusLabelTr } from "@/lib/account/order-status";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -55,7 +55,13 @@ function escapeHtml(s: string): string {
 function opsStatusChip(o: AdminOrderListRow): { label: string; className: string } {
   const stage = resolveOrderFulfillmentStage(o.payment_status, o.order_status);
   return {
-    label: fulfillmentStageLabelTr(stage),
+    label: orderOperationLabelTr({
+      order_status: o.order_status,
+      payment_status: o.payment_status,
+      shipping_tracking_number: o.shipping_tracking_number,
+      shipping_status: o.shipping_status,
+      shipping_provider: o.shipping_provider,
+    }),
     className: fulfillmentStageListChipClasses(stage),
   };
 }
@@ -71,7 +77,9 @@ function cargoShort(o: AdminOrderListRow): string {
   if (tr) return "Takip var";
   const stage = resolveOrderFulfillmentStage(o.payment_status, o.order_status);
   if (stage === "in_transit") return "Yolda";
-  if (stage === "delivered") return "Teslim";
+  if (stage === "delivered") {
+    return String(o.order_status) === "hand_delivered" && !tr ? "Elden" : "Teslim";
+  }
   if (stage === "preparing") return "Hazırlık";
   return "—";
 }

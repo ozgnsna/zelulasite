@@ -1,8 +1,4 @@
-import {
-  fulfillmentStageCustomerLabel,
-  fulfillmentStageLabelTr,
-  resolveOrderFulfillmentStage,
-} from "@/lib/orders/fulfillment-stage";
+import { orderOperationLabelTr, type OrderDeliveryContext } from "@/lib/orders/delivery-method";
 
 /** Ödeme satırı (sipariş kartında ayrı gösterim). */
 export function paymentStatusLabelTr(status: string): string {
@@ -21,13 +17,27 @@ export function paymentStatusLabelTr(status: string): string {
 }
 
 /** Sipariş operasyon aşaması (admin rozet / liste). */
-export function orderStatusLabelTr(status: string, paymentStatus?: string): string {
+export function orderStatusLabelTr(
+  status: string,
+  paymentStatus?: string,
+  shipping?: Pick<
+    OrderDeliveryContext,
+    "shipping_tracking_number" | "shipping_status" | "shipping_provider"
+  >,
+): string {
   if (paymentStatus !== undefined) {
-    return fulfillmentStageLabelTr(resolveOrderFulfillmentStage(paymentStatus, status));
+    return orderOperationLabelTr(
+      {
+        order_status: status,
+        payment_status: paymentStatus,
+        ...shipping,
+      },
+      "admin",
+    );
   }
   switch (status) {
     case "hand_delivered":
-      return "Teslim edildi";
+      return "Elden teslim edildi";
     case "shipped":
       return "Taşımada";
     case "processing":
@@ -46,7 +56,9 @@ export function orderStatusLabelTr(status: string, paymentStatus?: string): stri
 export function orderStatusLabel(row: {
   payment_status: string;
   order_status: string;
+  shipping_tracking_number?: string | null;
+  shipping_status?: string | null;
+  shipping_provider?: string | null;
 }): string {
-  const stage = resolveOrderFulfillmentStage(row.payment_status, row.order_status);
-  return fulfillmentStageCustomerLabel(stage);
+  return orderOperationLabelTr(row, "customer");
 }

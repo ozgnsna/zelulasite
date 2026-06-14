@@ -510,6 +510,9 @@ export default async function AdminPage({
               order_number: String(o.order_number ?? ""),
               customer_name: String(o.customer_name ?? ""),
               created_at: String(o.created_at ?? ""),
+              shipping_status: (o.shipping_status as string | null) ?? null,
+              shipping_provider: (o.shipping_provider as string | null) ?? null,
+              shipping_tracking_number: (o.shipping_tracking_number as string | null) ?? null,
             }))}
             dayStartIso={dayStart.toISOString()}
             dayEndIso={dayEnd.toISOString()}

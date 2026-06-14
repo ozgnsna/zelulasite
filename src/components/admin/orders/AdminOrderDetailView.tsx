@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { paymentStatusLabelTr, orderStatusLabelTr } from "@/lib/account/order-status";
+import { resolveOrderDeliveryKind } from "@/lib/orders/delivery-method";
 import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
 import {
   formatAdminMoney,
@@ -200,6 +201,14 @@ export function AdminOrderDetailView({
   const shippingRaw = total - subtotal + discount;
   const shipping = Math.max(0, Math.round(shippingRaw * 100) / 100);
 
+  const deliveryKind = resolveOrderDeliveryKind({
+    order_status: orderStatus,
+    payment_status: paymentStatus,
+    shipping_tracking_number: order.shipping_tracking_number,
+    shipping_status: order.shipping_status,
+    shipping_provider: order.shipping_provider,
+  });
+
   const paymentNote =
     paymentStatus === "paid"
       ? "Ödeme alındı"
@@ -255,7 +264,11 @@ export function AdminOrderDetailView({
                 {paymentStatusLabelTr(paymentStatus)}
               </span>
               <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${orderBadgeClasses(orderStatus, paymentStatus)}`}>
-                {orderStatusLabelTr(orderStatus, paymentStatus)}
+                {orderStatusLabelTr(orderStatus, paymentStatus, {
+                  shipping_tracking_number: order.shipping_tracking_number,
+                  shipping_status: order.shipping_status,
+                  shipping_provider: order.shipping_provider,
+                })}
               </span>
             </div>
           </div>
@@ -275,6 +288,8 @@ export function AdminOrderDetailView({
                   orderId={order.id}
                   paymentStatus={paymentStatus}
                   orderStatus={orderStatus}
+                  shippingTrackingNumber={order.shipping_tracking_number}
+                  shippingStatus={order.shipping_status}
                   className="w-full justify-start"
                 />
                 <AdminDhlCreateShipmentButton
@@ -284,9 +299,17 @@ export function AdminOrderDetailView({
                   shippingStatus={order.shipping_status}
                 />
               </div>
-              {order.shipping_tracking_number || order.shipping_status || order.shipping_label_url ? (
+              {order.shipping_tracking_number || order.shipping_status || order.shipping_label_url || deliveryKind === "hand" ? (
                 <dl className="min-w-[14rem] space-y-2 rounded-xl border border-[#eadfce]/80 bg-[#fffdfb]/80 px-4 py-3 text-xs text-stone-700">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">Kargo</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
+                    {deliveryKind === "hand" ? "Elden teslim" : "Kargo"}
+                  </p>
+                  {deliveryKind === "hand" ? (
+                    <div className="flex flex-wrap gap-2">
+                      <dt className="font-medium text-stone-500">Teslimat</dt>
+                      <dd className="font-semibold text-emerald-900">Elden teslim edildi</dd>
+                    </div>
+                  ) : null}
                   {order.shipping_provider ? (
                     <div className="flex flex-wrap gap-2">
                       <dt className="font-medium text-stone-500">Sağlayıcı</dt>

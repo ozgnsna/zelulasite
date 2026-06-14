@@ -3,6 +3,8 @@
 import { useFormStatus } from "react-dom";
 import { markOrderHandDelivered, reconcileOrderStatus, updateOrderStatus } from "@/app/actions/admin";
 import { resolveOrderFulfillmentStage } from "@/lib/orders/fulfillment-stage";
+import { orderDeliveredLabelTr, resolveOrderDeliveryKind } from "@/lib/orders/delivery-method";
+import { orderHasShippingTracking } from "@/lib/orders/shipping-tracking";
 
 function PendingButton({
   children,
@@ -26,47 +28,73 @@ function PendingButton({
 const btnBase =
   "inline-flex min-h-[40px] items-center justify-center rounded-xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.99]";
 
+const btnPrimary = `${btnBase} bg-stone-900 text-white shadow-md shadow-stone-900/25 hover:bg-stone-800`;
+const btnHandDeliver =
+  `${btnBase} border border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm hover:bg-emerald-100`;
+
 export function AdminOrderActionBar({
   orderId,
   paymentStatus,
   orderStatus,
+  shippingTrackingNumber,
+  shippingStatus,
   className,
 }: {
   orderId: string;
   paymentStatus: string;
   orderStatus: string;
+  shippingTrackingNumber?: string | null;
+  shippingStatus?: string | null;
   className?: string;
 }) {
   const stage = resolveOrderFulfillmentStage(paymentStatus, orderStatus);
   const cancelled = stage === "cancelled";
   const delivered = stage === "delivered";
   const showPaymentReconcile = !cancelled && paymentStatus !== "paid";
+  const hasShippingTracking = orderHasShippingTracking(shippingTrackingNumber, shippingStatus);
+  const returnTo = `/admin/orders/${orderId}`;
+  const deliveryKind = delivered
+    ? resolveOrderDeliveryKind({
+        order_status: orderStatus,
+        payment_status: paymentStatus,
+        shipping_tracking_number: shippingTrackingNumber,
+        shipping_status: shippingStatus,
+      })
+    : null;
+  const deliveredLabel = orderDeliveredLabelTr(deliveryKind, "admin");
 
   return (
     <div className={`flex flex-wrap items-center justify-start gap-2 ${className ?? ""}`}>
       {stage === "new" ? (
         <form action={updateOrderStatus}>
           <input type="hidden" name="id" value={orderId} />
+          <input type="hidden" name="return_to" value={returnTo} />
           <input type="hidden" name="payment_status" value={paymentStatus} />
           <input type="hidden" name="order_status" value="processing" />
-          <PendingButton
-            pendingLabel="Alınıyor…"
-            className={`${btnBase} bg-stone-900 text-white shadow-md shadow-stone-900/25 hover:bg-stone-800`}
-          >
+          <PendingButton pendingLabel="Alınıyor…" className={btnPrimary}>
             Hazırlamaya al
           </PendingButton>
         </form>
       ) : null}
 
-      {stage === "preparing" ? (
+      {stage === "preparing" && !hasShippingTracking ? (
+        <form action={markOrderHandDelivered}>
+          <input type="hidden" name="id" value={orderId} />
+          <input type="hidden" name="return_to" value={returnTo} />
+          <input type="hidden" name="payment_status" value={paymentStatus} />
+          <PendingButton pendingLabel="Kaydediliyor…" className={btnHandDeliver}>
+            Elden teslim edildi
+          </PendingButton>
+        </form>
+      ) : null}
+
+      {stage === "preparing" && hasShippingTracking ? (
         <form action={updateOrderStatus}>
           <input type="hidden" name="id" value={orderId} />
+          <input type="hidden" name="return_to" value={returnTo} />
           <input type="hidden" name="payment_status" value={paymentStatus} />
           <input type="hidden" name="order_status" value="shipped" />
-          <PendingButton
-            pendingLabel="İşleniyor…"
-            className={`${btnBase} bg-stone-900 text-white shadow-md shadow-stone-900/25 hover:bg-stone-800`}
-          >
+          <PendingButton pendingLabel="İşleniyor…" className={btnPrimary}>
             Kargoya ver
           </PendingButton>
         </form>
@@ -75,11 +103,9 @@ export function AdminOrderActionBar({
       {stage === "in_transit" ? (
         <form action={markOrderHandDelivered}>
           <input type="hidden" name="id" value={orderId} />
+          <input type="hidden" name="return_to" value={returnTo} />
           <input type="hidden" name="payment_status" value={paymentStatus} />
-          <PendingButton
-            pendingLabel="Kaydediliyor…"
-            className={`${btnBase} border border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm hover:bg-emerald-100`}
-          >
+          <PendingButton pendingLabel="Kaydediliyor…" className={btnHandDeliver}>
             Teslim edildi
           </PendingButton>
         </form>
@@ -87,13 +113,14 @@ export function AdminOrderActionBar({
 
       {delivered ? (
         <span className={`${btnBase} border border-emerald-200 bg-emerald-50/80 text-emerald-900`}>
-          ✓ Teslim edildi
+          ✓ {deliveredLabel}
         </span>
       ) : null}
 
       {!cancelled && !delivered ? (
         <form action={updateOrderStatus}>
           <input type="hidden" name="id" value={orderId} />
+          <input type="hidden" name="return_to" value={returnTo} />
           <input type="hidden" name="payment_status" value={paymentStatus} />
           <input type="hidden" name="order_status" value="cancelled" />
           <PendingButton

@@ -119,6 +119,9 @@ export default async function AdminOrderDetailPage({
     created_at: String(order.created_at),
     payment_status: String(order.payment_status ?? "pending"),
     order_status: String(order.order_status ?? "pending"),
+    shipping_tracking_number: order.shipping_tracking_number as string | null | undefined,
+    shipping_status: order.shipping_status as string | null | undefined,
+    shipping_provider: order.shipping_provider as string | null | undefined,
   });
 
   const referralCode = order.referral_code as string | null | undefined;

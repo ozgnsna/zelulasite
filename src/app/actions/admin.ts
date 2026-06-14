@@ -866,16 +866,31 @@ export async function saveCollection(formData: FormData) {
   revalidatePath("/");
 }
 
+function adminOrderReturnTo(formData: FormData, orderId: string): string | null {
+  const raw = String(formData.get("return_to") ?? "").trim();
+  if (!raw.startsWith("/admin/orders/")) return null;
+  if (orderId && !raw.includes(orderId)) return null;
+  return raw;
+}
+
 export async function updateOrderStatus(formData: FormData) {
+  await assertAdminSession();
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "");
   const order_status = String(formData.get("order_status") ?? "pending");
   const payment_status = String(formData.get("payment_status") ?? "pending");
+  const returnTo = adminOrderReturnTo(formData, id);
+  if (!id) return;
+
   const { data: before } = await supabase.from("orders").select("order_status").eq("id", id).maybeSingle();
-  await supabase
+  const { error: updateErr } = await supabase
     .from("orders")
     .update({ order_status, payment_status, updated_at: new Date().toISOString() })
     .eq("id", id);
+  if (updateErr) {
+    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent(updateErr.message)}`);
+    throw new Error(updateErr.message);
+  }
   await syncLoyaltyLedgersForOrder(supabase, id);
   await supabase.from("payment_logs").insert({
     order_id: id,
@@ -890,25 +905,44 @@ export async function updateOrderStatus(formData: FormData) {
     await notifyCustomerOrderWhatsApp(supabase, id, "order_shipped");
   }
   revalidateAdminOrderPaths(id);
+  if (returnTo) redirect(returnTo);
 }
 
 export async function markOrderHandDelivered(formData: FormData) {
+  await assertAdminSession();
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "");
   const paymentStatus = String(formData.get("payment_status") ?? "pending");
+  const returnTo = adminOrderReturnTo(formData, id) ?? (id ? `/admin/orders/${id}` : null);
   if (!id) return;
 
-  await supabase
+  const { data: before } = await supabase
+    .from("orders")
+    .select("shipping_tracking_number,shipping_status,shipping_provider")
+    .eq("id", id)
+    .maybeSingle();
+
+  const hasTracking =
+    String(before?.shipping_tracking_number ?? "").trim().length > 0 ||
+    String(before?.shipping_status ?? "").trim() === "created";
+
+  const { error: updateErr } = await supabase
     .from("orders")
     .update({
       order_status: "hand_delivered",
       payment_status: paymentStatus,
-      shipping_provider: "manual",
+      ...(hasTracking ? {} : { shipping_provider: "manual" }),
       shipping_status: "hand_delivered",
       shipping_created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
+  if (updateErr) {
+    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent(updateErr.message)}`);
+    throw new Error(updateErr.message);
+  }
+
+  await syncLoyaltyLedgersForOrder(supabase, id);
 
   await supabase.from("payment_logs").insert({
     order_id: id,
@@ -923,6 +957,7 @@ export async function markOrderHandDelivered(formData: FormData) {
   await notifyCustomerOrderWhatsApp(supabase, id, "order_delivered");
 
   revalidateAdminOrderPaths(id);
+  if (returnTo) redirect(returnTo);
 }
 
 const PRODUCT_IMAGES_BUCKET = "product-images";

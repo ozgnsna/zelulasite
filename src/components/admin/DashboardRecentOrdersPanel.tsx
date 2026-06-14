@@ -12,13 +12,16 @@ export type DashboardOrderRow = {
   order_number: string;
   customer_name: string;
   created_at: string;
+  shipping_status?: string | null;
+  shipping_provider?: string | null;
+  shipping_tracking_number?: string | null;
 };
 
 import {
   fulfillmentStageListChipClasses,
-  fulfillmentStageLabelTr,
   resolveOrderFulfillmentStage,
 } from "@/lib/orders/fulfillment-stage";
+import { orderOperationLabelTr } from "@/lib/orders/delivery-method";
 
 type FilterId = "all" | "new" | "payment_pending" | "today";
 
@@ -64,7 +67,13 @@ function isTodayOrder(o: DashboardOrderRow, dayStartMs: number, dayEndMs: number
 function operationsChip(o: DashboardOrderRow): { label: string; className: string } {
   const stage = resolveOrderFulfillmentStage(o.payment_status, o.order_status);
   return {
-    label: fulfillmentStageLabelTr(stage),
+    label: orderOperationLabelTr({
+      order_status: o.order_status,
+      payment_status: o.payment_status,
+      shipping_tracking_number: o.shipping_tracking_number,
+      shipping_status: o.shipping_status,
+      shipping_provider: o.shipping_provider,
+    }),
     className: fulfillmentStageListChipClasses(stage),
   };
 }
