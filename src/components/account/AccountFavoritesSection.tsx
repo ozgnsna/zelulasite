@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductListingGrid } from "@/components/product/ProductListingGrid";
 import { listFavoriteProductsForUser } from "@/lib/account/favorites";
-import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
 export async function AccountFavoritesSection() {
   const supabase = await createClient();
@@ -28,25 +27,13 @@ export async function AccountFavoritesSection() {
           </Link>
         </p>
       ) : (
-        <ul className="mt-6 grid gap-6 sm:grid-cols-2">
-          {favorites.map((p) => (
-            <li key={p.id}>
-              <ProductCard
-                id={p.id}
-                slug={p.slug}
-                name={p.name}
-                summary={p.short_description}
-                imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900")}
-                price={Number(p.price)}
-                compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
-                category={p.category?.name}
-                collection={p.collection?.name ?? null}
-                initialFavorited
-                isSignedIn
-              />
-            </li>
-          ))}
-        </ul>
+        <ProductListingGrid
+          products={favorites}
+          isSignedIn
+          favoriteIds={new Set(favorites.map((p) => p.id))}
+          conversionOverlay={false}
+          fallbackImage="https://picsum.photos/id/90/900/900"
+        />
       )}
     </section>
   );

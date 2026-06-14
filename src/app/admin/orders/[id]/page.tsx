@@ -4,6 +4,7 @@ import {
   loyaltyReferralReversalDescription,
 } from "@/lib/loyalty/ledger-descriptions";
 import { buildAdminOrderTimeline } from "@/lib/admin/order-timeline";
+import { buildAdminOrderAccountLink } from "@/lib/admin/order-account-link";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -12,6 +13,7 @@ import {
   type AdminCustomerOrderInsight,
   type AdminOrderLine,
 } from "@/components/admin/orders/AdminOrderDetailView";
+import type { AdminOrderAccountLink } from "@/lib/admin/order-account-link";
 import { AdminOrderInvoicePanel } from "@/components/admin/orders/AdminOrderInvoicePanel";
 
 export const dynamic = "force-dynamic";
@@ -94,10 +96,31 @@ export default async function AdminOrderDetailPage({
 
   const lines = normalizeOrderLines(lineRows ?? []);
 
-  const SUM_ROWS_CAP = 2500;
-  let customerInsight: AdminCustomerOrderInsight | null = null;
   const orderUserId = order.user_id as string | null | undefined;
   const orderEmail = String(order.email ?? "").trim();
+
+  let accountLink: AdminOrderAccountLink = buildAdminOrderAccountLink({
+    userId: orderUserId,
+    paymentStatus: String(order.payment_status ?? ""),
+    orderStatus: String(order.order_status ?? ""),
+  });
+
+  if (orderUserId) {
+    const [{ data: linkedProfile }, linkedAuth] = await Promise.all([
+      admin.from("profiles").select("full_name").eq("id", orderUserId).maybeSingle(),
+      admin.auth.admin.getUserById(orderUserId),
+    ]);
+    accountLink = buildAdminOrderAccountLink({
+      userId: orderUserId,
+      paymentStatus: String(order.payment_status ?? ""),
+      orderStatus: String(order.order_status ?? ""),
+      accountEmail: linkedAuth.data.user?.email ?? null,
+      accountName: linkedProfile?.full_name ?? null,
+    });
+  }
+
+  const SUM_ROWS_CAP = 2500;
+  let customerInsight: AdminCustomerOrderInsight | null = null;
   if (orderUserId || orderEmail) {
     const filterCol = orderUserId ? "user_id" : "email";
     const filterVal = (orderUserId ?? orderEmail) as string;
@@ -214,6 +237,7 @@ export default async function AdminOrderDetailPage({
           timeline={timeline ?? []}
           customerInsight={customerInsight ?? null}
           orderError={sp.orderError ? decodeURIComponent(String(sp.orderError)) : null}
+          accountLink={accountLink}
         />
       </div>
     </main>

@@ -15,6 +15,9 @@ import { AdminOrderActionBar } from "@/components/admin/orders/AdminOrderActionB
 import { AdminDhlCreateShipmentButton } from "@/components/admin/orders/AdminDhlCreateShipmentButton";
 import { AdminOrderCallbackHistory } from "@/components/admin/orders/AdminOrderCallbackHistory";
 import { AdminCopyableSecret } from "@/components/admin/orders/AdminCopyableSecret";
+import type { AdminOrderAccountLink } from "@/lib/admin/order-account-link";
+
+export type { AdminOrderAccountLink } from "@/lib/admin/order-account-link";
 
 export type AdminOrderLine = {
   id: string;
@@ -174,6 +177,7 @@ export function AdminOrderDetailView({
   timeline = [],
   customerInsight = null,
   orderError = null,
+  accountLink,
 }: {
   order: OrderRow;
   lines: AdminOrderLine[];
@@ -183,6 +187,7 @@ export function AdminOrderDetailView({
   timeline?: AdminOrderTimelineStep[];
   customerInsight?: AdminCustomerOrderInsight | null;
   orderError?: string | null;
+  accountLink: AdminOrderAccountLink;
 }) {
   const timelineSteps = timeline ?? [];
   const currency = order.currency ?? "TRY";
@@ -289,9 +294,6 @@ export function AdminOrderDetailView({
                 Teslim kaydedilemedi: {orderError}
               </p>
             ) : null}
-            <p className="mt-2 font-mono text-[10px] text-stone-500">
-              Durum: {orderStatus || "—"} · Ödeme: {paymentStatus || "—"}
-            </p>
             <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1 space-y-4">
                 <AdminOrderActionBar
@@ -448,6 +450,54 @@ export function AdminOrderDetailView({
                   </a>
                 ) : null}
               </div>
+            </div>
+            <div className="border-t border-[#eadfce] pt-4">
+              <p className={kicker}>Hesap & yorum</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span
+                  className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
+                    accountLink.mode === "linked"
+                      ? "bg-emerald-50 text-emerald-950 ring-emerald-600/25"
+                      : "bg-amber-50 text-amber-950 ring-amber-500/30"
+                  }`}
+                >
+                  {accountLink.mode === "linked" ? "Hesaba bağlı" : "Misafir sipariş"}
+                </span>
+                <span
+                  className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
+                    accountLink.canWriteReviews
+                      ? "bg-emerald-50 text-emerald-950 ring-emerald-600/25"
+                      : "bg-stone-100 text-stone-800 ring-stone-500/15"
+                  }`}
+                >
+                  {accountLink.reviewStatusLabel}
+                </span>
+              </div>
+              {accountLink.mode === "linked" && (accountLink.accountName || accountLink.accountEmail) ? (
+                <dl className="mt-3 space-y-2 text-sm">
+                  {accountLink.accountName ? (
+                    <div>
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-stone-400">Hesap adı</dt>
+                      <dd className="mt-0.5 text-stone-900">{accountLink.accountName}</dd>
+                    </div>
+                  ) : null}
+                  {accountLink.accountEmail ? (
+                    <div>
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-stone-400">Hesap e-postası</dt>
+                      <dd className="mt-0.5 break-all text-stone-900">{accountLink.accountEmail}</dd>
+                    </div>
+                  ) : null}
+                  {accountLink.accountEmail && email && accountLink.accountEmail.toLowerCase() !== email.toLowerCase() ? (
+                    <p className="text-xs text-amber-800">
+                      Sipariş e-postası ({email}) hesap e-postasından farklı — yine de sipariş hesaba bağlı.
+                    </p>
+                  ) : null}
+                </dl>
+              ) : null}
+              <p className="mt-3 text-xs leading-relaxed text-stone-600">{accountLink.reviewDetail}</p>
+              {accountLink.userId ? (
+                <p className="mt-2 font-mono text-[10px] text-stone-400">user_id: {accountLink.userId}</p>
+              ) : null}
             </div>
             {addr ? (
               <div className="border-t border-[#eadfce] pt-4">

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductListingGrid } from "@/components/product/ProductListingGrid";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
-import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { SearchUsageTracker } from "@/components/analytics/SearchUsageTracker";
 import { CategoryClickLink } from "@/components/analytics/CategoryClickLink";
@@ -172,25 +171,13 @@ export default async function ProductsPage({ searchParams }: Props) {
               Bu filtreye uygun ürün yok. Filtreleri temizleyip tekrar deneyin.
             </p>
           ) : (
-            <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {products.map((p) => (
-                <li key={p.id}>
-                  <ProductCard
-                    id={p.id}
-                    slug={p.slug}
-                    name={p.name}
-                    summary={p.short_description}
-                    imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900")}
-                    price={Number(p.price)}
-                    compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
-                    category={p.category?.name}
-                    collection={p.collection?.name ?? null}
-                    isSignedIn={isSignedIn}
-                    initialFavorited={favoriteIds.has(p.id)}
-                  />
-                </li>
-              ))}
-            </ul>
+            <ProductListingGrid
+              products={products}
+              isSignedIn={isSignedIn}
+              favoriteIds={favoriteIds}
+              conversionOverlay={false}
+              fallbackImage="https://picsum.photos/id/90/900/900"
+            />
           )}
         </div>
       </div>

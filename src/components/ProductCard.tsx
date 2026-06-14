@@ -27,6 +27,8 @@ type ProductCardProps = {
   conversionOverlay?: boolean;
   /** Kart kökü (ör. yatay şerit genişliği) */
   className?: string;
+  /** Kategori listelerinde mobil 2 sütun — daha sıkı kart */
+  density?: "default" | "compact";
   /** Girişli kullanıcı favori durumu (liste sayfaları sunucudan doldurur) */
   initialFavorited?: boolean;
   isSignedIn?: boolean;
@@ -48,30 +50,47 @@ export function ProductCard({
   peekHint,
   conversionOverlay = false,
   className,
+  density = "default",
   initialFavorited = false,
   isSignedIn = false,
 }: ProductCardProps) {
+  const compact = density === "compact";
   const showBadges = Boolean(badges?.bestseller || badges?.new);
   const aspectClass =
     imageForward && imageEmphasis === "high"
       ? "aspect-[11/16] sm:aspect-[10/15] lg:aspect-[3/4]"
       : imageForward
         ? "aspect-[5/7] sm:aspect-[3/4]"
-        : "aspect-[4/5]";
-  const contentPad = imageForward ? "gap-1.5 p-4 sm:p-4" : "gap-2 p-5";
-  const titleClass = imageForward
-    ? "font-serif text-[1rem] leading-snug text-stone-900 sm:text-[1.05rem]"
-    : "font-serif text-[1.12rem] leading-snug text-stone-900";
-  const summaryClass = imageForward
-    ? "mt-0.5 line-clamp-1 text-xs leading-relaxed text-stone-500"
-    : "mt-1 line-clamp-2 text-sm leading-relaxed text-stone-500";
+        : compact
+          ? "aspect-[4/5] sm:aspect-[4/5]"
+          : "aspect-[4/5]";
+  const contentPad = compact
+    ? "gap-1 p-2.5 sm:gap-2 sm:p-5"
+    : imageForward
+      ? "gap-1.5 p-4 sm:p-4"
+      : "gap-2 p-5";
+  const titleClass = compact
+    ? "line-clamp-2 font-serif text-[0.8125rem] leading-snug text-stone-900 sm:line-clamp-none sm:text-[1.12rem]"
+    : imageForward
+      ? "font-serif text-[1rem] leading-snug text-stone-900 sm:text-[1.05rem]"
+      : "font-serif text-[1.12rem] leading-snug text-stone-900";
+  const summaryClass = compact
+    ? "mt-0.5 hidden text-sm leading-relaxed text-stone-500 sm:line-clamp-2 sm:block"
+    : imageForward
+      ? "mt-0.5 line-clamp-1 text-xs leading-relaxed text-stone-500"
+      : "mt-1 line-clamp-2 text-sm leading-relaxed text-stone-500";
+  const imageSizes = compact
+    ? "(max-width: 640px) 46vw, (max-width: 1024px) 50vw, 33vw"
+    : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
+  const cardRadius = compact ? "rounded-xl sm:rounded-[1.35rem]" : "rounded-[1.35rem]";
 
   const showPeek = Boolean(peekHint) && !conversionOverlay;
 
   return (
     <article
       className={cn(
-        "group flex h-full cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border border-[#e6dccf] bg-[#fffdfb] shadow-[0_10px_28px_rgba(70,53,38,0.06)] transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:border-[color:var(--brand-gold)]/35 motion-safe:hover:shadow-[0_20px_48px_rgba(55,48,40,0.1),0_0_0_1px_rgba(201,168,106,0.08)]",
+        "group flex h-full cursor-pointer flex-col overflow-hidden border border-[#e6dccf] bg-[#fffdfb] shadow-[0_10px_28px_rgba(70,53,38,0.06)] transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:border-[color:var(--brand-gold)]/35 motion-safe:hover:shadow-[0_20px_48px_rgba(55,48,40,0.1),0_0_0_1px_rgba(201,168,106,0.08)]",
+        cardRadius,
         "zl-card",
         className,
       )}
@@ -81,7 +100,7 @@ export function ProductCard({
           src={imageUrl}
           alt={name}
           fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes={imageSizes}
           className={
             imageForward
               ? "object-contain p-2 transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
@@ -102,7 +121,10 @@ export function ProductCard({
             productSlug={slug}
             initialFavorited={initialFavorited}
             isSignedIn={isSignedIn}
-            className="absolute right-2 top-2 z-[18] sm:right-2.5 sm:top-2.5"
+            className={cn(
+              "absolute right-2 top-2 z-[18] sm:right-2.5 sm:top-2.5",
+              compact && "right-1.5 top-1.5 scale-90 sm:scale-100 sm:right-2.5 sm:top-2.5",
+            )}
           />
         ) : null}
         {showPeek ? (
@@ -171,10 +193,15 @@ export function ProductCard({
           <h2 className={titleClass}>{name}</h2>
           <p className={summaryClass}>{summary ?? "Zamansız form, modern dokunuş."}</p>
         </Link>
-        <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+        <div className={`mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-3 sm:pt-2 ${compact ? "flex-col items-stretch sm:flex-row sm:items-end" : ""}`}>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-              <p className="zl-gold-text text-lg font-bold tabular-nums tracking-tight sm:text-xl">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <p
+                className={cn(
+                  "zl-gold-text font-bold tabular-nums tracking-tight",
+                  compact ? "text-sm sm:text-xl" : "text-lg sm:text-xl",
+                )}
+              >
                 {formatMoney(price * 100, "TRY")}
               </p>
               {compareAtPrice ? (
@@ -186,7 +213,10 @@ export function ProductCard({
           </div>
           <Link
             href={`/urunler/${slug}`}
-            className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a7848] underline-offset-2 transition hover:text-[#7d5f35] hover:underline"
+            className={cn(
+              "shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a7848] underline-offset-2 transition hover:text-[#7d5f35] hover:underline",
+              compact && "hidden sm:inline",
+            )}
           >
             İncele
           </Link>

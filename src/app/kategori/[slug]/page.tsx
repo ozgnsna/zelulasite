@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductListingGrid } from "@/components/product/ProductListingGrid";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getCategoryPageData } from "@/lib/storefront";
-import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
 import { absoluteUrl } from "@/lib/seo/site";
 
@@ -84,12 +83,12 @@ export default async function CategoryPage({ params }: Props) {
       {data.mode === "hub" ? (
         <section className="mt-10">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">Alt kategoriler</p>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
             {data.children.map((c) => (
               <li key={c.slug}>
                 <Link
                   href={categoryHref(c.slug)}
-                  className="flex items-center justify-between rounded-2xl border border-[#e8e2d9] bg-[#fffdfb] px-4 py-3.5 text-sm font-medium text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:shadow-md"
+                  className="flex items-center justify-between rounded-2xl border border-[#e8e2d9] bg-[#fffdfb] px-3 py-3 text-sm font-medium text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:shadow-md sm:px-4 sm:py-3.5"
                 >
                   {c.name}
                   <span className="text-stone-400" aria-hidden>
@@ -103,9 +102,12 @@ export default async function CategoryPage({ params }: Props) {
       ) : null}
 
       <section className="mt-12">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
             {data.mode === "hub" ? "Tüm ürünler" : "Ürünler"}
+            <span className="ml-2 font-normal normal-case tracking-normal text-stone-400">
+              ({data.products.length})
+            </span>
           </p>
           <Link
             href="/urunler"
@@ -123,27 +125,7 @@ export default async function CategoryPage({ params }: Props) {
             &apos;e göz at.
           </p>
         ) : (
-          <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
-            {data.products.map((p) => (
-              <li key={p.id}>
-                <ProductCard
-                  id={p.id}
-                  slug={p.slug}
-                  name={p.name}
-                  summary={p.short_description}
-                  imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/99/900/900")}
-                  price={Number(p.price)}
-                  compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
-                  category={p.category?.name}
-                  collection={p.collection?.name ?? null}
-                  badges={{ bestseller: p.featured, new: p.new_arrival }}
-                  conversionOverlay
-                  isSignedIn={isSignedIn}
-                  initialFavorited={favoriteIds.has(p.id)}
-                />
-              </li>
-            ))}
-          </ul>
+          <ProductListingGrid products={data.products} isSignedIn={isSignedIn} favoriteIds={favoriteIds} />
         )}
       </section>
     </main>

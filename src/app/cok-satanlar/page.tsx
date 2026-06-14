@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductListingGrid } from "@/components/product/ProductListingGrid";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
-import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
 import { absoluteUrl } from "@/lib/seo/site";
 
@@ -56,27 +55,7 @@ export default async function BestSellersPage() {
             </Link>
           </p>
         ) : (
-          <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
-            {products.map((p) => (
-              <li key={p.id}>
-                <ProductCard
-                  id={p.id}
-                  slug={p.slug}
-                  name={p.name}
-                  summary={p.short_description}
-                  imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/99/900/900")}
-                  price={Number(p.price)}
-                  compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
-                  category={p.category?.name}
-                  collection={p.collection?.name ?? null}
-                  badges={{ bestseller: true, new: p.new_arrival }}
-                  conversionOverlay
-                  isSignedIn={isSignedIn}
-                  initialFavorited={favoriteIds.has(p.id)}
-                />
-              </li>
-            ))}
-          </ul>
+          <ProductListingGrid products={products} isSignedIn={isSignedIn} favoriteIds={favoriteIds} />
         )}
       </section>
     </main>
