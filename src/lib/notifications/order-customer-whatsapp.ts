@@ -91,13 +91,13 @@ export async function notifyCustomerOrderWhatsApp(
     return { attempted: false, ok: false, skippedReason: "Bu bildirim daha önce gönderildi" };
   }
 
-  const { data: order } = await admin
+  const { data: order, error: orderFetchErr } = await admin
     .from("orders")
-    .select("id,order_number,phone,customer_name,shipping_tracking_number")
+    .select("id,order_number,phone,customer_name")
     .eq("id", orderId)
     .maybeSingle();
 
-  if (!order) {
+  if (orderFetchErr || !order) {
     return { attempted: false, ok: false, skippedReason: "Sipariş bulunamadı" };
   }
 
@@ -111,7 +111,7 @@ export async function notifyCustomerOrderWhatsApp(
 
   const templateName = templateNameFor(event)!;
   const orderNumber = String(order.order_number ?? "").trim() || orderId;
-  const tracking = opts?.trackingNumber ?? order.shipping_tracking_number;
+  const tracking = opts?.trackingNumber ?? null;
 
   try {
     const bodyParam =

@@ -35,6 +35,8 @@ export function AdminOrderMarkDeliveredButton({
               setError(data.error ?? `İşlem başarısız (${res.status})`);
               return;
             }
+            setError(null);
+            router.replace(`/admin/orders/${orderId}`);
             router.refresh();
           });
         }}

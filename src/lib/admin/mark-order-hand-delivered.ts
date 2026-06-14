@@ -13,7 +13,6 @@ export async function markOrderHandDeliveredInDb(
 ): Promise<MarkOrderHandDeliveredResult> {
   if (!orderId) return { ok: false, error: "Sipariş kimliği gerekli." };
 
-  // Prod DB’de kargo kolonları migration’sız olabilir — yalnızca temel alanlar.
   const { data: before, error: fetchErr } = await admin
     .from("orders")
     .select("payment_status,order_status")
@@ -28,30 +27,45 @@ export async function markOrderHandDeliveredInDb(
   }
 
   const now = new Date().toISOString();
-  const { error: updateErr } = await admin
+  const { data: updated, error: updateErr } = await admin
     .from("orders")
     .update({
       order_status: "hand_delivered",
       payment_status: before.payment_status,
       updated_at: now,
     })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .select("id")
+    .maybeSingle();
 
   if (updateErr) return { ok: false, error: updateErr.message };
+  if (!updated) return { ok: false, error: "Sipariş güncellenemedi." };
 
-  await syncLoyaltyLedgersForOrder(admin, orderId);
+  try {
+    await syncLoyaltyLedgersForOrder(admin, orderId);
+  } catch {
+    /* teslim kaydı başarılı kalsın */
+  }
 
-  await admin.from("payment_logs").insert({
-    order_id: orderId,
-    provider: "manual",
-    event_type: "manual_hand_delivery",
-    status: "updated",
-    request_payload: { order_status: "hand_delivered" },
-    verification_status: "passed",
-    processed_at: now,
-  });
+  try {
+    await admin.from("payment_logs").insert({
+      order_id: orderId,
+      provider: "manual",
+      event_type: "manual_hand_delivery",
+      status: "updated",
+      request_payload: { order_status: "hand_delivered" },
+      verification_status: "passed",
+      processed_at: now,
+    });
+  } catch {
+    /* teslim kaydı başarılı kalsın */
+  }
 
-  await notifyCustomerOrderWhatsApp(admin, orderId, "order_delivered");
+  try {
+    await notifyCustomerOrderWhatsApp(admin, orderId, "order_delivered");
+  } catch {
+    /* teslim kaydı başarılı kalsın */
+  }
 
   return { ok: true };
 }
