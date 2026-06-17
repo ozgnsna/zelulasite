@@ -67,9 +67,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
   const result = await createShipmentForOrder(source);
   if (!result.ok) {
+    const notConfigured = result.code === "DHL_NOT_CONFIGURED" || result.code === "NAVLUNGO_NOT_CONFIGURED";
     return NextResponse.json(
       { ok: false, error: result.error, code: result.code },
-      { status: result.code === "DHL_NOT_CONFIGURED" ? 501 : 400 },
+      { status: notConfigured ? 501 : 400 },
     );
   }
 

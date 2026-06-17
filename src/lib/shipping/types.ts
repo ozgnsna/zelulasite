@@ -1,4 +1,4 @@
-export type ShippingCarrierId = "dhl";
+export type ShippingCarrierId = "dhl" | "navlungo";
 
 /** Sipariş satırından kargo oluşturmak için minimum alanlar */
 export type OrderShippingSource = {

@@ -12,7 +12,8 @@ import {
 import { callbackLogStatusLabelTr, callbackVerificationLabelTr } from "@/lib/admin/order-callback-copy";
 import type { AdminOrderTimelineStep } from "@/lib/admin/order-timeline";
 import { AdminOrderActionBar } from "@/components/admin/orders/AdminOrderActionBar";
-import { AdminDhlCreateShipmentButton } from "@/components/admin/orders/AdminDhlCreateShipmentButton";
+import { AdminCreateShipmentButton } from "@/components/admin/orders/AdminCreateShipmentButton";
+import { getShippingCarrierLabel } from "@/lib/shipping/provider";
 import { AdminOrderCallbackHistory } from "@/components/admin/orders/AdminOrderCallbackHistory";
 import { AdminCopyableSecret } from "@/components/admin/orders/AdminCopyableSecret";
 import type { AdminOrderAccountLink } from "@/lib/admin/order-account-link";
@@ -304,11 +305,12 @@ export function AdminOrderDetailView({
                   shippingStatus={order.shipping_status}
                   className="w-full justify-start"
                 />
-                <AdminDhlCreateShipmentButton
+                <AdminCreateShipmentButton
                   orderId={order.id}
                   paymentStatus={paymentStatus}
                   shippingTrackingNumber={order.shipping_tracking_number}
                   shippingStatus={order.shipping_status}
+                  carrierLabel={getShippingCarrierLabel()}
                 />
               </div>
               {order.shipping_tracking_number || order.shipping_status || order.shipping_label_url || deliveryKind === "hand" ? (

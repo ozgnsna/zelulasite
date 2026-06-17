@@ -3,16 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-export function AdminDhlCreateShipmentButton({
+export function AdminCreateShipmentButton({
   orderId,
   paymentStatus,
   shippingTrackingNumber,
   shippingStatus,
+  carrierLabel,
 }: {
   orderId: string;
   paymentStatus: string;
   shippingTrackingNumber: string | null | undefined;
   shippingStatus: string | null | undefined;
+  carrierLabel: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -32,7 +34,7 @@ export function AdminDhlCreateShipmentButton({
 
   return (
     <div className="mt-4 w-full border-t border-[#e8dfd3] pt-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">DHL kargo</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">{carrierLabel} kargo</p>
       {hint ? <p className="mt-1.5 text-xs text-stone-500">{hint}</p> : null}
       <button
         type="button"
@@ -51,9 +53,9 @@ export function AdminDhlCreateShipmentButton({
             router.refresh();
           });
         }}
-        className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[linear-gradient(135deg,#d40511,#b0040e)] px-4 text-sm font-semibold text-white shadow-md transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+        className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-stone-900 px-4 text-sm font-semibold text-white shadow-md transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
       >
-        {pending ? "Oluşturuluyor…" : "DHL Kargo Oluştur"}
+        {pending ? "Oluşturuluyor…" : `${carrierLabel} ile kargo oluştur`}
       </button>
       {message ? <p className="mt-2 text-xs font-medium text-emerald-800">{message}</p> : null}
       {error ? (

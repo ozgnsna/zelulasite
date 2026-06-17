@@ -83,65 +83,67 @@ export function Footer() {
             </div>
           </div>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Hızlı erişim</p>
-            <ul className="mt-4 flex flex-col gap-2.5">
-              <li>
-                <Link href="/urunler" className={linkClass}>
-                  Tüm Ürünler
-                </Link>
-              </li>
-              <li>
-                <Link href="/urunler?sirala=newest" className={linkClass}>
-                  Yeni Gelenler
-                </Link>
-              </li>
-              <li>
-                <Link href="/cok-satanlar" className={linkClass}>
-                  En Çok Satanlar
-                </Link>
-              </li>
-              <li>
-                <Link href="/urunler" className={linkClass}>
-                  Kampanyalar
-                </Link>
-              </li>
-            </ul>
-          </div>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-0 lg:contents">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Hızlı erişim</p>
+              <ul className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-2.5">
+                <li>
+                  <Link href="/urunler" className={linkClass}>
+                    Tüm Ürünler
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/urunler?sirala=newest" className={linkClass}>
+                    Yeni Gelenler
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/cok-satanlar" className={linkClass}>
+                    En Çok Satanlar
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/urunler" className={linkClass}>
+                    Kampanyalar
+                  </Link>
+                </li>
+              </ul>
+            </div>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Destek</p>
-            <ul className="mt-4 flex flex-col gap-2.5">
-              <li>
-                <Link href="/mesafeli-satis-sozlesmesi" className={linkClass}>
-                  Mesafeli Satış Sözleşmesi
-                </Link>
-              </li>
-              <li>
-                <Link href="/on-bilgilendirme-formu" className={linkClass}>
-                  Ön Bilgilendirme Formu
-                </Link>
-              </li>
-              <li>
-                <Link href="/iade-ve-degisim" className={linkClass}>
-                  İade &amp; Değişim
-                </Link>
-              </li>
-              <li>
-                <Link href="/gizlilik-politikasi" className={linkClass}>
-                  Gizlilik Politikası
-                </Link>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => openCookieSettingsFromUi()}
-                  className={`${linkClass} text-left`}
-                >
-                  Çerez Ayarları
-                </button>
-              </li>
-            </ul>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Destek</p>
+              <ul className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-2.5">
+                <li>
+                  <Link href="/mesafeli-satis-sozlesmesi" className={`${linkClass} text-[13px] sm:text-sm`}>
+                    Mesafeli Satış Sözleşmesi
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/on-bilgilendirme-formu" className={`${linkClass} text-[13px] sm:text-sm`}>
+                    Ön Bilgilendirme Formu
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/iade-ve-degisim" className={linkClass}>
+                    İade &amp; Değişim
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/gizlilik-politikasi" className={linkClass}>
+                    Gizlilik Politikası
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openCookieSettingsFromUi()}
+                    className={`${linkClass} text-left`}
+                  >
+                    Çerez Ayarları
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div className="text-sm text-stone-600">
