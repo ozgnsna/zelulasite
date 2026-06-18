@@ -360,9 +360,19 @@ export function AdminAnalyticsSection({ data }: { data: AnalyticsSectionData }) 
               const imageUrl = productImages[row.productId];
               return (
                 <li key={row.productId} className="flex items-center gap-3 overflow-visible px-3 py-2.5">
-                  <AdminProductListThumbnail src={imageUrl ?? null} alt={row.productName} />
+                  <Link
+                    href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
+                    className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8a734f]"
+                  >
+                    <AdminProductListThumbnail src={imageUrl ?? null} alt={row.productName} />
+                  </Link>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-medium text-stone-800">{row.productName}</p>
+                    <Link
+                      href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
+                      className="block truncate text-[12px] font-medium text-stone-800 underline-offset-2 hover:text-[#6b5430] hover:underline"
+                    >
+                      {row.productName}
+                    </Link>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-stone-500">
                       <span>{row.views.toLocaleString("tr-TR")} görüntülenme</span>
                       <span className="font-semibold text-[#8a734f]">
@@ -378,7 +388,7 @@ export function AdminAnalyticsSection({ data }: { data: AnalyticsSectionData }) 
                     </div>
                   </div>
                   <Link
-                    href={`/admin/products?search=${encodeURIComponent(row.productName)}`}
+                    href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
                     className="shrink-0 text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline"
                   >
                     Ürün →

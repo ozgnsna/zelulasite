@@ -110,7 +110,7 @@ export default async function AdminProductsPage({
     stock?: string;
     review?: string;
     sales?: string;
-    sort?: "newest" | "oldest";
+    sort?: "newest" | "oldest" | "stock_desc" | "stock_asc";
     editProduct?: string;
     deleted?: string;
     deleteError?: string;
@@ -127,7 +127,9 @@ export default async function AdminProductsPage({
   const stockFilter = (sp.stock ?? "all").trim();
   const reviewFilter = (sp.review ?? "all").trim();
   const salesFilter = (sp.sales ?? "all").trim();
-  const sortFilter = (sp.sort ?? "newest").trim() === "oldest" ? "oldest" : "newest";
+  const sortRaw = (sp.sort ?? "newest").trim();
+  const sortFilter: "newest" | "oldest" | "stock_desc" | "stock_asc" =
+    sortRaw === "oldest" || sortRaw === "stock_desc" || sortRaw === "stock_asc" ? sortRaw : "newest";
   const pageRaw = Math.max(1, parseInt(String(sp.page ?? "1").trim(), 10) || 1);
   const deletedCount = Number(sp.deleted ?? 0);
   const deleteError = sp.deleteError ?? "";
@@ -224,11 +226,21 @@ export default async function AdminProductsPage({
     return true;
   });
 
-  const totalFiltered = filteredRows.length;
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    if (sortFilter === "stock_desc") {
+      return Number(b.stock_quantity ?? 0) - Number(a.stock_quantity ?? 0);
+    }
+    if (sortFilter === "stock_asc") {
+      return Number(a.stock_quantity ?? 0) - Number(b.stock_quantity ?? 0);
+    }
+    return 0;
+  });
+
+  const totalFiltered = sortedRows.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
   const currentPage = Math.min(pageRaw, totalPages);
   const pageStart = (currentPage - 1) * PAGE_SIZE;
-  const paginatedRows = filteredRows.slice(pageStart, pageStart + PAGE_SIZE);
+  const paginatedRows = sortedRows.slice(pageStart, pageStart + PAGE_SIZE);
   const rangeLabel =
     totalFiltered === 0
       ? "0 ürün"
@@ -527,6 +539,8 @@ export default async function AdminProductsPage({
                 >
                   <option value="newest">En yeni</option>
                   <option value="oldest">En eski</option>
+                  <option value="stock_desc">Stok (çok → az)</option>
+                  <option value="stock_asc">Stok (az → çok)</option>
                 </select>
                 <button
                   type="submit"
@@ -797,14 +811,14 @@ export default async function AdminProductsPage({
                   </div>
                 );
               })}
-              {filteredRows.length === 0 ? (
+              {sortedRows.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-3 py-3 text-xs text-stone-500">
                   Ürün bulunamadı.
                 </p>
               ) : null}
             </div>
 
-            {filteredRows.length > 0 ? (
+            {sortedRows.length > 0 ? (
               <div className="mt-3 rounded-lg border border-stone-200/80 bg-stone-50/50 p-2.5">
                 <p className="text-[10px] font-semibold text-stone-800">Toplu silme (onaylı)</p>
                 <p className="mt-0.5 text-[9px] text-stone-600">
