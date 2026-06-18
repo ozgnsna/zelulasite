@@ -5,7 +5,7 @@ import { getHomeData } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
-import { HomeHero } from "@/components/home/HomeHero";
+import { HomeHeroBannerCarousel } from "@/components/home/HomeHeroBannerCarousel";
 import { HomeNewsletter } from "@/components/home/HomeNewsletter";
 import { HomeCategoryGrid } from "@/components/home/HomeCategoryGrid";
 import { HomeWhyZelula } from "@/components/home/HomeWhyZelula";
@@ -17,12 +17,24 @@ import {
   HomeInstagramSectionSkeleton,
 } from "@/components/home/HomeInstagramSection";
 
-const HERO_IMAGE = "/hero-luxury.png";
+const HERO_BANNERS = [
+  {
+    id: "gold",
+    imageSrc: "/hero-banner-gold.png",
+    alt: "Zelula — taktığınızda fark edilen detaylar, altın takı koleksiyonu",
+    href: "/urunler",
+  },
+  {
+    id: "pearl",
+    imageSrc: "/hero-banner-pearl.png",
+    alt: "Zelula — inci kolye ve yaz koleksiyonu",
+    href: "/urunler",
+  },
+] as const;
 
 export default async function HomePage() {
   const [{ categories, bestSellers, newArrivals }, { isSignedIn, favoriteIds }] =
     await Promise.all([getHomeData(), loadFavoriteUiContext()]);
-  const heroVideoUrl = process.env.NEXT_PUBLIC_HERO_VIDEO_URL?.trim() || null;
 
   const bestSellerItems = bestSellers.map((p) => ({
     product_id: p.id,
@@ -85,7 +97,7 @@ export default async function HomePage() {
       <ViewItemListTracker listName="Homepage Best Sellers" listId="home_best_sellers" items={bestSellerItems} />
       <ViewItemListTracker listName="Homepage New Arrivals" listId="home_new_arrivals" items={newArrivalItems} />
 
-      <HomeHero imageSrc={HERO_IMAGE} videoUrl={heroVideoUrl} />
+      <HomeHeroBannerCarousel banners={[...HERO_BANNERS]} />
 
       <FadeIn delay={0.02}>
         <section className="border-t border-[#ebe6df] bg-[#fffdfb] py-14 sm:py-16">
