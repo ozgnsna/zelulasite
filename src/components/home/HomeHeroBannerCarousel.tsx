@@ -10,10 +10,13 @@ export type HomeHeroBanner = {
   imageSrc: string;
   alt: string;
   href?: string;
+  /** object-position; metin solda olduğu için varsayılan left center */
+  objectPosition?: string;
 };
 
 const AUTO_MS = 7000;
-const SLIDE_HEIGHT = "clamp(28rem, 88svh, 780px)";
+/** Banner tasarımları ~1.75:1; genişlikten yükseklik hesaplanır, metin solda kalır. */
+const SLIDE_HEIGHT = "min(88svh, max(16rem, calc(100vw / 1.75)))";
 
 export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] }) {
   const [index, setIndex] = useState(0);
@@ -54,7 +57,8 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
                 fill
                 priority={i === 0}
                 unoptimized
-                className="object-cover object-center"
+                className="object-cover"
+                style={{ objectPosition: banner.objectPosition ?? "left center" }}
                 sizes="100vw"
               />
               {banner.href ? (
