@@ -30,6 +30,13 @@ const HERO_BANNERS = [
     alt: "Zelula — inci kolye ve yaz koleksiyonu",
     href: "/urunler",
   },
+  {
+    id: "collection",
+    imageSrc: "/hero-banner-collection.png",
+    alt: "Zelula Design Collection — çocuk koleksiyonu",
+    href: "/urunler",
+    objectPosition: "right center",
+  },
 ] as const;
 
 export default async function HomePage() {
