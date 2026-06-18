@@ -13,6 +13,7 @@ export type HomeHeroBanner = {
 };
 
 const AUTO_MS = 7000;
+const SLIDE_HEIGHT = "clamp(28rem, 88svh, 780px)";
 
 export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] }) {
   const [index, setIndex] = useState(0);
@@ -33,6 +34,7 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
   return (
     <section
       className="relative w-full overflow-hidden bg-[#1a1510]"
+      style={{ height: SLIDE_HEIGHT }}
       aria-label="Zelula tanıtım bannerları"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -40,35 +42,31 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
       onBlur={() => setPaused(false)}
     >
       <div
-        className="flex transition-transform duration-700 ease-out motion-reduce:transition-none"
+        className="flex h-full transition-transform duration-700 ease-out motion-reduce:transition-none"
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
-        {banners.map((banner, i) => {
-          const slide = (
-            <div className="relative aspect-[16/10] w-full min-h-[min(92svh,820px)] sm:aspect-[16/9] sm:min-h-[min(88svh,760px)]">
+        {banners.map((banner, i) => (
+          <article key={banner.id} className="relative h-full min-w-full shrink-0">
+            <div className="relative h-full w-full">
               <Image
                 src={banner.imageSrc}
                 alt={banner.alt}
                 fill
                 priority={i === 0}
+                unoptimized
                 className="object-cover object-center"
                 sizes="100vw"
               />
-            </div>
-          );
-
-          return (
-            <article key={banner.id} className="relative min-w-full shrink-0">
               {banner.href ? (
-                <Link href={banner.href} className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c9a06e]">
-                  {slide}
-                </Link>
-              ) : (
-                slide
-              )}
-            </article>
-          );
-        })}
+                <Link
+                  href={banner.href}
+                  className="absolute inset-0 z-[1]"
+                  aria-label={banner.alt}
+                />
+              ) : null}
+            </div>
+          </article>
+        ))}
       </div>
 
       {count > 1 ? (
@@ -104,7 +102,7 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
         </>
       ) : null}
 
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#faf8f5] to-transparent sm:h-20" aria-hidden />
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[2] h-16 bg-gradient-to-t from-[#faf8f5] to-transparent sm:h-20" aria-hidden />
     </section>
   );
 }
