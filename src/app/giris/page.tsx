@@ -11,7 +11,12 @@ export const metadata: Metadata = {
 };
 
 type Props = {
-  searchParams: Promise<{ next?: string | string[]; reset?: string | string[]; error?: string | string[] }>;
+  searchParams: Promise<{
+    next?: string | string[];
+    reset?: string | string[];
+    registered?: string | string[];
+    error?: string | string[];
+  }>;
 };
 
 export default async function GirisPage({ searchParams }: Props) {
@@ -19,6 +24,7 @@ export default async function GirisPage({ searchParams }: Props) {
   const rawNext = typeof sp.next === "string" ? sp.next : Array.isArray(sp.next) ? sp.next[0] : undefined;
   const safeNext = getSafeReturnPath(rawNext);
   const resetOk = (typeof sp.reset === "string" ? sp.reset : sp.reset?.[0]) === "ok";
+  const registered = (typeof sp.registered === "string" ? sp.registered : sp.registered?.[0]) === "1";
   const authCallbackError =
     (typeof sp.error === "string" ? sp.error : sp.error?.[0]) === "auth_callback";
 
@@ -37,6 +43,14 @@ export default async function GirisPage({ searchParams }: Props) {
           Siparişlerinizi takip edin ve profilinizi yönetin.
         </p>
         <div className="mt-10 rounded-2xl border border-[#e8dfd3] bg-[color:var(--surface)] p-8 shadow-sm">
+          {registered ? (
+            <p
+              className="mb-5 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-2.5 text-sm text-emerald-900"
+              role="status"
+            >
+              Hesabınız oluşturuldu. E-postanızdaki onay bağlantısına tıkladıktan sonra giriş yapabilirsiniz.
+            </p>
+          ) : null}
           {resetOk ? (
             <p
               className="mb-5 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-2.5 text-sm text-emerald-900"

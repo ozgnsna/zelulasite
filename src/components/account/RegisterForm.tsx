@@ -177,11 +177,6 @@ export function RegisterForm() {
           {state.error}
         </p>
       ) : null}
-      {state && state.ok && state.message ? (
-        <p className="rounded-xl border border-emerald-100/80 bg-emerald-50/60 px-3.5 py-2.5 text-sm text-emerald-900" role="status">
-          {state.message}
-        </p>
-      ) : null}
 
       <ul
         className="mt-4 mb-2 list-none space-y-2.5 text-left text-sm leading-relaxed text-stone-500"

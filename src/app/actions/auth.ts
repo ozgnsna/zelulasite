@@ -121,11 +121,7 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
   }
 
   if (!data.session) {
-    return {
-      ok: true,
-      message:
-        "Hesabınız oluşturuldu. E-postanızdaki onay bağlantısına tıkladıktan sonra giriş yapabilirsiniz.",
-    };
+    redirect("/giris?registered=1");
   }
 
   revalidatePath("/", "layout");
