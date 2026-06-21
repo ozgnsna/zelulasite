@@ -382,3 +382,16 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
 
   return { ok: true };
 }
+
+/** Hediye kartı sipariş tutarını tamamen karşıladığında PayTR atlanır. */
+export async function completeGiftCardFullyCoveredOrder(orderId: string) {
+  return applyPaymentResult({
+    orderId,
+    reference: `gift_card_full_${orderId}`,
+    status: "success",
+    provider: "gift_card",
+    callbackHash: `gift_card_full:${orderId}`,
+    amount: 0,
+    raw: { gift_card_covers_total: "1" },
+  });
+}

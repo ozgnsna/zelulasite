@@ -71,7 +71,11 @@ export async function createPaytrIframeToken(input: PaytrTokenInput): Promise<Pa
   }
 
   const merchantOid = orderIdToMerchantOid(input.orderId);
-  const paymentAmount = String(Math.round(Math.max(0, input.amount) * 100));
+  const amountTry = Math.max(0, input.amount);
+  if (amountTry <= 0) {
+    return { ok: false, error: "Ödenecek tutar sıfır; hediye kartı siparişi kart ödemesi gerektirmez." };
+  }
+  const paymentAmount = String(Math.round(amountTry * 100));
   const userBasket = Buffer.from(
     JSON.stringify([["Zelula Sipariş", Math.max(0, input.amount).toFixed(2), 1]]),
   ).toString("base64");

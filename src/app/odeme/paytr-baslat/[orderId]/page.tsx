@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PaytrIframe } from "@/components/payments/PaytrIframe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createPaytrIframeToken, paytrTestMode } from "@/lib/payments/paytr";
 import { logPayment } from "@/lib/payments/logger";
+import { completeGiftCardFullyCoveredOrder } from "@/lib/payments/order-status";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -60,6 +61,26 @@ export default async function PaytrPaymentStartPage({ params }: { params: Promis
       notFound();
     }
 
+    const orderTotal = Number(order.total ?? 0);
+    if (orderTotal <= 0) {
+      const paid = await completeGiftCardFullyCoveredOrder(String(order.id));
+      if (!paid.ok) {
+        logPayment("error", "paytr-baslat: gift-card-only completion failed.", {
+          incidentId,
+          orderId: String(order.id),
+          reason: paid.reason,
+        });
+        return (
+          <PrepError
+            title="Ödeme başlatılamadı"
+            detail="Hediye kartı ile ödenecek tutar sıfır; sipariş tamamlanamadı. Destek ile iletişime geçin."
+            incidentId={incidentId}
+          />
+        );
+      }
+      redirect(`/odeme/basarili?oid=${encodeURIComponent(String(order.id))}`);
+    }
+
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
     if (!siteUrl) {
       logPayment("error", "paytr-baslat: NEXT_PUBLIC_SITE_URL eksik.", { incidentId });
@@ -86,7 +107,7 @@ export default async function PaytrPaymentStartPage({ params }: { params: Promis
 
     const tokenResult = await createPaytrIframeToken({
       orderId: String(order.id),
-      amount: Number(order.total ?? 0),
+      amount: orderTotal,
       email: String(order.email ?? ""),
       userName: String(order.customer_name ?? ""),
       userPhone: String(order.phone ?? ""),

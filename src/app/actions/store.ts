@@ -26,6 +26,7 @@ import { buildLegalSnapshot } from "@/lib/legal/legal-snapshot";
 import { notifyAdminOrderEventWithResult } from "@/lib/notifications/order-admin";
 import { sendCustomerOrderEmail } from "@/lib/notifications/order-customer";
 import { getBankTransferDetails } from "@/lib/bank-transfer";
+import { completeGiftCardFullyCoveredOrder } from "@/lib/payments/order-status";
 
 /** ZLL0001… atomik sıra; migration / RPC yoksa eski uzun format. */
 async function allocateOrderNumber(admin: ReturnType<typeof createAdminClient>): Promise<string> {
@@ -552,6 +553,32 @@ export async function createCheckout(formData: FormData) {
   }
 
   const siteUrl = resolveSiteUrl(requestHeaders);
+
+  /** Hediye kartı kalan tutarı sıfırladıysa PayTR gerekmez. */
+  if (!isBankTransfer && paymentTotal <= 0) {
+    const paid = await completeGiftCardFullyCoveredOrder(order.id);
+    if (!paid.ok) {
+      logPayment("error", "Gift-card-only checkout completion failed.", {
+        orderId: order.id,
+        reason: paid.reason,
+      });
+      return {
+        ok: false,
+        error: "Sipariş hediye kartı ile tamamlanamadı. Lütfen tekrar deneyin veya destek ile iletişime geçin.",
+      };
+    }
+    await setCartItems([]);
+    revalidatePath("/sepet");
+    const successPath = `/odeme/basarili?oid=${order.id}`;
+    return {
+      ok: true,
+      url: `${siteUrl}${successPath}`,
+      fallbackUrl: successPath,
+      orderId: order.id,
+      orderNumber: order.order_number,
+      paymentMethod: "card" as const,
+    };
+  }
 
   if (isBankTransfer) {
     const notifyResult = await notifyAdminOrderEventWithResult({
