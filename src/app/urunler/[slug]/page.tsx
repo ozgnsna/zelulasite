@@ -66,70 +66,6 @@ function splitDescriptionParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-function normalizeCopyText(text: string) {
-  return text.replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-/** Kesilmiş özet (… ile biten) veya kısaltılmış kopya tespiti. */
-function excerptStem(text: string) {
-  return normalizeCopyText(text)
-    .replace(/\.{2,}$/, "")
-    .replace(/\s+\S{0,4}$/, "")
-    .trim();
-}
-
-function isDuplicateOrPrefixOf(a: string, b: string) {
-  const left = normalizeCopyText(a);
-  const right = normalizeCopyText(b);
-  if (!left || !right) return false;
-  if (left === right || right.startsWith(left) || left.startsWith(right)) return true;
-
-  const leftStem = excerptStem(a);
-  const rightStem = excerptStem(b);
-  if (leftStem.length >= 48 && right.startsWith(leftStem)) return true;
-  if (rightStem.length >= 48 && left.startsWith(rightStem)) return true;
-
-  const shorter = left.length <= right.length ? left : right;
-  const longer = left.length <= right.length ? right : left;
-  const probeLen = Math.min(140, shorter.length);
-  if (probeLen >= 48 && longer.startsWith(shorter.slice(0, probeLen))) return true;
-
-  return false;
-}
-
-function dedupeDescriptionParagraphs(paragraphs: string[]): string[] {
-  const result: string[] = [];
-  for (const paragraph of paragraphs) {
-    const dupIndex = result.findIndex(
-      (existing) => isDuplicateOrPrefixOf(existing, paragraph) || isDuplicateOrPrefixOf(paragraph, existing),
-    );
-    if (dupIndex === -1) {
-      result.push(paragraph);
-      continue;
-    }
-    if (normalizeCopyText(paragraph).length > normalizeCopyText(result[dupIndex]).length) {
-      result[dupIndex] = paragraph;
-    }
-  }
-  return result;
-}
-
-/** PDP açıklaması yalnızca solda; kısa + uzun metin tekrarsız birleştirilir. */
-function productDescriptionParagraphs(shortRaw: string, fullRaw: string): string[] {
-  const short = shortRaw.trim();
-  let paragraphs = splitDescriptionParagraphs(fullRaw);
-
-  if (short) {
-    if (paragraphs.length === 0) {
-      paragraphs = [short];
-    } else if (!isDuplicateOrPrefixOf(short, paragraphs[0] ?? "")) {
-      paragraphs = [short, ...paragraphs];
-    }
-  }
-
-  return dedupeDescriptionParagraphs(paragraphs);
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
@@ -147,7 +83,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const galleryExtras =
     isZodiacStoryProduct(slug, product.name) ? ZODIAC_GALLERY_EXTRAS : [];
   const galleryImages = normalizeProductImages(product.product_images);
-  const storyParagraphs = productDescriptionParagraphs(product.short_description, product.full_description);
+  const storyParagraphs = splitDescriptionParagraphs(product.full_description ?? "");
   const compareAt = product.compare_at_price ? Number(product.compare_at_price) : null;
   const priceNum = Number(product.price);
   const hasRealDiscount = Boolean(compareAt && compareAt > priceNum);
