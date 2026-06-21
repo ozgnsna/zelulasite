@@ -11,7 +11,8 @@
     "seed:supabase": "node scripts/seed-supabase.mjs",
     "upload:gift-card-image": "node scripts/upload-gift-card-image.mjs",
     "favicons": "node scripts/generate-favicons.mjs",
-    "diagnose:notify": "node scripts/diagnose-admin-notify.mjs"
+    "diagnose:notify": "node scripts/diagnose-admin-notify.mjs",
+    "fetch:ptt-addresses": "node scripts/fetch-ptt-addresses.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
@@ -35,6 +36,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "playwright": "^1.49.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

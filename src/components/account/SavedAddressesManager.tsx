@@ -9,11 +9,10 @@ import {
   setDefaultSavedAddress,
   type AddressActionState,
 } from "@/app/actions/addresses";
-import { TURKIYE_CITIES, CITY_DISTRICTS } from "@/lib/turkiye-addresses";
+import { TURKIYE_CITIES, getDistrictOptions } from "@/lib/turkiye-addresses";
 
 function districtsFor(city: string) {
-  if (!city) return [];
-  return CITY_DISTRICTS[city] ?? ["Merkez"];
+  return getDistrictOptions(city);
 }
 
 const fieldClass =
