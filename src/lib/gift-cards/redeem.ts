@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { hashGiftCardCode, normalizeGiftCardCodeInput } from "@/lib/gift-cards/code";
+import { giftCardCodeLookupHashes, normalizeGiftCardCodeInput } from "@/lib/gift-cards/code";
 
 export const GIFT_CARD_HOLD_TTL_MINUTES = 15;
 
@@ -36,16 +36,18 @@ async function lookupGiftCardByCode(
     return { card: null, error: "Geçerli bir hediye kartı kodu girin." };
   }
 
-  const codeHash = hashGiftCardCode(normalized);
-  const { data, error } = await admin
-    .from("gift_cards")
-    .select("id,code_last4,balance_remaining,status,expires_at")
-    .eq("code_hash", codeHash)
-    .maybeSingle();
+  for (const codeHash of giftCardCodeLookupHashes(rawCode)) {
+    const { data, error } = await admin
+      .from("gift_cards")
+      .select("id,code_last4,balance_remaining,status,expires_at")
+      .eq("code_hash", codeHash)
+      .maybeSingle();
 
-  if (error) return { card: null, error: error.message };
-  if (!data) return { card: null, error: "Hediye kartı kodu bulunamadı." };
-  return { card: data as GiftCardRow };
+    if (error) return { card: null, error: error.message };
+    if (data) return { card: data as GiftCardRow };
+  }
+
+  return { card: null, error: "Hediye kartı kodu bulunamadı." };
 }
 
 function validateGiftCardActive(card: GiftCardRow): string | null {
