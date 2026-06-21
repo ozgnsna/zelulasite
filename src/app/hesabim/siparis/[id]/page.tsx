@@ -18,6 +18,29 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: "Sipariş detayı" };
 }
 
+const CORE_ORDER_SELECT =
+  "id, order_number, created_at, customer_name, email, phone, subtotal, discount_amount, discount_label, total, currency, payment_status, order_status, shipping_address_json, invoice_pdf_url, invoice_uploaded_at";
+
+function isMissingColumnError(message: string) {
+  const msgLower = message.toLowerCase();
+  return (
+    (/column/i.test(message) && /does not exist|undefined column/i.test(message)) ||
+    /could not find.*column/i.test(msgLower) ||
+    /schema cache/i.test(msgLower)
+  );
+}
+
+async function fetchOrderForAccount(supabase: Awaited<ReturnType<typeof createClient>>, id: string) {
+  const withLegal = `${CORE_ORDER_SELECT}, legal_contract_snapshot, legal_contract_hash`;
+  let { data, error } = await supabase.from("orders").select(withLegal).eq("id", id).maybeSingle();
+  if (!error && data) return data;
+  if (error && isMissingColumnError(error.message ?? "")) {
+    ({ data, error } = await supabase.from("orders").select(CORE_ORDER_SELECT).eq("id", id).maybeSingle());
+  }
+  if (error || !data) return null;
+  return { ...data, legal_contract_snapshot: null, legal_contract_hash: null };
+}
+
 export default async function SiparisDetayPage({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
@@ -28,13 +51,7 @@ export default async function SiparisDetayPage({ params }: Props) {
     redirect(`/giris?next=${encodeURIComponent(`/hesabim/siparis/${id}`)}`);
   }
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select(
-      "id, order_number, created_at, customer_name, email, phone, subtotal, discount_amount, discount_label, total, currency, payment_status, order_status, shipping_address_json, legal_contract_snapshot, legal_contract_hash, invoice_pdf_url, invoice_uploaded_at",
-    )
-    .eq("id", id)
-    .maybeSingle();
+  const order = await fetchOrderForAccount(supabase, id);
 
   if (!order) notFound();
 
