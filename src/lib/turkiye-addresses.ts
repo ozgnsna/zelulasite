@@ -165,6 +165,26 @@ export const CITY_DISTRICTS: Record<string, string[]> = {
   Konya: ["Karatay", "Meram", "Selçuklu"],
   Gaziantep: ["Şahinbey", "Şehitkamil"],
   Mersin: ["Akdeniz", "Erdemli", "Mezitli", "Tarsus", "Toroslar", "Yenişehir"],
+  Ordu: [
+    "Altınordu",
+    "Akkuş",
+    "Aybastı",
+    "Çamaş",
+    "Çatalpınar",
+    "Çaybaşı",
+    "Fatsa",
+    "Gölköy",
+    "Gülyalı",
+    "Gürgentepe",
+    "İkizce",
+    "Kabadüz",
+    "Kabataş",
+    "Kumru",
+    "Mesudiye",
+    "Perşembe",
+    "Ulubey",
+    "Ünye",
+  ],
 };
 
 export function getDistrictOptions(city: string): string[] {
