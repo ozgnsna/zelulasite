@@ -15,17 +15,20 @@ import { SavedAddressesManager } from "@/components/account/SavedAddressesManage
 import { AccountFavoritesSection } from "@/components/account/AccountFavoritesSection";
 import { ensureUserReferralCode } from "@/lib/referral/server";
 import { listSavedAddressesForUser } from "@/lib/account/saved-addresses";
+import { normalizeTurkishFullName } from "@/lib/account/turkish-full-name";
 
 export const metadata: Metadata = {
   title: "Hesabım",
   description: "Siparişleriniz ve profil bilgileriniz.",
 };
 
-function welcomeName(fullName: string, email: string | undefined) {
-  const t = fullName.trim();
-  if (t) return t;
-  const local = email?.split("@")[0]?.trim();
-  return local || "";
+function resolveAccountDisplayName(
+  profileName: string | null | undefined,
+  userMetadata: Record<string, unknown> | undefined,
+) {
+  const fromProfile = normalizeTurkishFullName(String(profileName ?? ""));
+  if (fromProfile) return fromProfile;
+  return normalizeTurkishFullName(String(userMetadata?.full_name ?? ""));
 }
 
 function maskReferralPerson(name: string | null, email: string | null) {
@@ -66,8 +69,8 @@ export default async function HesabimPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const fullName = profile?.full_name?.trim() ?? "";
-  const displayGreeting = welcomeName(fullName, user.email ?? undefined);
+  const fullName = resolveAccountDisplayName(profile?.full_name, user.user_metadata);
+  const displayGreeting = fullName;
   const birthSlice =
     profile?.birth_date != null ? String(profile.birth_date).slice(0, 10) : null;
 

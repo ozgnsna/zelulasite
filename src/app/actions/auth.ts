@@ -107,8 +107,9 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
     return { ok: false, error: mapAuthError(error) };
   }
 
-  if (data.session && data.user) {
-    await supabase.from("profiles").upsert(
+  if (data.user) {
+    const admin = createAdminClient();
+    await admin.from("profiles").upsert(
       {
         id: data.user.id,
         full_name,
