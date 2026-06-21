@@ -2,6 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 
 const CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
+/** Tüm ortamlarda aynı olmalı; Vercel'de GIFT_CARD_CODE_PEPPER ile override edilebilir. */
+export const GIFT_CARD_PEPPER_DEFAULT = "zelula-gift-card-v1";
+const LEGACY_DEV_PEPPER = "zelula-gift-card-dev-pepper";
+
 /** 16 karakter, büyük harf + rakam; UUID entropisinden türetilir. */
 export function generateGiftCardCode(): string {
   const hex = (randomUUID() + randomUUID()).replace(/-/g, "");
@@ -23,11 +27,7 @@ function hashNormalizedWithPepper(normalized: string, pepper: string): string {
 
 /** Yeni kart üretiminde kullanılan birincil pepper. */
 export function getGiftCardCodePepper(): string {
-  return (
-    process.env.GIFT_CARD_CODE_PEPPER?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "zelula-gift-card-dev-pepper"
-  );
+  return process.env.GIFT_CARD_CODE_PEPPER?.trim() || GIFT_CARD_PEPPER_DEFAULT;
 }
 
 export function hashGiftCardCode(code: string): string {
@@ -36,16 +36,17 @@ export function hashGiftCardCode(code: string): string {
 
 /**
  * Doğrulama sırasında denenecek hash adayları.
- * Manuel kartlar farklı pepper ile üretilmiş olabilir (prod/local uyumsuzluğu).
+ * Eski manuel kartlar farklı pepper ile üretilmiş olabilir.
  */
 export function giftCardCodeLookupHashes(rawCode: string): string[] {
   const normalized = normalizeGiftCardCodeInput(rawCode);
   const peppers = new Set<string>();
   const explicit = process.env.GIFT_CARD_CODE_PEPPER?.trim();
   if (explicit) peppers.add(explicit);
+  peppers.add(GIFT_CARD_PEPPER_DEFAULT);
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (serviceKey) peppers.add(serviceKey);
-  peppers.add("zelula-gift-card-dev-pepper");
+  peppers.add(LEGACY_DEV_PEPPER);
   return [...peppers].map((pepper) => hashNormalizedWithPepper(normalized, pepper));
 }
 

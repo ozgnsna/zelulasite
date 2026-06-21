@@ -47,6 +47,20 @@ async function lookupGiftCardByCode(
     if (data) return { card: data as GiftCardRow };
   }
 
+  // Hash uyumsuzluğu (prod pepper farkı): tek aktif kart last4 eşleşmesi
+  if (normalized.length === 16) {
+    const last4 = normalized.slice(-4);
+    const { data: last4Cards, error: last4Error } = await admin
+      .from("gift_cards")
+      .select("id,code_last4,balance_remaining,status,expires_at")
+      .eq("code_last4", last4)
+      .eq("status", "active");
+
+    if (!last4Error && last4Cards?.length === 1) {
+      return { card: last4Cards[0] as GiftCardRow };
+    }
+  }
+
   return { card: null, error: "Hediye kartı kodu bulunamadı." };
 }
 

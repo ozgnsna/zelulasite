@@ -17,6 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const GIFT_CARD_PEPPER_DEFAULT = "zelula-gift-card-v1";
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -54,10 +55,7 @@ function normalizeGiftCardCodeInput(raw) {
 
 function hashGiftCardCode(code) {
   const normalized = normalizeGiftCardCodeInput(code);
-  const pepper =
-    process.env.GIFT_CARD_CODE_PEPPER?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "zelula-gift-card-dev-pepper";
+  const pepper = process.env.GIFT_CARD_CODE_PEPPER?.trim() || GIFT_CARD_PEPPER_DEFAULT;
   return createHash("sha256").update(`${pepper}:${normalized}`).digest("hex");
 }
 
