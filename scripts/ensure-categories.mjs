@@ -47,6 +47,7 @@ const WANTED = [
   { name: "Bileklik", slug: "bileklik" },
   { name: "Bilezik", slug: "bilezik" },
   { name: "Halhal", slug: "halhal" },
+  { name: "Şahmeran", slug: "sahmeran" },
   { name: "Broş", slug: "bros" },
   { name: "Şapka", slug: "sapka" },
 ];
