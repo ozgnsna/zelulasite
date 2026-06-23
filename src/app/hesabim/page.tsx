@@ -13,8 +13,10 @@ import { SignOutForm } from "@/components/account/SignOutForm";
 import { ReferralInviteCard } from "@/components/account/ReferralInviteCard";
 import { SavedAddressesManager } from "@/components/account/SavedAddressesManager";
 import { AccountFavoritesSection } from "@/components/account/AccountFavoritesSection";
+import { AccountGiftCardsSection } from "@/components/account/AccountGiftCardsSection";
 import { ensureUserReferralCode } from "@/lib/referral/server";
 import { listSavedAddressesForUser } from "@/lib/account/saved-addresses";
+import { listGiftCardsForAccount } from "@/lib/account/gift-cards";
 import { normalizeTurkishFullName } from "@/lib/account/turkish-full-name";
 
 export const metadata: Metadata = {
@@ -82,6 +84,7 @@ export default async function HesabimPage() {
   const referralCode = await ensureUserReferralCode(admin, user.id);
   const referralLink = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/urunler?ref=${referralCode ?? ""}`;
   const savedAddresses = await listSavedAddressesForUser(supabase, user.id);
+  const giftCards = await listGiftCardsForAccount(admin, user.id, user.email ?? "");
   const { data: referralRows } = await admin
     .from("loyalty_points_ledger")
     .select("points")
@@ -237,6 +240,14 @@ export default async function HesabimPage() {
             <p className="mt-1 text-sm text-stone-600">Beğendiğin ürünler</p>
           </a>
           <a
+            href="#kuponlarim"
+            className="hesabim-tile block border-[#f1ebe3]/80 bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f4_100%)] shadow-[0_6px_16px_rgba(62,52,38,0.04)] p-4 text-left sm:p-5"
+          >
+            <p className="hesabim-tile-icon text-base">🎁</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-stone-400">Kuponlarım</p>
+            <p className="mt-1 text-sm text-stone-600">Hediye kartı ve barter bakiyen</p>
+          </a>
+          <a
             href="#ayricaliklar"
             className="hesabim-tile block border-[#f1ebe3]/80 bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f4_100%)] shadow-[0_6px_16px_rgba(62,52,38,0.04)] p-4 text-left sm:p-5"
           >
@@ -269,6 +280,10 @@ export default async function HesabimPage() {
 
         <div className="mt-12">
           <AccountFavoritesSection />
+        </div>
+
+        <div className="mt-12">
+          <AccountGiftCardsSection cards={giftCards} />
         </div>
 
         <div className="mt-12">

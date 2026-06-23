@@ -128,6 +128,7 @@ async function findUserEmailByName(needle) {
 
 let recipientEmail = RECIPIENT_EMAIL;
 let recipientName = RECIPIENT_NAME;
+let recipientUserId = null;
 
 if (!recipientEmail && SEARCH_NAME) {
   const matches = await findUserEmailByName(SEARCH_NAME);
@@ -141,8 +142,24 @@ if (!recipientEmail && SEARCH_NAME) {
     process.exit(1);
   }
   recipientEmail = matches[0].email;
+  recipientUserId = matches[0].id;
   if (!recipientName) recipientName = matches[0].full_name;
   console.log("Hesap bulundu:", matches[0]);
+}
+
+if (recipientEmail && !recipientUserId) {
+  let page = 1;
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    const hit = data.users.find((u) => String(u.email ?? "").trim().toLowerCase() === recipientEmail);
+    if (hit) {
+      recipientUserId = hit.id;
+      break;
+    }
+    if (data.users.length < 1000) break;
+    page += 1;
+  }
 }
 
 if (!recipientEmail) {
@@ -184,31 +201,49 @@ if (!denom) {
 const expiresAt = getDefaultGiftCardExpiresAt();
 const code = generateGiftCardCode();
 
+const insertPayload = {
+  denomination_id: denom.id,
+  code_hash: hashGiftCardCode(code),
+  code_last4: giftCardCodeLast4(code),
+  initial_balance: AMOUNT,
+  balance_remaining: AMOUNT,
+  currency: "TRY",
+  status: "active",
+  recipient_email: recipientEmail,
+  recipient_name: recipientName || null,
+  personal_message: `${NOTE} · Kod: ${code}`,
+  expires_at: expiresAt.toISOString(),
+};
+if (recipientUserId) insertPayload.recipient_user_id = recipientUserId;
+insertPayload.account_visible_code = code;
+
+let cardRow = null;
+
 const { data: card, error: cardErr } = await admin
   .from("gift_cards")
-  .insert({
-    denomination_id: denom.id,
-    code_hash: hashGiftCardCode(code),
-    code_last4: giftCardCodeLast4(code),
-    initial_balance: AMOUNT,
-    balance_remaining: AMOUNT,
-    currency: "TRY",
-    status: "active",
-    recipient_email: recipientEmail,
-    recipient_name: recipientName || null,
-    personal_message: NOTE,
-    expires_at: expiresAt.toISOString(),
-  })
+  .insert(insertPayload)
   .select("id")
   .single();
 
-if (cardErr || !card) {
+if (cardErr?.message?.includes("account_visible_code") || cardErr?.message?.includes("recipient_user_id")) {
+  delete insertPayload.account_visible_code;
+  delete insertPayload.recipient_user_id;
+  const retry = await admin.from("gift_cards").insert(insertPayload).select("id").single();
+  if (retry.error || !retry.data) {
+    console.error("Hediye kartı oluşturulamadı:", retry.error?.message ?? cardErr?.message ?? "unknown");
+    process.exit(1);
+  }
+  cardRow = retry.data;
+  console.warn("Uyarı: recipient_user_id / account_visible_code kolonları yok — migration uygulayın.");
+} else if (cardErr || !card) {
   console.error("Hediye kartı oluşturulamadı:", cardErr?.message ?? "unknown");
   process.exit(1);
+} else {
+  cardRow = card;
 }
 
 const { error: ledgerErr } = await admin.from("gift_card_ledger").insert({
-  gift_card_id: card.id,
+  gift_card_id: cardRow.id,
   amount: AMOUNT,
   entry_type: "issue",
   balance_after: AMOUNT,
@@ -224,7 +259,7 @@ console.log("\nTamam — hediye kartı / kupon oluşturuldu:");
 console.log(
   JSON.stringify(
     {
-      gift_card_id: card.id,
+      gift_card_id: cardRow.id,
       recipient_email: recipientEmail,
       recipient_name: recipientName || null,
       amount_try: AMOUNT,
