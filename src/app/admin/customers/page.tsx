@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Search } from "lucide-react";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
+import { isAdminEmail } from "@/lib/admin/auth";
+import { fetchRegisteredMembers } from "@/lib/admin/fetch-registered-members";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { AdminRegisteredMembersPanel } from "@/components/admin/customers/AdminRegisteredMembersPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -36,25 +38,32 @@ function isPaidNonCancelled(o: OrderRow): boolean {
   return o.payment_status === "paid" && String(o.order_status ?? "") !== "cancelled";
 }
 
-export default async function AdminCustomersPage() {
+export default async function AdminCustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; err?: string }>;
+}) {
+  const sp = await searchParams;
+  const q = String(sp.q ?? "").trim();
+  const errorCode = String(sp.err ?? "").trim() || null;
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((x) => x.trim())
-    .filter(Boolean);
-  if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
+  if (!isAdminEmail(user.email)) redirect("/admin/login");
 
   const admin = createAdminClient();
-  const { data: orderRows } = await admin
-    .from("orders")
-    .select("id,customer_name,email,created_at,payment_status,order_status")
-    .order("created_at", { ascending: false })
-    .limit(800);
+  const [{ members, totalUsers }, { data: orderRows }] = await Promise.all([
+    fetchRegisteredMembers(admin, { q, limit: 100 }),
+    admin
+      .from("orders")
+      .select("id,customer_name,email,created_at,payment_status,order_status")
+      .order("created_at", { ascending: false })
+      .limit(800),
+  ]);
 
   const rows = (orderRows ?? []) as OrderRow[];
 
@@ -121,6 +130,7 @@ export default async function AdminCustomersPage() {
     .slice(0, 14);
 
   const hasAnyIdentity = recentList.length > 0;
+  const registeredWithOrders = members.filter((m) => m.totalOrders > 0).length;
 
   return (
     <main className={`${ADMIN_OPERATIONS_MAIN} py-3 sm:py-4`}>
@@ -129,7 +139,8 @@ export default async function AdminCustomersPage() {
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-500">Operasyon</p>
           <h1 className="font-serif text-lg font-light tracking-tight text-stone-900 sm:text-xl">Müşteriler</h1>
           <p className="mt-0.5 max-w-xl text-[11px] leading-snug text-stone-600">
-            Sipariş kayıtlarından özet — detay ve segmentasyon için sipariş ekranını kullanın.
+            Kayıtlı üyeler ve sipariş geçmişi. Hata ayıklamak için üye satırından{" "}
+            <span className="font-medium text-stone-700">Hesaba gir</span> ile müşteri oturumu açılır.
           </p>
         </div>
         <Link
@@ -140,44 +151,35 @@ export default async function AdminCustomersPage() {
         </Link>
       </header>
 
-      <div className="mt-2.5">
-        <label className="block text-[9px] font-semibold uppercase tracking-wide text-stone-500">Arama</label>
-        <div className="mt-1 flex items-center gap-2 rounded-lg border border-stone-200/80 bg-white px-2 py-1.5 shadow-sm ring-1 ring-stone-900/[0.02]">
-          <Search className="size-3.5 shrink-0 text-stone-400" aria-hidden />
-          <input
-            type="search"
-            name="customer_q"
-            placeholder="İsim veya e-posta…"
-            disabled
-            title="CRM araması yakında"
-            className="min-w-0 flex-1 bg-transparent text-[12px] text-stone-800 placeholder:text-stone-400 disabled:cursor-not-allowed disabled:opacity-70"
-          />
-        </div>
-      </div>
-
-      <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+      <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <div className="rounded-lg border border-stone-200/60 bg-white px-2 py-1.5 shadow-sm">
-          <p className="text-[8px] font-semibold uppercase tracking-tight text-stone-500">Toplam müşteri</p>
+          <p className="text-[8px] font-semibold uppercase tracking-tight text-stone-500">Kayıtlı üye</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums leading-none text-stone-950">
+            {totalUsers.toLocaleString("tr-TR")}
+          </p>
+        </div>
+        <div className="rounded-lg border border-stone-200/60 bg-white px-2 py-1.5 shadow-sm">
+          <p className="text-[8px] font-semibold uppercase tracking-tight text-stone-500">Sipariş veren üye</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums leading-none text-stone-950">
+            {registeredWithOrders.toLocaleString("tr-TR")}
+          </p>
+        </div>
+        <div className="rounded-lg border border-stone-200/60 bg-white px-2 py-1.5 shadow-sm">
+          <p className="text-[8px] font-semibold uppercase tracking-tight text-stone-500">Sipariş alıcısı</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums leading-none text-stone-950">
             {totalCustomers.toLocaleString("tr-TR")}
           </p>
-          <p className="mt-0.5 text-[9px] leading-tight text-stone-500">Benzersiz alıcı (sipariş)</p>
-        </div>
-        <div className="rounded-lg border border-stone-200/60 bg-white px-2 py-1.5 shadow-sm">
-          <p className="text-[8px] font-semibold uppercase tracking-tight text-stone-500">Sipariş veren</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums leading-none text-stone-950">
-            {payingCustomers.toLocaleString("tr-TR")}
-          </p>
-          <p className="mt-0.5 text-[9px] leading-tight text-stone-500">Ödenmiş, iptal dışı</p>
+          <p className="mt-0.5 text-[9px] leading-tight text-stone-500">Misafir dahil</p>
         </div>
         <div className="rounded-lg border border-stone-200/60 bg-white px-2 py-1.5 shadow-sm">
           <p className="text-[8px] font-semibold uppercase tracking-tight text-stone-500">Tekrar satın alma</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums leading-none text-stone-950">
             {repeatCustomers.toLocaleString("tr-TR")}
           </p>
-          <p className="mt-0.5 text-[9px] leading-tight text-stone-500">2+ ödemeli sipariş</p>
         </div>
       </div>
+
+      <AdminRegisteredMembersPanel members={members} totalUsers={totalUsers} q={q} errorCode={errorCode} />
 
       <section className="mt-3 rounded-xl border border-stone-200/60 bg-white/90 shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-stone-100/90 px-2.5 py-1.5">
@@ -186,13 +188,7 @@ export default async function AdminCustomersPage() {
         </div>
         {!hasAnyIdentity ? (
           <div className="px-2.5 py-4 text-center">
-            <p className="text-[12px] font-medium text-stone-700">Henüz müşteri kimliği yok</p>
-            <p className="mx-auto mt-1 max-w-sm text-[10px] leading-snug text-stone-500">
-              Checkout’ta ad veya e-posta girildiğinde burada listelenir. İlk siparişten sonra özet dolacaktır.
-            </p>
-            <Link href="/admin" className="mt-2 inline-block text-[10px] font-semibold text-[#6b5b45] underline-offset-2 hover:underline">
-              Panele dön
-            </Link>
+            <p className="text-[12px] font-medium text-stone-700">Henüz sipariş kaydı yok</p>
           </div>
         ) : (
           <ul className="divide-y divide-stone-100/90">
@@ -227,7 +223,8 @@ export default async function AdminCustomersPage() {
       </section>
 
       <p className="mt-2 text-center text-[9px] text-stone-500">
-        Özet son 800 sipariş dilimine göredir. <span className="font-medium text-stone-400">CRM özellikleri yakında.</span>
+        Müşteri görünümünden çıkmak için üst banttaki{" "}
+        <span className="font-medium text-stone-600">Admin oturumuna dön</span> bağlantısını kullanın.
       </p>
     </main>
   );

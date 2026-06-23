@@ -6,6 +6,7 @@ import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
+import { AdminImpersonationBanner } from "@/components/admin/AdminImpersonationBanner";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { GoogleAnalyticsLoader } from "@/components/analytics/GoogleAnalyticsLoader";
@@ -99,6 +100,7 @@ export default async function RootLayout({
           <ReferralTrackingBridge />
         </Suspense>
         {isAdminRoute ? null : <AnnouncementBar />}
+        {isAdminRoute ? null : <AdminImpersonationBanner />}
         {isAdminRoute ? null : <Header />}
         <div className="flex-1">{children}</div>
         {isAdminRoute ? null : <Footer />}
