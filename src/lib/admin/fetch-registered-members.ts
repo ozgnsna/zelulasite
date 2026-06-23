@@ -27,6 +27,13 @@ function matchesQuery(row: RegisteredMemberRow, q: string): boolean {
   );
 }
 
+type GiftCardBalanceRow = {
+  recipient_user_id?: string | null;
+  recipient_email: string | null;
+  balance_remaining: number | null;
+  status: string | null;
+};
+
 export async function fetchRegisteredMembers(
   admin: SupabaseClient,
   opts?: { q?: string; limit?: number },
@@ -62,13 +69,13 @@ export async function fetchRegisteredMembers(
       .in("status", ["active"]),
   ]);
 
-  let giftCards = giftCardsResult.data ?? [];
+  let giftCards: GiftCardBalanceRow[] = (giftCardsResult.data ?? []) as GiftCardBalanceRow[];
   if (giftCardsResult.error?.message?.includes("recipient_user_id")) {
     const fallback = await admin
       .from("gift_cards")
       .select("recipient_email,balance_remaining,status")
       .in("status", ["active"]);
-    giftCards = fallback.data ?? [];
+    giftCards = (fallback.data ?? []) as GiftCardBalanceRow[];
   }
 
   const profileById = new Map((profiles ?? []).map((p) => [String(p.id), p]));
@@ -85,7 +92,7 @@ export async function fetchRegisteredMembers(
   }
 
   const giftBalanceByUser = new Map<string, number>();
-  for (const g of giftCards ?? []) {
+  for (const g of giftCards) {
     const uid = g.recipient_user_id ? String(g.recipient_user_id) : null;
     const email = String(g.recipient_email ?? "").trim().toLowerCase();
     const balance = Math.max(0, Number(g.balance_remaining ?? 0));
