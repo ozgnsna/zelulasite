@@ -554,8 +554,8 @@ export async function createCheckout(formData: FormData) {
 
   const siteUrl = resolveSiteUrl(requestHeaders);
 
-  /** Hediye kartı kalan tutarı sıfırladıysa PayTR gerekmez. */
-  if (!isBankTransfer && paymentTotal <= 0) {
+  /** Hediye kartı kalan tutarı sıfırladıysa PayTR / havale gerekmez. */
+  if (paymentTotal <= 0) {
     const paid = await completeGiftCardFullyCoveredOrder(order.id);
     if (!paid.ok) {
       logPayment("error", "Gift-card-only checkout completion failed.", {
