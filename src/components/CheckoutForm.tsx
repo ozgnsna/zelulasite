@@ -178,7 +178,7 @@ export function CheckoutForm({
   const resolvedAccountPhone = (accountPhone ?? "").trim();
   const resolvedAccountEmail = (accountEmail ?? "").trim();
   const showPhoneFieldForSignedIn = isSignedIn && !resolvedAccountPhone;
-  const showEmailField = !isSignedIn || !resolvedAccountEmail;
+  const showEmailField = !resolvedAccountEmail;
   const showPhoneField = !isSignedIn || showPhoneFieldForSignedIn;
   const legalAllAccepted = acceptDistanceSales && acceptPreContractInfo && acceptKvkkConsent;
   const submitDisabled = Boolean(disabled || pending || !legalAllAccepted);
@@ -354,10 +354,10 @@ export function CheckoutForm({
             )}
           </section>
 
-          {isSignedIn && resolvedAccountEmail ? (
+          {resolvedAccountEmail ? (
             <section>
               <p className="text-[12px] text-stone-600">
-                Sipariş bu hesapla oluşturulacak: <span className="font-medium text-stone-800">{resolvedAccountEmail}</span>
+                Sipariş e-postası: <span className="font-medium text-stone-800">{resolvedAccountEmail}</span>
               </p>
               <input type="hidden" name="email" value={resolvedAccountEmail} />
             </section>

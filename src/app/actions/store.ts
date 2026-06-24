@@ -27,6 +27,7 @@ import { notifyAdminOrderEventWithResult } from "@/lib/notifications/order-admin
 import { sendCustomerOrderEmail } from "@/lib/notifications/order-customer";
 import { getBankTransferDetails } from "@/lib/bank-transfer";
 import { completeGiftCardFullyCoveredOrder } from "@/lib/payments/order-status";
+import { normalizeEmailInput } from "@/lib/account/email-input";
 
 /** ZLL0001… atomik sıra; migration / RPC yoksa eski uzun format. */
 async function allocateOrderNumber(admin: ReturnType<typeof createAdminClient>): Promise<string> {
@@ -194,7 +195,10 @@ export async function clearCart() {
 
 const checkoutSchema = z.object({
   customer_name: z.string().min(2, "Lütfen ad soyad bilgisi girin."),
-  email: z.string().email("Geçerli bir e-posta adresi girin."),
+  email: z.preprocess(
+    (v) => normalizeEmailInput(typeof v === "string" ? v : ""),
+    z.string().email("Geçerli bir e-posta adresi girin."),
+  ),
   phone: z.string().min(10, "Telefon numarası en az 10 haneli olmalı."),
   address_line: z.string().min(5, "Lütfen açık adresinizi yazın.").max(500),
   city: z.string().min(2, "İl bilgisi gerekli."),
@@ -216,6 +220,11 @@ export async function previewPromoDiscount(subtotal: number, rawCode: string) {
 }
 
 export async function createCheckout(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const entries = Object.fromEntries(formData.entries());
   const ackDistance = entries.accept_distance_sales === "on";
   const ackPre = entries.accept_pre_contract_info === "on";
@@ -224,16 +233,18 @@ export async function createCheckout(formData: FormData) {
     return { ok: false, error: LEGAL_CHECKOUT_ACK_ERROR };
   }
 
+  const emailFromForm = normalizeEmailInput(String(entries.email ?? ""));
+  const emailFromAccount = normalizeEmailInput(String(user?.email ?? ""));
+  if (!emailFromForm && emailFromAccount) {
+    entries.email = emailFromAccount;
+  }
+
   const parsed = checkoutSchema.safeParse(entries);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Form bilgileri eksik." };
   }
 
   await reconcileCartCookie();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const cart = await getCartItems();
   if (cart.length === 0) return { ok: false, error: "Sepetiniz boş. Lütfen ürün ekleyin." };
   const ids = cart.map((x) => x.productId);
