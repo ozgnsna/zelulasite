@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminEmail } from "@/lib/admin/auth";
+import { canAccessAdminPanel, isAdminEmail } from "@/lib/admin/auth";
 import { buildAuthCallbackUrl } from "@/lib/account/site-url";
 import { getSafeReturnPath } from "@/lib/account/safe-return-path";
 import { IMPERSONATION_COOKIE } from "@/lib/admin/impersonation";
@@ -11,7 +11,7 @@ async function verifyAdminSession() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user?.email || !isAdminEmail(user.email)) return null;
+  if (!user?.email || !canAccessAdminPanel(user.email)) return null;
   return { supabase, adminUser: user };
 }
 

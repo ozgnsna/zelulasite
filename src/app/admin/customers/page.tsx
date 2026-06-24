@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
-import { isAdminEmail } from "@/lib/admin/auth";
+import { canAccessAdminPanel } from "@/lib/admin/auth";
 import { fetchRegisteredMembers } from "@/lib/admin/fetch-registered-members";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -53,10 +53,10 @@ export default async function AdminCustomersPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 
-  if (!isAdminEmail(user.email)) redirect("/admin/login");
+  if (!canAccessAdminPanel(user.email)) redirect("/admin/login");
 
   const admin = createAdminClient();
-  const [{ members, totalUsers }, { data: orderRows }] = await Promise.all([
+  const [membersResult, { data: orderRows }] = await Promise.all([
     fetchRegisteredMembers(admin, { q, limit: 100 }),
     admin
       .from("orders")
@@ -64,6 +64,8 @@ export default async function AdminCustomersPage({
       .order("created_at", { ascending: false })
       .limit(800),
   ]);
+
+  const { members, totalUsers, loadError: membersLoadError } = membersResult;
 
   const rows = (orderRows ?? []) as OrderRow[];
 
@@ -179,7 +181,13 @@ export default async function AdminCustomersPage({
         </div>
       </div>
 
-      <AdminRegisteredMembersPanel members={members} totalUsers={totalUsers} q={q} errorCode={errorCode} />
+      <AdminRegisteredMembersPanel
+        members={members}
+        totalUsers={totalUsers}
+        q={q}
+        errorCode={errorCode}
+        loadError={membersLoadError ?? null}
+      />
 
       <section className="mt-3 rounded-xl border border-stone-200/60 bg-white/90 shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-stone-100/90 px-2.5 py-1.5">

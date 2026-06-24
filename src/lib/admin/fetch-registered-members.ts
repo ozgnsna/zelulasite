@@ -37,7 +37,7 @@ type GiftCardBalanceRow = {
 export async function fetchRegisteredMembers(
   admin: SupabaseClient,
   opts?: { q?: string; limit?: number },
-): Promise<{ members: RegisteredMemberRow[]; totalUsers: number }> {
+): Promise<{ members: RegisteredMemberRow[]; totalUsers: number; loadError?: string }> {
   const limit = Math.min(Math.max(opts?.limit ?? 200, 1), 500);
   const q = String(opts?.q ?? "");
 
@@ -48,41 +48,93 @@ export async function fetchRegisteredMembers(
     user_metadata?: Record<string, unknown>;
   }> = [];
 
-  let page = 1;
-  while (authUsers.length < 2000) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) throw error;
-    authUsers.push(...(data.users ?? []));
-    if ((data.users ?? []).length < 1000) break;
-    page += 1;
+  try {
+    let page = 1;
+    while (authUsers.length < 2000) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) {
+        return { members: [], totalUsers: 0, loadError: error.message };
+      }
+      authUsers.push(...(data.users ?? []));
+      if ((data.users ?? []).length < 1000) break;
+      page += 1;
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Auth kullanıcı listesi alınamadı.";
+    return { members: [], totalUsers: 0, loadError: message };
   }
 
   const ids = authUsers.map((u) => u.id);
   if (ids.length === 0) return { members: [], totalUsers: 0 };
 
-  const [{ data: profiles }, { data: orders }, giftCardsResult] = await Promise.all([
-    admin.from("profiles").select("id,full_name,phone").in("id", ids),
-    admin.from("orders").select("user_id,payment_status,order_status,email").in("user_id", ids),
-    admin
-      .from("gift_cards")
-      .select("recipient_user_id,recipient_email,balance_remaining,status")
-      .in("status", ["active"]),
-  ]);
-
-  let giftCards: GiftCardBalanceRow[] = (giftCardsResult.data ?? []) as GiftCardBalanceRow[];
-  if (giftCardsResult.error?.message?.includes("recipient_user_id")) {
-    const fallback = await admin
-      .from("gift_cards")
-      .select("recipient_email,balance_remaining,status")
-      .in("status", ["active"]);
-    giftCards = (fallback.data ?? []) as GiftCardBalanceRow[];
+  async function fetchInChunks<T>(
+    table: string,
+    select: string,
+    column: string,
+    values: string[],
+  ): Promise<T[]> {
+    const chunkSize = 80;
+    const rows: T[] = [];
+    for (let i = 0; i < values.length; i += chunkSize) {
+      const chunk = values.slice(i, i + chunkSize);
+      const { data, error } = await admin.from(table).select(select).in(column, chunk);
+      if (error) throw new Error(error.message);
+      rows.push(...((data ?? []) as T[]));
+    }
+    return rows;
   }
 
-  const profileById = new Map((profiles ?? []).map((p) => [String(p.id), p]));
+  let profiles: Array<{ id: string; full_name: string | null; phone: string | null }> = [];
+  let orders: Array<{
+    user_id: string | null;
+    payment_status: string;
+    order_status: string;
+    email: string | null;
+  }> = [];
+  let giftCards: GiftCardBalanceRow[] = [];
+
+  try {
+    [profiles, orders] = await Promise.all([
+      fetchInChunks<{ id: string; full_name: string | null; phone: string | null }>(
+        "profiles",
+        "id,full_name,phone",
+        "id",
+        ids,
+      ),
+      fetchInChunks<{
+        user_id: string | null;
+        payment_status: string;
+        order_status: string;
+        email: string | null;
+      }>("orders", "user_id,payment_status,order_status,email", "user_id", ids),
+    ]);
+
+    const giftCardsResult = await admin
+      .from("gift_cards")
+      .select("recipient_user_id,recipient_email,balance_remaining,status")
+      .in("status", ["active"]);
+
+    giftCards = (giftCardsResult.data ?? []) as GiftCardBalanceRow[];
+    if (giftCardsResult.error?.message?.includes("recipient_user_id")) {
+      const fallback = await admin
+        .from("gift_cards")
+        .select("recipient_email,balance_remaining,status")
+        .in("status", ["active"]);
+      if (fallback.error) throw new Error(fallback.error.message);
+      giftCards = (fallback.data ?? []) as GiftCardBalanceRow[];
+    } else if (giftCardsResult.error) {
+      throw new Error(giftCardsResult.error.message);
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Üye verileri yüklenemedi.";
+    return { members: [], totalUsers: authUsers.length, loadError: message };
+  }
+
+  const profileById = new Map(profiles.map((p) => [String(p.id), p]));
   const paidOrdersByUser = new Map<string, number>();
   const totalOrdersByUser = new Map<string, number>();
 
-  for (const o of orders ?? []) {
+  for (const o of orders) {
     const uid = String(o.user_id ?? "").trim();
     if (!uid) continue;
     totalOrdersByUser.set(uid, (totalOrdersByUser.get(uid) ?? 0) + 1);
