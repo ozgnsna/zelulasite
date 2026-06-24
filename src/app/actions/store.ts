@@ -88,10 +88,11 @@ function sameCartLine(item: CartItem, productId: string, variantId?: string): bo
 }
 
 export async function addToCart(productId: string, variantId?: string): Promise<AddToCartResult> {
+  try {
   await reconcileCartCookie();
   const cart = await getCartItems();
-  const supabase = await createClient();
-  const { data: p, error } = await supabase
+  const admin = createAdminClient();
+  const { data: p, error } = await admin
     .from("products")
     .select("id,stock_quantity,is_active,product_kind")
     .eq("id", productId)
@@ -107,7 +108,7 @@ export async function addToCart(productId: string, variantId?: string): Promise<
     return { ok: false, error: "Hediye kartı için lütfen hediye kartı sayfasını kullanın." };
   }
 
-  const variants = await fetchProductVariants(supabase, productId);
+  const variants = await fetchProductVariants(admin, productId);
   let chosenVariantId: string | undefined;
   let variantLabel: string | undefined;
   let stock: number;
@@ -152,6 +153,10 @@ export async function addToCart(productId: string, variantId?: string): Promise<
   revalidatePath("/sepet");
   revalidatePath("/");
   return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Sepete eklenemedi.";
+    return { ok: false, error: message };
+  }
 }
 
 export async function updateCartItem(productId: string, quantity: number, variantId?: string) {

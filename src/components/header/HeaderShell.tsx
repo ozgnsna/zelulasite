@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, Menu, UserRound, X } from "lucide-react";
 const SIGN_OUT_ACTION = "/auth/signout";
+const IMPERSONATION_EXIT_HREF = "/api/admin/impersonate/exit";
 import {
   categoryHref,
   getTaxonBySlug,
@@ -39,10 +40,12 @@ export function HeaderShell({
   isLoggedIn,
   greetingFirstName,
   cartSlot,
+  impersonationActive = false,
 }: {
   isLoggedIn: boolean;
   greetingFirstName: string | null;
   cartSlot: React.ReactNode;
+  impersonationActive?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -249,15 +252,25 @@ export function HeaderShell({
                       Favorilerim
                     </Link>
                     <div className="my-1 border-t border-[#ebe6df]" />
-                    <form action={SIGN_OUT_ACTION} method="post">
-                      <button
-                        type="submit"
+                    {impersonationActive ? (
+                      <Link
                         role="menuitem"
-                        className="w-full px-4 py-2 text-left text-sm text-stone-600 transition hover:bg-stone-50 hover:text-stone-900"
+                        href={IMPERSONATION_EXIT_HREF}
+                        className="block px-4 py-2 text-sm font-medium text-amber-900 transition hover:bg-amber-50"
                       >
-                        Çıkış yap
-                      </button>
-                    </form>
+                        Admin oturumuna dön
+                      </Link>
+                    ) : (
+                      <form action={SIGN_OUT_ACTION} method="post">
+                        <button
+                          type="submit"
+                          role="menuitem"
+                          className="w-full px-4 py-2 text-left text-sm text-stone-600 transition hover:bg-stone-50 hover:text-stone-900"
+                        >
+                          Çıkış yap
+                        </button>
+                      </form>
+                    )}
                   </div>
                 ) : null}
               </>
@@ -421,14 +434,23 @@ export function HeaderShell({
                     </Link>
                   </li>
                   <li className="pt-2">
-                    <form action={SIGN_OUT_ACTION} method="post">
-                      <button
-                        type="submit"
-                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-stone-600 hover:bg-stone-50"
+                    {impersonationActive ? (
+                      <Link
+                        href={IMPERSONATION_EXIT_HREF}
+                        className="block rounded-lg px-3 py-2.5 text-left text-sm font-medium text-amber-900 hover:bg-amber-50"
                       >
-                        Çıkış yap
-                      </button>
-                    </form>
+                        Admin oturumuna dön
+                      </Link>
+                    ) : (
+                      <form action={SIGN_OUT_ACTION} method="post">
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-stone-600 hover:bg-stone-50"
+                        >
+                          Çıkış yap
+                        </button>
+                      </form>
+                    )}
                   </li>
                 </ul>
               ) : (

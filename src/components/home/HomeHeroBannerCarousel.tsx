@@ -16,7 +16,7 @@ export type HomeHeroBanner = {
 
 const AUTO_MS = 7000;
 /** Banner tasarımları ~1.75:1; genişlikten yükseklik hesaplanır, metin solda kalır. */
-const SLIDE_HEIGHT = "min(88svh, max(16rem, calc(100vw / 1.75)))";
+const SLIDE_HEIGHT = "min(72svh, max(16rem, calc(100vw / 1.75)))";
 
 export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] }) {
   const [index, setIndex] = useState(0);

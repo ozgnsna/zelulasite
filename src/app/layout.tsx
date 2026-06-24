@@ -4,8 +4,8 @@ import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import { Footer } from "@/components/Footer";
-import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { StorefrontSiteChrome } from "@/components/StorefrontSiteChrome";
+import { SiteHeaderSpacer } from "@/components/SiteHeaderSpacer";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { GoogleAnalyticsLoader } from "@/components/analytics/GoogleAnalyticsLoader";
@@ -98,8 +98,14 @@ export default async function RootLayout({
           <AnalyticsProvider />
           <ReferralTrackingBridge />
         </Suspense>
-        {isAdminRoute ? null : <AnnouncementBar />}
-        {isAdminRoute ? null : <StorefrontSiteChrome />}
+        {isAdminRoute ? null : (
+          <>
+            <div className="fixed inset-x-0 top-0 z-50">
+              <StorefrontSiteChrome />
+            </div>
+            <SiteHeaderSpacer />
+          </>
+        )}
         <div className="flex-1">{children}</div>
         {isAdminRoute ? null : <Footer />}
         <Toaster richColors position="top-right" />

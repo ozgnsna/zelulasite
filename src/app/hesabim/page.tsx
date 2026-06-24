@@ -297,8 +297,12 @@ export default async function HesabimPage() {
         <SignOutForm />
 
         <p className="mt-10 text-center text-sm text-stone-500">
-          <Link href="/" className="underline-offset-2 hover:underline">
+          <Link href="/urunler" className="underline-offset-2 hover:underline">
             Alışverişe devam et
+          </Link>
+          <span className="mx-2 text-stone-300">·</span>
+          <Link href="/" className="underline-offset-2 hover:underline">
+            Ana sayfa
           </Link>
         </p>
       </div>

@@ -372,7 +372,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
       <RelatedProducts currentProductId={product.id} />
 
-      <div className="fixed inset-x-0 bottom-3 z-30 mx-auto w-[calc(100%-1rem)] max-w-md rounded-2xl border border-brand-gold/25 bg-[#fffdfb]/95 p-3 shadow-[0_12px_32px_rgba(45,37,33,0.14)] backdrop-blur-md md:hidden">
+      <div className="fixed inset-x-0 bottom-3 z-[110] mx-auto w-[calc(100%-1rem)] max-w-md rounded-2xl border border-brand-gold/25 bg-[#fffdfb]/95 p-3 shadow-[0_12px_32px_rgba(45,37,33,0.14)] backdrop-blur-md md:hidden">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs text-stone-500">Toplam</p>

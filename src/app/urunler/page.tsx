@@ -175,7 +175,7 @@ export default async function ProductsPage({ searchParams }: Props) {
               products={products}
               isSignedIn={isSignedIn}
               favoriteIds={favoriteIds}
-              conversionOverlay={false}
+              conversionOverlay
               fallbackImage="https://picsum.photos/id/90/900/900"
             />
           )}

@@ -18,15 +18,19 @@ export async function getCartItems(): Promise<CartItem[]> {
   }
 }
 
-export async function setCartItems(items: CartItem[]) {
+export async function setCartItems(items: CartItem[]): Promise<void> {
   const store = await cookies();
-  store.set(CART_KEY, JSON.stringify(items), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  try {
+    store.set(CART_KEY, JSON.stringify(items), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  } catch {
+    throw new Error("Sepet tarayıcıya kaydedilemedi. Çerezleri kontrol edip sayfayı yenileyin.");
+  }
 }
 
 /** Clamp cart lines to current DB stock; persist cookie if anything changed. Returns the cart to use for reads. */

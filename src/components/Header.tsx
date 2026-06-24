@@ -4,6 +4,8 @@ import { CartDrawer } from "@/components/CartDrawer";
 import { getCartUpsellProducts } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { HeaderShell } from "@/components/header/HeaderShell";
+import { cookies } from "next/headers";
+import { IMPERSONATION_COOKIE, parseImpersonationCookie } from "@/lib/admin/impersonation";
 
 /** Logo: `public/zelula-logo-header.svg` — transparent header mark. */
 
@@ -16,6 +18,8 @@ function greetingFirstNameFromProfile(fullName: string | null | undefined): stri
 
 export async function Header() {
   try {
+    const cookieStore = await cookies();
+    const impersonationActive = Boolean(parseImpersonationCookie(cookieStore.get(IMPERSONATION_COOKIE)?.value));
     const supabase = await createClient();
     const [{ data: { user } }, { lines }] = await Promise.all([
       supabase.auth.getUser(),
@@ -65,20 +69,22 @@ export async function Header() {
     }));
 
     return (
-      <header className="border-b border-[#e8e2d9]/90 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
+      <header className="bg-[#fffdfb]">
         <HeaderShell
           isLoggedIn={Boolean(user)}
           greetingFirstName={greetingFirstName}
+          impersonationActive={impersonationActive}
           cartSlot={<CartDrawer count={count} lines={drawerLines} upsellItems={drawerUpsellItems} />}
         />
       </header>
     );
   } catch {
     return (
-      <header className="border-b border-[#e8e2d9]/90 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
+      <header className="bg-[#fffdfb]">
         <HeaderShell
           isLoggedIn={false}
           greetingFirstName={null}
+          impersonationActive={false}
           cartSlot={<CartDrawer count={0} lines={[]} upsellItems={[]} />}
         />
       </header>
