@@ -65,7 +65,7 @@ export async function Header() {
     }));
 
     return (
-      <header className="sticky top-0 z-40 border-b border-[#e8e2d9]/90 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
+      <header className="border-b border-[#e8e2d9]/90 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
         <HeaderShell
           isLoggedIn={Boolean(user)}
           greetingFirstName={greetingFirstName}
@@ -75,7 +75,7 @@ export async function Header() {
     );
   } catch {
     return (
-      <header className="sticky top-0 z-40 border-b border-[#e8e2d9]/90 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
+      <header className="border-b border-[#e8e2d9]/90 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
         <HeaderShell
           isLoggedIn={false}
           greetingFirstName={null}

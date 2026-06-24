@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSafeReturnPath } from "@/lib/account/safe-return-path";
 import { assertSupabasePublicEnv } from "@/lib/supabase/env";
+import { IMPERSONATION_COOKIE } from "@/lib/admin/impersonation";
 
 /** Oturumu kapatır; çerezler yanıt üzerinden yazılır (server action redirect’ten güvenilir). */
 async function handleSignOut(request: NextRequest) {
@@ -32,6 +33,14 @@ async function handleSignOut(request: NextRequest) {
   if (error && process.env.NODE_ENV === "development") {
     console.warn("[auth/signout]", error.message);
   }
+
+  response.cookies.set(IMPERSONATION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
 
   revalidatePath("/", "layout");
   return response;

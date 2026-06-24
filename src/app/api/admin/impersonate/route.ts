@@ -1,22 +1,41 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canAccessAdminPanel, isAdminEmail } from "@/lib/admin/auth";
 import { buildAuthCallbackUrl } from "@/lib/account/site-url";
 import { getSafeReturnPath } from "@/lib/account/safe-return-path";
 import { IMPERSONATION_COOKIE } from "@/lib/admin/impersonation";
+import { assertSupabasePublicEnv } from "@/lib/supabase/env";
 
-async function verifyAdminSession() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user?.email || !canAccessAdminPanel(user.email)) return null;
-  return { supabase, adminUser: user };
+const IMPERSONATION_COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 4,
+};
+
+function createRouteSupabase(request: NextRequest, response: NextResponse) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    },
+  );
 }
 
 async function establishCustomerSession(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createRouteSupabase>,
   hashedToken: string,
 ) {
   const attempts = [{ type: "email" as const }, { type: "magiclink" as const }];
@@ -25,18 +44,24 @@ async function establishCustomerSession(
       token_hash: hashedToken,
       type: attempt.type,
     });
-    if (!error) return { ok: true as const };
+    if (!error) return true;
   }
-  return { ok: false as const };
+  return false;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  assertSupabasePublicEnv();
   const requestUrl = new URL(request.url);
   const userId = String(requestUrl.searchParams.get("userId") ?? "").trim();
   const nextPath = getSafeReturnPath(requestUrl.searchParams.get("next") ?? "/hesabim");
 
-  const session = await verifyAdminSession();
-  if (!session) {
+  const response = NextResponse.redirect(new URL(nextPath, requestUrl));
+  const supabase = createRouteSupabase(request, response);
+
+  const {
+    data: { user: adminUser },
+  } = await supabase.auth.getUser();
+  if (!adminUser?.email || !canAccessAdminPanel(adminUser.email)) {
     return NextResponse.redirect(new URL("/admin/login", requestUrl));
   }
 
@@ -73,28 +98,20 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/admin/customers?err=link_failed", requestUrl));
   }
 
-  const established = await establishCustomerSession(session.supabase, hashedToken);
-  if (!established.ok) {
+  const sessionOk = await establishCustomerSession(supabase, hashedToken);
+  if (!sessionOk) {
     return NextResponse.redirect(new URL("/admin/customers?err=session_failed", requestUrl));
   }
-
-  const response = NextResponse.redirect(new URL(nextPath, requestUrl));
 
   response.cookies.set(
     IMPERSONATION_COOKIE,
     JSON.stringify({
-      adminEmail: session.adminUser.email,
+      adminEmail: adminUser.email,
       targetUserId: userId,
       targetName,
       startedAt: new Date().toISOString(),
     }),
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 4,
-    },
+    IMPERSONATION_COOKIE_OPTS,
   );
 
   return response;

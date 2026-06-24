@@ -45,14 +45,10 @@ export async function proxy(request: NextRequest) {
       },
     });
 
-    if (needsAuthGuard) {
-      const {
-        data: { user: u },
-      } = await supabase.auth.getUser();
-      user = u ?? null;
-    } else {
-      await supabase.auth.getSession();
-    }
+    const {
+      data: { user: u },
+    } = await supabase.auth.getUser();
+    user = u ?? null;
   } catch {
     user = null;
   }
