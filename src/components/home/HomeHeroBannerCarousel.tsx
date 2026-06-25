@@ -10,11 +10,13 @@ export type HomeHeroBanner = {
   imageSrc: string;
   alt: string;
   href?: string;
-  /** object-position; banner tasarımı tam görünsün diye varsayılan center */
+  /** object-position; metin solda olduğu için varsayılan left center */
   objectPosition?: string;
 };
 
 const AUTO_MS = 7000;
+/** Banner tasarımları ~1.75:1; tam genişlik görsel, yanlarda site rengi yok. */
+const SLIDE_HEIGHT = "min(72svh, max(16rem, calc(100vw / 1.75)))";
 
 export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] }) {
   const [index, setIndex] = useState(0);
@@ -34,7 +36,8 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
 
   return (
     <section
-      className="relative w-full overflow-hidden bg-[#1a1510]"
+      className="relative w-full overflow-hidden bg-[#faf8f5]"
+      style={{ height: SLIDE_HEIGHT }}
       aria-label="Zelula tanıtım bannerları"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -42,20 +45,20 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
       onBlur={() => setPaused(false)}
     >
       <div
-        className="flex transition-transform duration-700 ease-out motion-reduce:transition-none"
+        className="flex h-full transition-transform duration-700 ease-out motion-reduce:transition-none"
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
         {banners.map((banner, i) => (
-          <article key={banner.id} className="relative min-w-full shrink-0">
-            <div className="relative aspect-[1.75/1] w-full max-h-[min(920px,82dvh)]">
+          <article key={banner.id} className="relative h-full min-w-full shrink-0">
+            <div className="relative h-full w-full">
               <Image
                 src={banner.imageSrc}
                 alt={banner.alt}
                 fill
                 priority={i === 0}
                 unoptimized
-                className="object-contain"
-                style={{ objectPosition: banner.objectPosition ?? "center center" }}
+                className="object-cover"
+                style={{ objectPosition: banner.objectPosition ?? "left center" }}
                 sizes="100vw"
               />
               {banner.href ? (
@@ -102,6 +105,11 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
           </div>
         </>
       ) : null}
+
+      <div
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[2] h-16 bg-gradient-to-t from-[#faf8f5] to-transparent sm:h-20"
+        aria-hidden
+      />
     </section>
   );
 }

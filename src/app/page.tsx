@@ -23,21 +23,21 @@ const HERO_BANNERS = [
     imageSrc: "/hero-banner-gold.png",
     alt: "Zelula — Taktığınızda fark edilen detaylar; plaj ve inci kolye koleksiyonu",
     href: "/urunler",
-    objectPosition: "center center",
+    objectPosition: "left center",
   },
   {
     id: "pearl",
     imageSrc: "/hero-banner-pearl.png",
     alt: "Zelula — Taktığınızda fark edilen detaylar; altın takı koleksiyonu",
     href: "/urunler",
-    objectPosition: "center center",
+    objectPosition: "left center",
   },
   {
     id: "collection",
     imageSrc: "/hero-banner-collection.png",
     alt: "Zelula Kids — Hayal gücü kadar renkli; çocuk kolye koleksiyonu",
     href: "/urunler",
-    objectPosition: "center center",
+    objectPosition: "left center",
   },
 ] as const;
 
