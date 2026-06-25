@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { uploadTaxonomyImage } from "@/app/actions/admin";
+import { isNextRedirectError } from "@/lib/next-navigation-errors";
 import {
   compressProductImageForUpload,
   PRODUCT_IMAGE_MAX_BYTES,
@@ -50,6 +51,7 @@ export function TaxonomyImageUploader({
       fd.append("image", uploadFile, uploadFile.name);
       await uploadTaxonomyImage(fd);
     } catch (err) {
+      if (isNextRedirectError(err)) throw err;
       setError(err instanceof Error ? err.message : "Görsel yüklenemedi.");
     } finally {
       setBusy(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import { isNextRedirectError } from "@/lib/next-navigation-errors";
 import { flattenProductImageBackground } from "@/lib/images/flatten-product-background";
 import {
   prepareProductImageForUpload,
@@ -133,6 +134,7 @@ export function ProductImageManager({
       fd.append("image", uploadFile, uploadFile.name);
       await uploadProductImageAction(fd);
     } catch (err) {
+      if (isNextRedirectError(err)) throw err;
       setClientError(err instanceof Error ? err.message : "Görsel yüklenemedi.");
     } finally {
       setUploadBusy(false);
