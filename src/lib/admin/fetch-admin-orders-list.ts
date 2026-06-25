@@ -14,6 +14,7 @@ function withShippingNulls(rows: Record<string, unknown>[]): AdminOrderListRow[]
     id: String(r.id),
     order_number: String(r.order_number ?? ""),
     customer_name: (r.customer_name as string | null) ?? null,
+    user_id: (r.user_id as string | null) ?? null,
     total: Number(r.total ?? 0),
     created_at: String(r.created_at ?? ""),
     order_status: String(r.order_status ?? ""),

@@ -18,6 +18,7 @@ export type AdminOrderListRow = {
   id: string;
   order_number: string;
   customer_name: string | null;
+  user_id: string | null;
   total: number;
   created_at: string;
   order_status: string;
@@ -70,6 +71,27 @@ function paymentChipClass(paymentStatus: string): string {
   if (paymentStatus === "paid") return "border-emerald-200/60 bg-emerald-50/70 text-emerald-900/90";
   if (paymentStatus === "failed") return "border-rose-300/70 bg-rose-50/80 text-rose-900/90";
   return "border-stone-300/70 bg-stone-50/90 text-stone-800";
+}
+
+function OrderAccountBadge({ userId }: { userId: string | null }) {
+  const linked = Boolean(String(userId ?? "").trim());
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ring-1 ring-inset sm:text-[10px]",
+        linked
+          ? "border-emerald-200/60 bg-emerald-50/70 text-emerald-900 ring-emerald-600/20"
+          : "border-amber-200/70 bg-amber-50/80 text-amber-950 ring-amber-500/25",
+      )}
+      title={
+        linked
+          ? "Kayıtlı müşteri hesabına bağlı sipariş"
+          : "Misafir checkout — sipariş hesaba bağlı değil"
+      }
+    >
+      {linked ? "Kayıtlı" : "Misafir"}
+    </span>
+  );
 }
 
 function cargoShort(o: AdminOrderListRow): string {
@@ -442,9 +464,12 @@ export function AdminOrdersListShell({
                       </div>
                     </div>
                     <div className="min-w-0 pl-6 text-left sm:pl-0 sm:justify-self-start">
-                      <p className="truncate text-[13px] font-semibold leading-snug text-stone-900 sm:text-sm">
-                        {o.customer_name || "—"}
-                      </p>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <p className="min-w-0 truncate text-[13px] font-semibold leading-snug text-stone-900 sm:text-sm">
+                          {o.customer_name || "—"}
+                        </p>
+                        <OrderAccountBadge userId={o.user_id} />
+                      </div>
                     </div>
                   </div>
 
