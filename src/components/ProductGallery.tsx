@@ -22,14 +22,11 @@ export function ProductGallery({
   extraImages = [],
   fallback,
   alt,
-  loopVideoUrl,
 }: {
   images: Img[];
   extraImages?: Img[];
   fallback: string;
   alt: string;
-  /** Kapak fotoğrafı üzerinde sessiz döngü video (ürün galerisindeki video veya env). */
-  loopVideoUrl?: string | null;
 }) {
   const list = useMemo(() => {
     const normalized = normalizeProductImages(images);
@@ -41,7 +38,6 @@ export function ProductGallery({
   }, [images, extraImages, fallback]);
 
   const [active, setActive] = useState(() => list[0]?.image_url ?? fallback);
-  const [videoFailed, setVideoFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
@@ -50,15 +46,9 @@ export function ProductGallery({
   }, [list, fallback]);
 
   const mainSrc = list.some((i) => i.image_url === active) ? active : (list[0]?.image_url ?? fallback);
-  const firstUrl = list[0]?.image_url ?? fallback;
   const mainIsVideo = isProductVideoUrl(mainSrc);
-  const firstIsVideo = isProductVideoUrl(firstUrl);
-  const overlayPoster = firstIsVideo ? fallback : firstUrl;
-  const showLoopOverlay =
-    Boolean(loopVideoUrl?.trim()) && !videoFailed && !mainIsVideo && mainSrc === overlayPoster;
   const resolvedActiveIndex = Math.max(0, list.findIndex((i) => i.image_url === mainSrc));
 
-  const onVideoError = useCallback(() => setVideoFailed(true), []);
   const openLightbox = useCallback(() => setLightboxOpen(true), []);
 
   return (
@@ -87,22 +77,6 @@ export function ProductGallery({
               />
             </div>
 
-            {showLoopOverlay ? (
-              <video
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.88] mix-blend-normal"
-                poster={overlayPoster}
-                muted
-                playsInline
-                autoPlay
-                loop
-                preload="metadata"
-                aria-hidden
-                onError={onVideoError}
-              >
-                <source src={loopVideoUrl!.trim()} type="video/mp4" />
-              </video>
-            ) : null}
-
             <div
               className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl motion-reduce:hidden"
               aria-hidden
@@ -110,7 +84,7 @@ export function ProductGallery({
               <div className="absolute -inset-[20%] rotate-12 bg-gradient-to-tr from-transparent via-white/[0.14] to-transparent opacity-0 blur-2xl transition duration-[1.1s] ease-out motion-safe:group-hover:translate-x-[18%] motion-safe:group-hover:opacity-100" />
             </div>
 
-            {!showLoopOverlay ? <ProductGalleryZoomTrigger onOpen={openLightbox} /> : null}
+            <ProductGalleryZoomTrigger onOpen={openLightbox} />
           </>
         )}
       </div>
@@ -125,7 +99,7 @@ export function ProductGallery({
       {list.length > 1 ? (
         <div className="space-y-2">
           <p className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400">
-            {list.findIndex((i) => i.image_url === mainSrc) + 1} / {list.length}
+            {resolvedActiveIndex + 1} / {list.length}
           </p>
           <div
             className="flex gap-2.5 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] sm:gap-3 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300/80"
@@ -151,7 +125,13 @@ export function ProductGallery({
                 >
                   {isVideo ? (
                     <>
-                      <video src={img.image_url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                      <video
+                        src={img.image_url}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="pointer-events-none h-full w-full object-cover"
+                      />
                       <span className="absolute bottom-0.5 right-0.5 rounded bg-black/55 px-1 py-px text-[7px] font-medium text-white">
                         ▶
                       </span>

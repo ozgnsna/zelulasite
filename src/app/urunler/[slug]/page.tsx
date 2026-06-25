@@ -23,7 +23,7 @@ import { ProductSizeSelector } from "@/components/product/ProductSizeSelector";
 import { buildPdpShippingPromise } from "@/lib/storefront/pdp-shipping";
 import { resolvePdpTraitGroups } from "@/lib/storefront/pdp-traits";
 import { fetchProductVariants } from "@/lib/products/variants";
-import { normalizeProductImages, pickFirstProductVideoUrl } from "@/lib/products/cover-image";
+import { normalizeProductImages } from "@/lib/products/cover-image";
 import {
   buildProductBreadcrumbJsonLd,
   buildProductJsonLd,
@@ -92,8 +92,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const isLowStock = stockQty > 0 && stockQty <= 3;
   const supportMessage = "Merhaba, Zelula’daki bir ürün hakkında bilgi almak istiyorum ✨";
   const whatsappSupportHref = getSupportWhatsAppHref(supportMessage);
-  const pdpVideoUrl =
-    pickFirstProductVideoUrl(galleryImages) || process.env.NEXT_PUBLIC_PDP_VIDEO_URL?.trim() || null;
   const supabase = await createClient();
   const {
     data: { user },
@@ -151,7 +149,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
             extraImages={galleryExtras}
             fallback="https://picsum.photos/id/15/1200/1200"
             alt={product.name}
-            loopVideoUrl={pdpVideoUrl}
           />
         </section>
 
