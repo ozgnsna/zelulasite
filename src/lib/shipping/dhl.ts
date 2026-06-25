@@ -1,6 +1,13 @@
 import { randomBytes } from "node:crypto";
 import type { CreateShipmentResult, OrderShippingSource } from "@/lib/shipping/types";
 
+/** DHL Express takip sayfası (TR). */
+export function buildDhlTrackingUrl(trackingNumber: string): string | null {
+  const id = String(trackingNumber ?? "").trim();
+  if (!id || /^DHL-MOCK-/i.test(id)) return null;
+  return `https://www.dhl.com/tr-tr/home/tracking/tracking-express.html?submit=1&tracking-id=${encodeURIComponent(id)}`;
+}
+
 function useMock(): boolean {
   const v = String(process.env.DHL_USE_MOCK ?? "true").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";

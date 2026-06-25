@@ -4,13 +4,19 @@ import { revalidatePath, revalidateTag } from "next/cache";
 
 function revalidateAdminOrderPaths(orderId: string) {
   revalidatePath("/admin");
-  if (orderId) revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  if (orderId) {
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath(`/hesabim/siparis/${orderId}`);
+  }
+  revalidatePath("/hesabim");
 }
 import { redirect } from "next/navigation";
 import { normalizeEmailInput } from "@/lib/account/email-input";
 import { purgeAllOrdersAndResetCounter } from "@/lib/admin/purge-orders";
 import { markOrderHandDeliveredInDb } from "@/lib/admin/mark-order-hand-delivered";
 import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
+import { buildDhlTrackingUrl } from "@/lib/shipping/dhl";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
@@ -907,6 +913,74 @@ export async function updateOrderStatus(formData: FormData) {
   }
   revalidateAdminOrderPaths(id);
   if (returnTo) redirect(returnTo);
+}
+
+export async function updateOrderShippingTrackingAction(formData: FormData) {
+  await assertAdminSession();
+  const supabase = createAdminClient();
+  const id = String(formData.get("id") ?? "").trim();
+  const returnTo = adminOrderReturnTo(formData, id) ?? (id ? `/admin/orders/${id}` : null);
+  const trackingNumber = String(formData.get("tracking_number") ?? "").trim();
+  const trackingUrlRaw = String(formData.get("tracking_url") ?? "").trim();
+  const notifyCustomer = String(formData.get("notify_customer") ?? "") === "1";
+
+  if (!id || !trackingNumber) {
+    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent("DHL kargo kodu gerekli.")}`);
+    return;
+  }
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id,payment_status,order_status,order_number,shipping_tracking_number")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!order || String(order.payment_status ?? "") !== "paid") {
+    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent("Ödenmiş sipariş bulunamadı.")}`);
+    return;
+  }
+
+  const trackingUrl = trackingUrlRaw || buildDhlTrackingUrl(trackingNumber) || null;
+  const now = new Date().toISOString();
+  const prevTracking = String(order.shipping_tracking_number ?? "").trim();
+
+  const { error: updateErr } = await supabase
+    .from("orders")
+    .update({
+      order_status: String(order.order_status ?? "") === "cancelled" ? order.order_status : "shipped",
+      shipping_provider: "dhl",
+      shipping_tracking_number: trackingNumber,
+      shipping_label_url: trackingUrl,
+      shipping_status: "created",
+      shipping_created_at: now,
+      updated_at: now,
+    })
+    .eq("id", id);
+
+  if (updateErr) {
+    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent(updateErr.message)}`);
+    throw new Error(updateErr.message);
+  }
+
+  await supabase.from("payment_logs").insert({
+    order_id: id,
+    provider: "manual",
+    event_type: "manual_shipping_tracking",
+    status: "updated",
+    request_payload: { trackingNumber, trackingUrl, notifyCustomer },
+    verification_status: "passed",
+    processed_at: now,
+  });
+
+  if (notifyCustomer && trackingNumber !== prevTracking) {
+    await notifyCustomerOrderWhatsApp(supabase, id, "order_shipped", {
+      trackingNumber,
+      force: true,
+    });
+  }
+
+  revalidateAdminOrderPaths(id);
+  if (returnTo) redirect(`${returnTo}?shippingOk=1`);
 }
 
 export async function markOrderHandDelivered(formData: FormData) {

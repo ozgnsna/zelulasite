@@ -17,6 +17,12 @@ import {
   getPreContractInfoText,
   getPrivacyPolicyText,
 } from "@/lib/legal/legal-content";
+import { formatTurkishFullNameLive, normalizeTurkishFullName } from "@/lib/account/turkish-full-name";
+import {
+  formatTurkishMobileDisplay,
+  isValidTurkishMobileDigits,
+  normalizeTurkishMobileInput,
+} from "@/lib/account/turkish-mobile-phone";
 
 const EMPTY_SAVED_ADDRESSES: SavedAddress[] = [];
 
@@ -103,9 +109,12 @@ export function CheckoutForm({
   const [taxNo, setTaxNo] = useState("");
   const [pickedId, setPickedId] = useState<string>(() => (firstSaved ? firstSaved.id : "new"));
   const [dName, setDName] = useState(() =>
-    (firstSaved?.recipient_name ?? (accountFullName ?? "").trim()).trim(),
+    normalizeTurkishFullName((firstSaved?.recipient_name ?? (accountFullName ?? "").trim()).trim()),
   );
-  const [dPhone, setDPhone] = useState(() => (firstSaved?.phone ?? (accountPhone ?? "").trim()).trim());
+  const initialPhoneDigits = normalizeTurkishMobileInput(firstSaved?.phone ?? accountPhone ?? "");
+  const [phoneDigits, setPhoneDigits] = useState(initialPhoneDigits);
+  const [phoneDisplay, setPhoneDisplay] = useState(() => formatTurkishMobileDisplay(initialPhoneDigits));
+  const [phoneSubmitAttempted, setPhoneSubmitAttempted] = useState(false);
   const [dLine, setDLine] = useState(() => firstSaved?.address_line ?? "");
   const [dPostal, setDPostal] = useState(() => firstSaved?.postal_code ?? "");
   const [city, setCity] = useState(() => firstSaved?.city ?? "");
@@ -129,14 +138,20 @@ export function CheckoutForm({
     return null;
   }, [legalModal]);
 
+  const syncPhoneFromRaw = useCallback((raw: string) => {
+    const next = normalizeTurkishMobileInput(raw);
+    setPhoneDigits(next);
+    setPhoneDisplay(formatTurkishMobileDisplay(next));
+  }, []);
+
   const applySavedAddressPick = useCallback(
     (nextId: string) => {
       setPickedId(nextId);
-      const nm = (accountFullName ?? "").trim();
+      const nm = normalizeTurkishFullName((accountFullName ?? "").trim());
       const ph = (accountPhone ?? "").trim();
       if (nextId === "new") {
         setDName(nm);
-        setDPhone(ph);
+        syncPhoneFromRaw(ph);
         setDLine("");
         setDPostal("");
         setCity("");
@@ -147,21 +162,21 @@ export function CheckoutForm({
       if (!row) {
         setPickedId("new");
         setDName(nm);
-        setDPhone(ph);
+        syncPhoneFromRaw(ph);
         setDLine("");
         setDPostal("");
         setCity("");
         setDistrict("");
         return;
       }
-      setDName(row.recipient_name);
-      setDPhone(row.phone);
+      setDName(normalizeTurkishFullName(row.recipient_name));
+      syncPhoneFromRaw(row.phone);
       setDLine(row.address_line);
       setDPostal(row.postal_code);
       setCity(row.city);
       setDistrict(row.district);
     },
-    [savedList, accountFullName, accountPhone],
+    [savedList, accountFullName, accountPhone, syncPhoneFromRaw],
   );
 
   const loyaltyTryValue = Math.max(0, loyaltyAvailablePoints * 0.5);
@@ -180,6 +195,8 @@ export function CheckoutForm({
   const showPhoneFieldForSignedIn = isSignedIn && !resolvedAccountPhone;
   const showEmailField = !resolvedAccountEmail;
   const showPhoneField = !isSignedIn || showPhoneFieldForSignedIn;
+  const phoneValid = isValidTurkishMobileDigits(phoneDigits);
+  const showPhoneSoftError = phoneSubmitAttempted && !phoneValid;
   const legalAllAccepted = acceptDistanceSales && acceptPreContractInfo && acceptKvkkConsent;
   const submitDisabled = Boolean(disabled || pending || !legalAllAccepted);
 
@@ -193,6 +210,7 @@ export function CheckoutForm({
           e.preventDefault();
           setError(null);
           setSuccessHint(null);
+          setPhoneSubmitAttempted(false);
           const fd = new FormData(e.currentTarget);
           if (
             fd.get("accept_distance_sales") !== "on" ||
@@ -206,6 +224,12 @@ export function CheckoutForm({
             return;
           }
           setLegalAcceptWarning(null);
+          if (!isValidTurkishMobileDigits(phoneDigits)) {
+            setPhoneSubmitAttempted(true);
+            setError("Geçerli bir telefon numarası girin.");
+            formRootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
           setCheckoutHandoffUrlDebug(null);
           trackBeginCheckout(items);
           start(async () => {
@@ -408,7 +432,8 @@ export function CheckoutForm({
               autoFocus
               autoComplete="name"
               value={dName}
-              onChange={(e) => setDName(e.target.value)}
+              onChange={(e) => setDName(formatTurkishFullNameLive(e.target.value))}
+              onBlur={() => setDName((v) => normalizeTurkishFullName(v))}
               placeholder="Alıcı Ad Soyad"
               required
               className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm transition focus:border-[#C6A15B] focus:outline-none focus:ring-2 focus:ring-[#e8c98b]/35"
@@ -416,23 +441,38 @@ export function CheckoutForm({
               onInput={(e) => e.currentTarget.setCustomValidity("")}
             />
           </div>
+          <input type="hidden" name="phone" value={phoneDigits} readOnly aria-hidden />
           {showPhoneField ? (
             <div>
               <label className="mb-1.5 block text-xs font-medium text-stone-600">Telefon</label>
               <input
-                name="phone"
+                type="tel"
+                inputMode="numeric"
                 autoComplete="tel"
-                placeholder="Telefon"
+                placeholder="05XX XXX XX XX"
                 required
-                value={dPhone}
-                onChange={(e) => setDPhone(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm transition focus:border-[#C6A15B] focus:outline-none focus:ring-2 focus:ring-[#e8c98b]/35"
-                onInvalid={(e) => e.currentTarget.setCustomValidity("Lütfen telefon numaranızı girin.")}
+                value={phoneDisplay}
+                onChange={(e) => syncPhoneFromRaw(e.target.value)}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  syncPhoneFromRaw(e.clipboardData.getData("text/plain") ?? "");
+                }}
+                aria-invalid={showPhoneSoftError}
+                className={`w-full rounded-xl border bg-stone-50 px-4 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#e8c98b]/35 ${
+                  showPhoneSoftError
+                    ? "border-rose-300 focus:border-rose-400"
+                    : "border-stone-200 focus:border-[#C6A15B]"
+                }`}
+                onInvalid={(e) => e.currentTarget.setCustomValidity("Geçerli bir telefon numarası girin.")}
                 onInput={(e) => e.currentTarget.setCustomValidity("")}
               />
+              {showPhoneSoftError ? (
+                <p className="mt-1 text-xs text-rose-600" role="alert">
+                  Geçerli bir telefon numarası gir
+                </p>
+              ) : null}
             </div>
           ) : null}
-          {isSignedIn && !showPhoneField ? <input type="hidden" name="phone" value={dPhone} readOnly /> : null}
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-stone-600">İl</label>

@@ -6,6 +6,7 @@ import { OrderLegalAgreementsSection } from "@/components/account/OrderLegalAgre
 import { OrderLineReviewPrompts } from "@/components/reviews/OrderLineReviewPrompts";
 import { createClient } from "@/lib/supabase/server";
 import { orderStatusLabel } from "@/lib/account/order-status";
+import { resolveOrderTrackingUrl } from "@/lib/orders/shipping-tracking";
 import { parseLegalContractSnapshot } from "@/lib/legal/legal-snapshot";
 
 type Props = { params: Promise<{ id: string }> };
@@ -19,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const CORE_ORDER_SELECT =
-  "id, order_number, created_at, customer_name, email, phone, subtotal, discount_amount, discount_label, total, currency, payment_status, order_status, shipping_address_json, invoice_pdf_url, invoice_uploaded_at";
+  "id, order_number, created_at, customer_name, email, phone, subtotal, discount_amount, discount_label, total, currency, payment_status, order_status, shipping_address_json, shipping_provider, shipping_tracking_number, shipping_label_url, shipping_status, invoice_pdf_url, invoice_uploaded_at";
 
 function isMissingColumnError(message: string) {
   const msgLower = message.toLowerCase();
@@ -66,6 +67,12 @@ export default async function SiparisDetayPage({ params }: Props) {
     typeof order.legal_contract_hash === "string" && order.legal_contract_hash.trim()
       ? order.legal_contract_hash.trim()
       : null;
+  const trackingUrl = resolveOrderTrackingUrl({
+    shipping_provider: order.shipping_provider as string | null | undefined,
+    shipping_tracking_number: order.shipping_tracking_number as string | null | undefined,
+    shipping_label_url: order.shipping_label_url as string | null | undefined,
+  });
+  const trackingNumber = String(order.shipping_tracking_number ?? "").trim();
 
   return (
     <main className="container-premium py-12 sm:py-16">
@@ -157,6 +164,27 @@ export default async function SiparisDetayPage({ params }: Props) {
               </div>
             ) : null}
           </div>
+
+          {trackingNumber || trackingUrl ? (
+            <div className="rounded-xl border border-[#e8dfd3] bg-[#faf8f5] px-4 py-4 text-sm">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-stone-500">Kargo takibi</h2>
+              {trackingNumber ? (
+                <p className="mt-2 text-stone-800">
+                  DHL kargo kodu: <span className="font-mono font-medium">{trackingNumber}</span>
+                </p>
+              ) : null}
+              {trackingUrl ? (
+                <a
+                  href={trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex rounded-full border border-[#e8dfd3] bg-white px-4 py-2 text-sm font-medium text-[color:var(--brand-gold)] transition hover:border-[#c6a15b]/60"
+                >
+                  Kargomu takip et
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <OrderLegalAgreementsSection snapshot={legalSnapshot} hash={legalHash} />

@@ -13,7 +13,9 @@ import { callbackLogStatusLabelTr, callbackVerificationLabelTr } from "@/lib/adm
 import type { AdminOrderTimelineStep } from "@/lib/admin/order-timeline";
 import { AdminOrderActionBar } from "@/components/admin/orders/AdminOrderActionBar";
 import { AdminCreateShipmentButton } from "@/components/admin/orders/AdminCreateShipmentButton";
+import { AdminOrderShippingTrackingForm } from "@/components/admin/orders/AdminOrderShippingTrackingForm";
 import { getShippingCarrierLabel } from "@/lib/shipping/provider";
+import { resolveOrderTrackingUrl } from "@/lib/orders/shipping-tracking";
 import { AdminOrderCallbackHistory } from "@/components/admin/orders/AdminOrderCallbackHistory";
 import { AdminCopyableSecret } from "@/components/admin/orders/AdminCopyableSecret";
 import type { AdminOrderAccountLink } from "@/lib/admin/order-account-link";
@@ -178,6 +180,7 @@ export function AdminOrderDetailView({
   timeline = [],
   customerInsight = null,
   orderError = null,
+  shippingOk = false,
   accountLink,
 }: {
   order: OrderRow;
@@ -188,6 +191,7 @@ export function AdminOrderDetailView({
   timeline?: AdminOrderTimelineStep[];
   customerInsight?: AdminCustomerOrderInsight | null;
   orderError?: string | null;
+  shippingOk?: boolean;
   accountLink: AdminOrderAccountLink;
 }) {
   const timelineSteps = timeline ?? [];
@@ -215,6 +219,12 @@ export function AdminOrderDetailView({
     shipping_tracking_number: order.shipping_tracking_number,
     shipping_status: order.shipping_status,
     shipping_provider: order.shipping_provider,
+  });
+
+  const trackingUrl = resolveOrderTrackingUrl({
+    shipping_provider: order.shipping_provider,
+    shipping_tracking_number: order.shipping_tracking_number,
+    shipping_label_url: order.shipping_label_url,
   });
 
   const paymentNote =
@@ -292,7 +302,12 @@ export function AdminOrderDetailView({
             <p className={kicker}>Operasyon</p>
             {orderError ? (
               <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
-                Teslim kaydedilemedi: {orderError}
+                {orderError}
+              </p>
+            ) : null}
+            {shippingOk ? (
+              <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">
+                Kargo bilgisi kaydedildi.
               </p>
             ) : null}
             <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -311,6 +326,14 @@ export function AdminOrderDetailView({
                   shippingTrackingNumber={order.shipping_tracking_number}
                   shippingStatus={order.shipping_status}
                   carrierLabel={getShippingCarrierLabel()}
+                />
+                <AdminOrderShippingTrackingForm
+                  orderId={order.id}
+                  paymentStatus={paymentStatus}
+                  shippingProvider={order.shipping_provider}
+                  shippingTrackingNumber={order.shipping_tracking_number}
+                  shippingLabelUrl={order.shipping_label_url}
+                  returnTo={`/admin/orders/${order.id}`}
                 />
               </div>
               {order.shipping_tracking_number || order.shipping_status || order.shipping_label_url || deliveryKind === "hand" ? (
@@ -332,8 +355,23 @@ export function AdminOrderDetailView({
                   ) : null}
                   {order.shipping_tracking_number ? (
                     <div className="flex flex-wrap gap-2">
-                      <dt className="font-medium text-stone-500">Takip</dt>
+                      <dt className="font-medium text-stone-500">Takip no</dt>
                       <dd className="font-mono">{order.shipping_tracking_number}</dd>
+                    </div>
+                  ) : null}
+                  {trackingUrl ? (
+                    <div>
+                      <dt className="font-medium text-stone-500">Takip linki</dt>
+                      <dd className="mt-1">
+                        <a
+                          href={trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="break-all font-medium text-amber-900 underline-offset-2 hover:underline"
+                        >
+                          DHL kargo takip
+                        </a>
+                      </dd>
                     </div>
                   ) : null}
                   {order.shipping_status ? (
@@ -342,10 +380,10 @@ export function AdminOrderDetailView({
                       <dd>{order.shipping_status}</dd>
                     </div>
                   ) : null}
-                  {order.shipping_label_url ? (
+                  {order.shipping_label_url && !trackingUrl ? (
                     <div>
                       <a
-                        href={order.shipping_label_url}
+                        href={String(order.shipping_label_url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-medium text-amber-900 underline-offset-2 hover:underline"

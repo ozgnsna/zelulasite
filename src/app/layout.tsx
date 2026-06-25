@@ -4,10 +4,8 @@ import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import { Footer } from "@/components/Footer";
+import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { StorefrontSiteChrome } from "@/components/StorefrontSiteChrome";
-import { cookies } from "next/headers";
-import { IMPERSONATION_COOKIE, parseImpersonationCookie } from "@/lib/admin/impersonation";
-import { siteChromePaddingClass } from "@/lib/storefront/site-chrome";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { GoogleAnalyticsLoader } from "@/components/analytics/GoogleAnalyticsLoader";
@@ -90,15 +88,6 @@ export default async function RootLayout({
   const isAdminRoute = pathname.startsWith("/admin");
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
-  let impersonating = false;
-  if (!isAdminRoute) {
-    try {
-      const store = await cookies();
-      impersonating = Boolean(parseImpersonationCookie(store.get(IMPERSONATION_COOKIE)?.value));
-    } catch {
-      impersonating = false;
-    }
-  }
   return (
     <html lang="tr" className={`${display.variable} ${sans.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-[color:var(--background)] font-sans text-stone-900 antialiased">
@@ -109,12 +98,13 @@ export default async function RootLayout({
           <AnalyticsProvider />
           <ReferralTrackingBridge />
         </Suspense>
+        {isAdminRoute ? null : <AnnouncementBar />}
         {isAdminRoute ? null : (
-          <div className="fixed inset-x-0 top-0 z-50">
+          <div className="sticky top-0 z-50 border-b border-[#e8e2d9]/70 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
             <StorefrontSiteChrome />
           </div>
         )}
-        <div className={isAdminRoute ? "flex-1" : `flex-1 ${siteChromePaddingClass(impersonating)}`}>{children}</div>
+        <div className="flex-1">{children}</div>
         {isAdminRoute ? null : <Footer />}
         <Toaster richColors position="top-right" />
         <CookieBanner />

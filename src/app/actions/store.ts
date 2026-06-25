@@ -28,6 +28,8 @@ import { sendCustomerOrderEmail } from "@/lib/notifications/order-customer";
 import { getBankTransferDetails } from "@/lib/bank-transfer";
 import { completeGiftCardFullyCoveredOrder } from "@/lib/payments/order-status";
 import { normalizeEmailInput } from "@/lib/account/email-input";
+import { normalizeTurkishFullName } from "@/lib/account/turkish-full-name";
+import { isValidTurkishMobileDigits, normalizeTurkishMobileInput } from "@/lib/account/turkish-mobile-phone";
 
 /** ZLL0001… atomik sıra; migration / RPC yoksa eski uzun format. */
 async function allocateOrderNumber(admin: ReturnType<typeof createAdminClient>): Promise<string> {
@@ -194,12 +196,18 @@ export async function clearCart() {
 }
 
 const checkoutSchema = z.object({
-  customer_name: z.string().min(2, "Lütfen ad soyad bilgisi girin."),
+  customer_name: z
+    .string()
+    .min(2, "Lütfen ad soyad bilgisi girin.")
+    .transform((s) => normalizeTurkishFullName(s)),
   email: z.preprocess(
     (v) => normalizeEmailInput(typeof v === "string" ? v : ""),
     z.string().email("Geçerli bir e-posta adresi girin."),
   ),
-  phone: z.string().min(10, "Telefon numarası en az 10 haneli olmalı."),
+  phone: z
+    .string()
+    .transform((s) => normalizeTurkishMobileInput(s))
+    .refine((d) => isValidTurkishMobileDigits(d), "Geçerli bir telefon numarası gir"),
   address_line: z.string().min(5, "Lütfen açık adresinizi yazın.").max(500),
   city: z.string().min(2, "İl bilgisi gerekli."),
   district: z.string().min(2, "İlçe bilgisi gerekli."),
