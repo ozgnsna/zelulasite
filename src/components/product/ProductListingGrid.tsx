@@ -28,7 +28,6 @@ export function ProductListingGrid({
             id={p.id}
             slug={p.slug}
             name={p.name}
-            summary={p.short_description}
             imageUrl={pickProductCoverImageUrl(p.product_images, fallbackImage)}
             price={Number(p.price)}
             compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}

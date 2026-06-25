@@ -593,7 +593,14 @@ function extractRemoteCategoryId(item: TrendyolRemoteProduct): string | null {
 function buildImportedProductDescriptions(item: TrendyolRemoteProduct, name: string) {
   const fromApi = asTrimmedString(item.description);
   if (fromApi) {
-    const short = fromApi.length > 400 ? `${fromApi.slice(0, 397)}…` : fromApi;
+    const collapsed = fromApi.replace(/\s+/g, " ").trim();
+    const sentenceMatch = collapsed.match(/^[^.!?…]+[.!?…]?/);
+    let short = (sentenceMatch?.[0] ?? collapsed).trim();
+    if (short.length > 120) {
+      const cut = short.slice(0, 119);
+      const lastSpace = cut.lastIndexOf(" ");
+      short = `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trim()}…`;
+    }
     return { short_description: short, full_description: fromApi };
   }
   const fallback = `${name} - ${TRENDYOL_IMPORTED_REVIEW_NOTE}`;

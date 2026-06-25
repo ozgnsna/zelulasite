@@ -9,7 +9,6 @@ type ProductCardProps = {
   id?: string;
   slug: string;
   name: string;
-  summary?: string;
   imageUrl: string;
   price: number;
   compareAtPrice?: number | null;
@@ -38,7 +37,6 @@ export function ProductCard({
   id,
   slug,
   name,
-  summary,
   imageUrl,
   price,
   compareAtPrice,
@@ -74,11 +72,6 @@ export function ProductCard({
     : imageForward
       ? "font-serif text-[1rem] leading-snug text-stone-900 sm:text-[1.05rem]"
       : "font-serif text-[1.12rem] leading-snug text-stone-900";
-  const summaryClass = compact
-    ? "mt-0.5 hidden text-sm leading-relaxed text-stone-500 sm:line-clamp-2 sm:block"
-    : imageForward
-      ? "mt-0.5 line-clamp-1 text-xs leading-relaxed text-stone-500"
-      : "mt-1 line-clamp-2 text-sm leading-relaxed text-stone-500";
   const imageSizes = compact
     ? "(max-width: 640px) 46vw, (max-width: 1024px) 50vw, 33vw"
     : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
@@ -190,7 +183,6 @@ export function ProductCard({
       <div className={`flex flex-1 flex-col ${contentPad}`}>
         <Link href={`/urunler/${slug}`} className="block min-w-0">
           <h2 className={titleClass}>{name}</h2>
-          <p className={summaryClass}>{summary ?? "Zamansız form, modern dokunuş."}</p>
         </Link>
         <div className={`mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-3 sm:pt-2 ${compact ? "flex-col items-stretch sm:flex-row sm:items-end" : ""}`}>
           <div className="min-w-0 flex-1">

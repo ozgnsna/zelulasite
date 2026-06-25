@@ -132,7 +132,6 @@ export default async function HomePage() {
                     id={p.id}
                     slug={p.slug}
                     name={p.name}
-                    summary={p.short_description}
                     imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/99/900/900")}
                     price={Number(p.price)}
                     compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
@@ -200,7 +199,6 @@ export default async function HomePage() {
                     id={p.id}
                     slug={p.slug}
                     name={p.name}
-                    summary={p.short_description}
                     imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900")}
                     price={Number(p.price)}
                     compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
