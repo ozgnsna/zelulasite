@@ -14,7 +14,12 @@ import type { AdminOrderTimelineStep } from "@/lib/admin/order-timeline";
 import { AdminOrderActionBar } from "@/components/admin/orders/AdminOrderActionBar";
 import { AdminCreateShipmentButton } from "@/components/admin/orders/AdminCreateShipmentButton";
 import { AdminOrderShippingTrackingForm } from "@/components/admin/orders/AdminOrderShippingTrackingForm";
-import { getShippingCarrierLabel } from "@/lib/shipping/provider";
+import {
+  getShippingCarrierLabel,
+  isDhlAutoCreateAvailable,
+  isNavlungoConfigured,
+  parseShippingCarrierId,
+} from "@/lib/shipping/provider";
 import { resolveOrderTrackingUrl } from "@/lib/orders/shipping-tracking";
 import { AdminOrderCallbackHistory } from "@/components/admin/orders/AdminOrderCallbackHistory";
 import { AdminCopyableSecret } from "@/components/admin/orders/AdminCopyableSecret";
@@ -226,6 +231,8 @@ export function AdminOrderDetailView({
     shipping_tracking_number: order.shipping_tracking_number,
     shipping_label_url: order.shipping_label_url,
   });
+  const shippingCarrier = parseShippingCarrierId(order.shipping_provider);
+  const shippingCarrierLabel = getShippingCarrierLabel(shippingCarrier);
 
   const paymentNote =
     paymentStatus === "paid"
@@ -325,7 +332,8 @@ export function AdminOrderDetailView({
                   paymentStatus={paymentStatus}
                   shippingTrackingNumber={order.shipping_tracking_number}
                   shippingStatus={order.shipping_status}
-                  carrierLabel={getShippingCarrierLabel()}
+                  navlungoAvailable={isNavlungoConfigured()}
+                  dhlAvailable={isDhlAutoCreateAvailable()}
                 />
                 <AdminOrderShippingTrackingForm
                   orderId={order.id}
@@ -369,7 +377,7 @@ export function AdminOrderDetailView({
                           rel="noopener noreferrer"
                           className="break-all font-medium text-amber-900 underline-offset-2 hover:underline"
                         >
-                          DHL kargo takip
+                          {shippingCarrierLabel} kargo takip
                         </a>
                       </dd>
                     </div>

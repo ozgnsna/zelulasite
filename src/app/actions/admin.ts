@@ -17,6 +17,8 @@ import { purgeAllOrdersAndResetCounter } from "@/lib/admin/purge-orders";
 import { markOrderHandDeliveredInDb } from "@/lib/admin/mark-order-hand-delivered";
 import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
 import { buildDhlTrackingUrl } from "@/lib/shipping/dhl";
+import { resolveTrackingUrlForProvider } from "@/lib/orders/shipping-tracking";
+import { parseShippingCarrierId } from "@/lib/shipping/provider";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
@@ -923,9 +925,10 @@ export async function updateOrderShippingTrackingAction(formData: FormData) {
   const trackingNumber = String(formData.get("tracking_number") ?? "").trim();
   const trackingUrlRaw = String(formData.get("tracking_url") ?? "").trim();
   const notifyCustomer = String(formData.get("notify_customer") ?? "") === "1";
+  const shippingProvider = parseShippingCarrierId(formData.get("shipping_provider")) ?? "dhl";
 
   if (!id || !trackingNumber) {
-    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent("DHL kargo kodu gerekli.")}`);
+    if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent("Kargo kodu gerekli.")}`);
     return;
   }
 
@@ -940,7 +943,9 @@ export async function updateOrderShippingTrackingAction(formData: FormData) {
     return;
   }
 
-  const trackingUrl = trackingUrlRaw || buildDhlTrackingUrl(trackingNumber) || null;
+  const trackingUrl =
+    resolveTrackingUrlForProvider(shippingProvider, trackingNumber, trackingUrlRaw) ||
+    (shippingProvider === "dhl" ? buildDhlTrackingUrl(trackingNumber) : null);
   const now = new Date().toISOString();
   const prevTracking = String(order.shipping_tracking_number ?? "").trim();
 
@@ -948,7 +953,7 @@ export async function updateOrderShippingTrackingAction(formData: FormData) {
     .from("orders")
     .update({
       order_status: String(order.order_status ?? "") === "cancelled" ? order.order_status : "shipped",
-      shipping_provider: "dhl",
+      shipping_provider: shippingProvider,
       shipping_tracking_number: trackingNumber,
       shipping_label_url: trackingUrl,
       shipping_status: "created",

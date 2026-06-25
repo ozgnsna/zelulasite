@@ -190,11 +190,14 @@ export async function createNavlungoShipment(order: OrderShippingSource): Promis
     return { ok: false, code: "NAVLUNGO_API_ERROR", error: "Navlungo gönderi numarası alınamadı." };
   }
 
+  const trackingUrl = String(created?.tracking_url ?? "").trim();
+  const barcodeUrl = String(created?.barcode_url ?? "").trim();
+
   return {
     ok: true,
     provider: "navlungo",
     trackingNumber,
-    labelUrl: String(created?.barcode_url ?? "").trim() || null,
+    labelUrl: trackingUrl || barcodeUrl || null,
     shippingStatus: "created",
   };
 }

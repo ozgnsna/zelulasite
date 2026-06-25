@@ -7,6 +7,7 @@ import { OrderLineReviewPrompts } from "@/components/reviews/OrderLineReviewProm
 import { createClient } from "@/lib/supabase/server";
 import { orderStatusLabel } from "@/lib/account/order-status";
 import { resolveOrderTrackingUrl } from "@/lib/orders/shipping-tracking";
+import { getShippingCarrierLabel, parseShippingCarrierId } from "@/lib/shipping/provider";
 import { parseLegalContractSnapshot } from "@/lib/legal/legal-snapshot";
 
 type Props = { params: Promise<{ id: string }> };
@@ -73,6 +74,7 @@ export default async function SiparisDetayPage({ params }: Props) {
     shipping_label_url: order.shipping_label_url as string | null | undefined,
   });
   const trackingNumber = String(order.shipping_tracking_number ?? "").trim();
+  const carrierLabel = getShippingCarrierLabel(parseShippingCarrierId(order.shipping_provider as string | null));
 
   return (
     <main className="container-premium py-12 sm:py-16">
@@ -170,7 +172,7 @@ export default async function SiparisDetayPage({ params }: Props) {
               <h2 className="text-xs font-medium uppercase tracking-wide text-stone-500">Kargo takibi</h2>
               {trackingNumber ? (
                 <p className="mt-2 text-stone-800">
-                  DHL kargo kodu: <span className="font-mono font-medium">{trackingNumber}</span>
+                  {carrierLabel} kargo kodu: <span className="font-mono font-medium">{trackingNumber}</span>
                 </p>
               ) : null}
               {trackingUrl ? (

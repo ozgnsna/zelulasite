@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
-import { createShipmentForOrder } from "@/lib/shipping/provider";
+import { createShipmentForOrder, parseShippingCarrierId } from "@/lib/shipping/provider";
 import type { OrderShippingSource } from "@/lib/shipping/types";
 
 function isAdminSession(email: string | undefined): boolean {
@@ -23,7 +23,7 @@ function hasExistingShipment(row: Record<string, unknown>): boolean {
   return false;
 }
 
-export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: orderId } = await ctx.params;
   if (!orderId) {
     return NextResponse.json({ ok: false, error: "Sipariş kimliği gerekli." }, { status: 400 });
@@ -65,7 +65,24 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     shipping_address_json: row.shipping_address_json,
   };
 
-  const result = await createShipmentForOrder(source);
+  const url = new URL(req.url);
+  let carrier = parseShippingCarrierId(url.searchParams.get("carrier"));
+  if (!carrier) {
+    try {
+      const body = (await req.json().catch(() => null)) as { carrier?: unknown } | null;
+      carrier = parseShippingCarrierId(body?.carrier);
+    } catch {
+      carrier = null;
+    }
+  }
+  if (!carrier) {
+    return NextResponse.json(
+      { ok: false, error: "Taşıyıcı gerekli: carrier=navlungo veya carrier=dhl" },
+      { status: 400 },
+    );
+  }
+
+  const result = await createShipmentForOrder(source, carrier);
   if (!result.ok) {
     const notConfigured = result.code === "DHL_NOT_CONFIGURED" || result.code === "NAVLUNGO_NOT_CONFIGURED";
     return NextResponse.json(
