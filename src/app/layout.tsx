@@ -5,7 +5,9 @@ import { Suspense } from "react";
 import "./globals.css";
 import { Footer } from "@/components/Footer";
 import { StorefrontSiteChrome } from "@/components/StorefrontSiteChrome";
-import { SiteHeaderSpacer } from "@/components/SiteHeaderSpacer";
+import { cookies } from "next/headers";
+import { IMPERSONATION_COOKIE, parseImpersonationCookie } from "@/lib/admin/impersonation";
+import { siteChromePaddingClass } from "@/lib/storefront/site-chrome";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { GoogleAnalyticsLoader } from "@/components/analytics/GoogleAnalyticsLoader";
@@ -88,6 +90,15 @@ export default async function RootLayout({
   const isAdminRoute = pathname.startsWith("/admin");
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+  let impersonating = false;
+  if (!isAdminRoute) {
+    try {
+      const store = await cookies();
+      impersonating = Boolean(parseImpersonationCookie(store.get(IMPERSONATION_COOKIE)?.value));
+    } catch {
+      impersonating = false;
+    }
+  }
   return (
     <html lang="tr" className={`${display.variable} ${sans.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-[color:var(--background)] font-sans text-stone-900 antialiased">
@@ -99,14 +110,11 @@ export default async function RootLayout({
           <ReferralTrackingBridge />
         </Suspense>
         {isAdminRoute ? null : (
-          <>
-            <div className="fixed inset-x-0 top-0 z-50">
-              <StorefrontSiteChrome />
-            </div>
-            <SiteHeaderSpacer />
-          </>
+          <div className="fixed inset-x-0 top-0 z-50">
+            <StorefrontSiteChrome />
+          </div>
         )}
-        <div className="flex-1">{children}</div>
+        <div className={isAdminRoute ? "flex-1" : `flex-1 ${siteChromePaddingClass(impersonating)}`}>{children}</div>
         {isAdminRoute ? null : <Footer />}
         <Toaster richColors position="top-right" />
         <CookieBanner />
