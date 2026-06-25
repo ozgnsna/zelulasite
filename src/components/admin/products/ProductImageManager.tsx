@@ -1,7 +1,12 @@
 "use client";
 
 import { isNextRedirectError } from "@/lib/next-navigation-errors";
-import { flattenProductImageBackground } from "@/lib/images/flatten-product-background";
+import {
+  isAllowedProductMediaFile,
+  isProductVideoFile,
+  isProductVideoUrl,
+  PRODUCT_VIDEO_MAX_BYTES,
+} from "@/lib/products/media-url";
 import {
   prepareProductImageForUpload,
   PRODUCT_IMAGE_MAX_BYTES,
@@ -18,10 +23,20 @@ function isLikelyImageUrl(v: string): boolean {
 }
 
 function isLikelyVideoUrl(v: string): boolean {
-  const raw = v.trim().toLowerCase();
-  if (!raw) return false;
-  const withoutQuery = raw.split("?")[0]?.split("#")[0] ?? raw;
-  return [".mp4", ".webm", ".mov", ".m4v", ".ogg"].some((ext) => withoutQuery.endsWith(ext));
+  return isProductVideoUrl(v);
+}
+
+function isAllowedImageFile(file: File): boolean {
+  return isAllowedProductMediaFile(file);
+}
+
+function pickFirstMediaFile(files: FileList | null): File | null {
+  if (!files?.length) return null;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (isAllowedImageFile(file)) return file;
+  }
+  return null;
 }
 
 function ImageIcon({ className }: { className?: string }) {
@@ -39,20 +54,6 @@ function ImageIcon({ className }: { className?: string }) {
       <circle cx="17" cy="18" r="2.5" className="fill-current" opacity="0.3" />
     </svg>
   );
-}
-
-function isAllowedImageFile(file: File): boolean {
-  if (file.type.startsWith("image/")) return true;
-  return /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp)$/i.test(file.name);
-}
-
-function pickFirstImageFile(files: FileList | null): File | null {
-  if (!files?.length) return null;
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (isAllowedImageFile(file)) return file;
-  }
-  return null;
 }
 
 function sortImages(images: Img[]): Img[] {
@@ -83,7 +84,6 @@ export function ProductImageManager({
   const [dragOver, setDragOver] = useState(false);
   const [clientError, setClientError] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
-  const [flattenWhiteBg, setFlattenWhiteBg] = useState(true);
   const [setUploadAsCover, setSetUploadAsCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const uploadEnabled = Boolean(productId && uploadProductImageAction);
@@ -104,33 +104,39 @@ export function ProductImageManager({
   const submitFiles = async (files: FileList | null) => {
     if (!uploadEnabled || !productId || !uploadProductImageAction || !fileInputRef.current) return;
     setClientError("");
-    const file = pickFirstImageFile(files);
+    const file = pickFirstMediaFile(files);
     if (!file) {
-      setClientError("Yalnızca görsel dosyası seçin (JPG, PNG, WebP). Video yüklenemez.");
+      setClientError("Yalnızca görsel (JPG, PNG, WebP) veya video (MP4, WebM, MOV) seçin.");
       return;
     }
+    const isVideo = isProductVideoFile(file);
     setUploadBusy(true);
     try {
-      let uploadFile: File;
-      try {
-        uploadFile = await prepareProductImageForUpload(file, {
-          flattenBackground: flattenWhiteBg,
-          flattenFn: flattenProductImageBackground,
-        });
-      } catch {
-        setClientError(
-          `Görsel işlenemedi (${Math.round(file.size / 1024 / 1024)} MB). Farklı bir dosya deneyin veya «Bembeyaz arka plan» seçeneğini kapatın.`,
-        );
-        return;
-      }
-      if (uploadFile.size > PRODUCT_IMAGE_MAX_BYTES) {
-        setClientError("Sıkıştırma sonrası dosya hâlâ çok büyük; daha küçük bir kaynak görsel seçin.");
+      let uploadFile: File = file;
+      if (!isVideo) {
+        try {
+          uploadFile = await prepareProductImageForUpload(file, {
+            flattenBackground: false,
+            flattenFn: async (f) => f,
+          });
+        } catch {
+          setClientError(
+            `Görsel işlenemedi (${Math.round(file.size / 1024 / 1024)} MB). Daha küçük bir dosya deneyin.`,
+          );
+          return;
+        }
+        if (uploadFile.size > PRODUCT_IMAGE_MAX_BYTES) {
+          setClientError("Sıkıştırma sonrası dosya hâlâ çok büyük; daha küçük bir kaynak görsel seçin.");
+          return;
+        }
+      } else if (file.size > PRODUCT_VIDEO_MAX_BYTES) {
+        setClientError(`Video çok büyük; en fazla ~${Math.round(PRODUCT_VIDEO_MAX_BYTES / 1024 / 1024)} MB yükleyebilirsiniz.`);
         return;
       }
       const fd = new FormData();
       fd.append("product_id", productId);
       fd.append("return_to", returnTo ?? "");
-      fd.append("set_as_cover", setUploadAsCover ? "1" : "0");
+      fd.append("set_as_cover", !isVideo && setUploadAsCover ? "1" : "0");
       fd.append("image", uploadFile, uploadFile.name);
       await uploadProductImageAction(fd);
     } catch (err) {
@@ -151,9 +157,7 @@ export function ProductImageManager({
           aria-live="polite"
         >
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-stone-300 border-t-[#b8945f]" aria-hidden />
-          <p className="text-sm font-medium text-stone-800">
-            {flattenWhiteBg ? "Arka plan beyazlatılıyor ve yükleniyor…" : "Görsel yükleniyor…"}
-          </p>
+          <p className="text-sm font-medium text-stone-800">Medya yükleniyor…</p>
         </div>
       ) : null}
     <section
@@ -164,18 +168,9 @@ export function ProductImageManager({
         <div>
           <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
           <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
-            İstediğiniz görseli «Kapak yap» ile vitrin kapağı seçin. Stüdyo gölgesi korunur; yalnızca köşe/üst zemin beyazlatılır. Eski bozuk görselleri aynı dosyayla yeniden yükleyin.
+            Fotoğraf veya video ekleyin. Kapak yalnızca fotoğraf olabilir (liste, SEO, Trendyol). Videolar ürün sayfası galerisinde oynatılır.
           </p>
-          <div className="mt-2 flex flex-col gap-1.5">
-            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
-              <input
-                type="checkbox"
-                checked={flattenWhiteBg}
-                onChange={(e) => setFlattenWhiteBg(e.target.checked)}
-                className="size-3.5 rounded border-stone-300"
-              />
-              Kirli beyaz/gri zemini düzelt (#FFFFFF) — ürün gölgesi silinmez
-            </label>
+          <div className="mt-2">
             <label className="flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
               <input
                 type="checkbox"
@@ -183,7 +178,7 @@ export function ProductImageManager({
                 onChange={(e) => setSetUploadAsCover(e.target.checked)}
                 className="size-3.5 rounded border-stone-300"
               />
-              Yüklenen görseli kapak yap
+              Yüklenen fotoğrafı kapak yap (video için geçerli değil)
             </label>
           </div>
         </div>
@@ -199,7 +194,7 @@ export function ProductImageManager({
             type="file"
             name="image"
             form={useExternalUploadForm ? uploadFormId : undefined}
-            accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.gif,.heic"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,video/mp4,video/webm,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.heic,.mp4,.webm,.mov"
             className="hidden"
             onChange={(e) => {
               submitFiles(e.currentTarget.files);
@@ -275,7 +270,7 @@ export function ProductImageManager({
               <p className="max-w-[14rem] text-[10px] leading-snug text-stone-500">PNG, JPG veya video. Yüklemeden önce ürünü kaydedin.</p>
             </button>
           )}
-          {selectedImage && productId && setProductCoverImageAction && !selectedIsCover ? (
+          {selectedImage && productId && setProductCoverImageAction && !selectedIsCover && !selectedPreviewIsVideo ? (
             <div className="border-t border-stone-100 bg-stone-50/80 px-3 py-2.5">
               <button
                 type="submit"
@@ -305,7 +300,7 @@ export function ProductImageManager({
           >
             {sortedImages.map((img) => {
               const isCover = Boolean(img.is_cover);
-              const canSetCover = Boolean(productId && setProductCoverImageAction && !isCover);
+              const canSetCover = Boolean(productId && setProductCoverImageAction && !isCover && !isLikelyVideoUrl(img.image_url));
               return (
                 <div key={img.id} className="group relative w-[4.25rem] shrink-0 snap-start sm:w-[4.5rem] lg:w-full lg:shrink">
                   <button

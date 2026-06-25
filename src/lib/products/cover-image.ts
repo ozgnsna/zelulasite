@@ -1,5 +1,7 @@
 /** Ürün görselleri: kapak (is_cover) ve sort_order ile doğru URL seçimi. */
 
+import { isProductVideoUrl } from "@/lib/products/media-url";
+
 export type ProductImageRow = {
   image_url?: string | null;
   is_cover?: boolean | null;
@@ -20,9 +22,17 @@ export function pickProductCoverImageUrl(
   fallback?: string,
 ): string {
   const sorted = sortProductImages(normalizeProductImages(imgs));
-  const url = String(sorted[0]?.image_url ?? "").trim();
+  const still = sorted.find((row) => !isProductVideoUrl(String(row.image_url ?? "")));
+  const url = String(still?.image_url ?? "").trim();
   if (url) return url;
   return fallback ?? "";
+}
+
+export function pickFirstProductVideoUrl(imgs: ProductImageRow[] | null | undefined): string | null {
+  const sorted = sortProductImages(normalizeProductImages(imgs));
+  const row = sorted.find((item) => isProductVideoUrl(String(item.image_url ?? "")));
+  const url = String(row?.image_url ?? "").trim();
+  return url || null;
 }
 
 /** Supabase bazen tek satırı dizi yerine nesne döndürebilir; PDP galerisi için güvenli dizi. */

@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { isProductVideoUrl } from "@/lib/products/media-url";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -32,6 +33,9 @@ function normalizeLightboxSrc(url: string): string {
 
 function isRenderableSrc(url: string): boolean {
   if (!url) return false;
+  if (isProductVideoUrl(url)) {
+    return url.startsWith("https://") || url.startsWith("http://") || url.startsWith("/");
+  }
   return (
     url.startsWith("https://") ||
     url.startsWith("http://") ||
@@ -204,6 +208,7 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
   const current = images[index] ?? images[0]!;
   const src = normalizeLightboxSrc(current.image_url);
   const srcOk = isRenderableSrc(src);
+  const srcIsVideo = isProductVideoUrl(src);
   const zoomed = scaleRef.current > 1;
   const interacting = pointers.current.size > 0;
 
@@ -225,23 +230,27 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
             <span className="text-[11px] text-white/50">Tam ekran</span>
           )}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => zoomFromButton(1 / 1.4)}
-              className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-40"
-              aria-label="Uzaklaştır"
-              disabled={!zoomed}
-            >
-              <ZoomOut className="size-5" strokeWidth={1.5} aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => zoomFromButton(1.4)}
-              className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
-              aria-label="Yakınlaştır"
-            >
-              <ZoomIn className="size-5" strokeWidth={1.5} aria-hidden />
-            </button>
+            {!srcIsVideo ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => zoomFromButton(1 / 1.4)}
+                  className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-40"
+                  aria-label="Uzaklaştır"
+                  disabled={!zoomed}
+                >
+                  <ZoomOut className="size-5" strokeWidth={1.5} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => zoomFromButton(1.4)}
+                  className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
+                  aria-label="Yakınlaştır"
+                >
+                  <ZoomIn className="size-5" strokeWidth={1.5} aria-hidden />
+                </button>
+              </>
+            ) : null}
             <button
               type="button"
               onClick={onClose}
@@ -258,19 +267,29 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
             ref={boxRef}
             className="relative flex max-h-[82vh] max-w-[min(94vw,880px)] select-none items-center justify-center overflow-hidden rounded-lg bg-white p-2 shadow-2xl"
             style={{
-              touchAction: "none",
-              cursor: !srcOk || loadError ? "default" : zoomed ? "grab" : "zoom-in",
+              touchAction: srcIsVideo ? "auto" : "none",
+              cursor: !srcOk || loadError ? "default" : srcIsVideo ? "default" : zoomed ? "grab" : "zoom-in",
             }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onDoubleClick={onDoubleClick}
+            onPointerDown={srcIsVideo ? undefined : onPointerDown}
+            onPointerMove={srcIsVideo ? undefined : onPointerMove}
+            onPointerUp={srcIsVideo ? undefined : onPointerUp}
+            onPointerCancel={srcIsVideo ? undefined : onPointerUp}
+            onDoubleClick={srcIsVideo ? undefined : onDoubleClick}
           >
             {!srcOk || loadError ? (
               <p className="px-6 py-12 text-center text-sm text-stone-600">
-                Görsel yüklenemedi. Sayfayı yenileyip tekrar deneyin.
+                {srcIsVideo ? "Video yüklenemedi. Sayfayı yenileyip tekrar deneyin." : "Görsel yüklenemedi. Sayfayı yenileyip tekrar deneyin."}
               </p>
+            ) : srcIsVideo ? (
+              <video
+                key={src}
+                src={src}
+                controls
+                playsInline
+                preload="metadata"
+                className="max-h-[min(78vh,820px)] w-auto max-w-full object-contain"
+                aria-label={`${alt} — video`}
+              />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element -- lightbox: portal + doğrudan URL; fill/Image viewport sorunları yok
               <img

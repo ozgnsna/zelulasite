@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
+import { isProductVideoUrl } from "@/lib/products/media-url";
 import { absoluteUrl, getSiteOrigin, truncateMetaDescription } from "@/lib/seo/site";
 
 type ProductSeoInput = {
@@ -33,9 +34,10 @@ export function pickSeoProductImageUrl(
   const sorted = sortProductImages(normalizeProductImages(imgs));
   const ownHosted = sorted.find((row) => {
     const url = String(row.image_url ?? "").trim();
-    return url && !isTrendyolCdnImageUrl(url);
+    return url && !isTrendyolCdnImageUrl(url) && !isProductVideoUrl(url);
   });
-  const picked = ownHosted?.image_url ?? sorted[0]?.image_url ?? fallback;
+  const stillImage = sorted.find((row) => !isProductVideoUrl(String(row.image_url ?? "")));
+  const picked = ownHosted?.image_url ?? stillImage?.image_url ?? sorted[0]?.image_url ?? fallback;
   if (picked.startsWith("http://") || picked.startsWith("https://")) return picked;
   return absoluteUrl(picked);
 }
@@ -109,7 +111,7 @@ export function buildProductJsonLd(
   const pageUrl = absoluteUrl(`/urunler/${product.slug}`);
   const images = sortProductImages(normalizeProductImages(product.product_images))
     .map((row) => String(row.image_url ?? "").trim())
-    .filter(Boolean)
+    .filter((url) => url && !isProductVideoUrl(url))
     .slice(0, 8);
   const image = images.length > 0 ? images : [pickSeoProductImageUrl(product.product_images)];
   const inStock = Number(product.stock_quantity ?? 0) > 0;

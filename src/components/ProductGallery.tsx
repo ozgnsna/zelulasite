@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import { ProductImage } from "@/components/product/ProductImage";
 import { ProductGalleryZoomTrigger, ProductImageLightbox } from "@/components/product/ProductImageLightbox";
 import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
+import { isProductVideoUrl } from "@/lib/products/media-url";
 
 type Img = { id: string; image_url: string; is_cover?: boolean | null; sort_order?: number | null };
 
@@ -27,7 +28,7 @@ export function ProductGallery({
   extraImages?: Img[];
   fallback: string;
   alt: string;
-  /** Varsa ana görsel üzerinde sessiz döngü video (örn. .mp4 URL) */
+  /** Kapak fotoğrafı üzerinde sessiz döngü video (ürün galerisindeki video veya env). */
   loopVideoUrl?: string | null;
 }) {
   const list = useMemo(() => {
@@ -50,7 +51,11 @@ export function ProductGallery({
 
   const mainSrc = list.some((i) => i.image_url === active) ? active : (list[0]?.image_url ?? fallback);
   const firstUrl = list[0]?.image_url ?? fallback;
-  const showVideo = Boolean(loopVideoUrl?.trim()) && !videoFailed && mainSrc === firstUrl;
+  const mainIsVideo = isProductVideoUrl(mainSrc);
+  const firstIsVideo = isProductVideoUrl(firstUrl);
+  const overlayPoster = firstIsVideo ? fallback : firstUrl;
+  const showLoopOverlay =
+    Boolean(loopVideoUrl?.trim()) && !videoFailed && !mainIsVideo && mainSrc === overlayPoster;
   const resolvedActiveIndex = Math.max(0, list.findIndex((i) => i.image_url === mainSrc));
 
   const onVideoError = useCallback(() => setVideoFailed(true), []);
@@ -59,42 +64,55 @@ export function ProductGallery({
   return (
     <div className="space-y-4">
       <div className="group relative aspect-[4/5] overflow-hidden rounded-3xl border border-[#e8dfd3] bg-white shadow-[0_16px_40px_rgba(70,53,38,0.08)] transition duration-200 hover:border-[#d8ccb9] hover:shadow-[0_20px_48px_rgba(70,53,38,0.1)]">
-        <div key={mainSrc} className="gallery-main-fade absolute inset-0 bg-white">
-          <ProductImage
-            src={mainSrc}
-            alt={alt}
-            fill
-            priority
-            className="bg-white object-cover object-center transition duration-[680ms] ease-out motion-safe:group-hover:scale-[1.02]"
-            sizes="(max-width: 1024px) 100vw, 50vw"
-          />
-        </div>
-
-        {showVideo ? (
+        {mainIsVideo ? (
           <video
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.88] mix-blend-normal"
-            poster={mainSrc}
-            muted
+            key={mainSrc}
+            src={mainSrc}
+            className="absolute inset-0 h-full w-full object-cover"
+            controls
             playsInline
-            autoPlay
-            loop
             preload="metadata"
-            aria-hidden
-            onError={onVideoError}
-          >
-            <source src={loopVideoUrl!.trim()} type="video/mp4" />
-          </video>
-        ) : null}
+            aria-label={`${alt} — video`}
+          />
+        ) : (
+          <>
+            <div key={mainSrc} className="gallery-main-fade absolute inset-0 bg-white">
+              <ProductImage
+                src={mainSrc}
+                alt={alt}
+                fill
+                priority
+                className="bg-white object-cover object-center transition duration-[680ms] ease-out motion-safe:group-hover:scale-[1.02]"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+              />
+            </div>
 
-        {/* Parlama — yalnızca hover; gri ton için sürekli gradient yok */}
-        <div
-          className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl motion-reduce:hidden"
-          aria-hidden
-        >
-          <div className="absolute -inset-[20%] rotate-12 bg-gradient-to-tr from-transparent via-white/[0.14] to-transparent opacity-0 blur-2xl transition duration-[1.1s] ease-out motion-safe:group-hover:translate-x-[18%] motion-safe:group-hover:opacity-100" />
-        </div>
+            {showLoopOverlay ? (
+              <video
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.88] mix-blend-normal"
+                poster={overlayPoster}
+                muted
+                playsInline
+                autoPlay
+                loop
+                preload="metadata"
+                aria-hidden
+                onError={onVideoError}
+              >
+                <source src={loopVideoUrl!.trim()} type="video/mp4" />
+              </video>
+            ) : null}
 
-        {!showVideo ? <ProductGalleryZoomTrigger onOpen={openLightbox} /> : null}
+            <div
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl motion-reduce:hidden"
+              aria-hidden
+            >
+              <div className="absolute -inset-[20%] rotate-12 bg-gradient-to-tr from-transparent via-white/[0.14] to-transparent opacity-0 blur-2xl transition duration-[1.1s] ease-out motion-safe:group-hover:translate-x-[18%] motion-safe:group-hover:opacity-100" />
+            </div>
+
+            {!showLoopOverlay ? <ProductGalleryZoomTrigger onOpen={openLightbox} /> : null}
+          </>
+        )}
       </div>
 
       <ProductImageLightbox
@@ -116,13 +134,14 @@ export function ProductGallery({
           >
             {list.map((img, index) => {
               const isOn = mainSrc === img.image_url;
+              const isVideo = isProductVideoUrl(img.image_url);
               return (
                 <button
                   key={`${img.id}-${index}`}
                   type="button"
                   role="tab"
                   aria-selected={isOn}
-                  aria-label={`Görsel ${index + 1}`}
+                  aria-label={isVideo ? `Video ${index + 1}` : `Görsel ${index + 1}`}
                   onClick={() => setActive(img.image_url)}
                   className={`relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-2xl border-2 transition duration-200 motion-safe:hover:scale-[1.03] sm:w-[84px] ${
                     isOn
@@ -130,13 +149,22 @@ export function ProductGallery({
                       : "border-[#e6dccf] bg-white hover:border-brand-gold/35"
                   }`}
                 >
-                  <ProductImage
-                    src={img.image_url}
-                    alt=""
-                    fill
-                    className="object-contain bg-white p-0.5"
-                    sizes="120px"
-                  />
+                  {isVideo ? (
+                    <>
+                      <video src={img.image_url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                      <span className="absolute bottom-0.5 right-0.5 rounded bg-black/55 px-1 py-px text-[7px] font-medium text-white">
+                        ▶
+                      </span>
+                    </>
+                  ) : (
+                    <ProductImage
+                      src={img.image_url}
+                      alt=""
+                      fill
+                      className="object-contain bg-white p-0.5"
+                      sizes="120px"
+                    />
+                  )}
                 </button>
               );
             })}

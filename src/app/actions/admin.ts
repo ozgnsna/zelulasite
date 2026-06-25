@@ -24,6 +24,13 @@ import { createClient } from "@/lib/supabase/server";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
 import { captureGiftCardRedemptionForOrder } from "@/lib/gift-cards/redeem";
 import { PRODUCT_IMAGE_MAX_BYTES } from "@/lib/images/product-image-upload";
+import {
+  isAllowedProductMediaFile,
+  isProductVideoFile,
+  isProductVideoUrl,
+  PRODUCT_VIDEO_MAX_BYTES,
+  productVideoMimeType,
+} from "@/lib/products/media-url";
 import { syncLoyaltyLedgersForOrder } from "@/lib/loyalty/sync-order-ledger";
 import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
@@ -1008,8 +1015,7 @@ export async function markOrderHandDelivered(formData: FormData) {
 const PRODUCT_IMAGES_BUCKET = "product-images";
 
 function isAllowedProductImageFile(file: File) {
-  if (file.type.startsWith("image/")) return true;
-  return /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp)$/i.test(file.name);
+  return isAllowedProductMediaFile(file);
 }
 
 /** Görsel yükle/sil sonrası yalnızca ilgili sayfalar — tüm /urunler revalidate zaman aşımı yapıyordu. */
@@ -1157,26 +1163,35 @@ export async function uploadProductImage(formData: FormData) {
     }
     if (!isAllowedProductImageFile(file)) {
       redirect(
-        withQueryParam(returnTo, "imageUploadError", "Yalnızca görsel dosyası yükleyin (JPG, PNG, WebP). Video desteklenmiyor."),
+        withQueryParam(
+          returnTo,
+          "imageUploadError",
+          "Yalnızca görsel (JPG, PNG, WebP) veya video (MP4, WebM, MOV) yükleyin.",
+        ),
       );
     }
-    if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+    const isVideo = isProductVideoFile(file);
+    const maxBytes = isVideo ? PRODUCT_VIDEO_MAX_BYTES : PRODUCT_IMAGE_MAX_BYTES;
+    if (file.size > maxBytes) {
       redirect(
         withQueryParam(
           returnTo,
           "imageUploadError",
-          `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`,
+          isVideo
+            ? `Video çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~${Math.round(PRODUCT_VIDEO_MAX_BYTES / 1024 / 1024)} MB yükleyin.`
+            : `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`,
         ),
       );
     }
 
-    const ext = file.name.split(".").pop() ?? "jpg";
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? (isVideo ? "mp4" : "jpg");
     const path = `products/${productId}/${Date.now()}.${ext}`;
     const bytes = await file.arrayBuffer();
+    const contentType = isVideo ? productVideoMimeType(file) : file.type || "application/octet-stream";
 
     const { error: uploadError } = await supabase.storage
       .from(PRODUCT_IMAGES_BUCKET)
-      .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
+      .upload(path, bytes, { contentType, upsert: false });
     if (uploadError) {
       redirect(
         withQueryParam(
@@ -1195,7 +1210,8 @@ export async function uploadProductImage(formData: FormData) {
       .eq("product_id", productId);
     const existing = existingRows ?? [];
     const maxSort = existing.reduce((m, r) => Math.max(m, Number(r.sort_order ?? 0)), 0);
-    const setAsCover = formData.get("set_as_cover") === "1" || existing.length === 0;
+    const wantsCover = formData.get("set_as_cover") === "1" || existing.length === 0;
+    const setAsCover = wantsCover && !isVideo;
     if (setAsCover && existing.length > 0) {
       await supabase.from("product_images").update({ is_cover: false }).eq("product_id", productId);
     }
@@ -1277,11 +1293,14 @@ export async function setProductCoverImage(formData: FormData) {
 
   const { data: row } = await supabase
     .from("product_images")
-    .select("id,product_id")
+    .select("id,product_id,image_url")
     .eq("id", imageId)
     .maybeSingle();
   if (!row || String(row.product_id) !== productId) {
     redirect(withQueryParam(returnTo, "imageUploadError", "Görsel bulunamadı."));
+  }
+  if (isProductVideoUrl(String(row.image_url ?? ""))) {
+    redirect(withQueryParam(returnTo, "imageUploadError", "Video kapak görseli olamaz. Önce bir fotoğraf seçin."));
   }
 
   await supabase.from("product_images").update({ is_cover: false }).eq("product_id", productId);
