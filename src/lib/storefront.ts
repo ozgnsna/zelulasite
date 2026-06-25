@@ -64,6 +64,33 @@ export async function getHomeData() {
   }
 }
 
+const getProductPageHrefByNameCached = unstable_cache(
+  async (nameFragment: string) => {
+    const supabase = createStorefrontReadClient();
+    if (!supabase || !nameFragment.trim()) return null;
+    const { data } = await supabase
+      .from("products")
+      .select("slug")
+      .eq("is_active", true)
+      .ilike("name", `%${nameFragment.trim()}%`)
+      .limit(1)
+      .maybeSingle();
+    const slug = String(data?.slug ?? "").trim();
+    return slug ? `/urunler/${slug}` : null;
+  },
+  ["storefront-product-href-by-name"],
+  { revalidate: 300, tags: ["storefront-home"] },
+);
+
+/** Banner vb. için ürün adından PDP linki (ör. "Balığın Işıltısı"). */
+export async function getProductPageHrefByName(nameFragment: string): Promise<string | null> {
+  try {
+    return await getProductPageHrefByNameCached(nameFragment);
+  } catch {
+    return null;
+  }
+}
+
 function attachCategorySlug(products: Product[]): Product[] {
   return products.map((p) => ({
     ...p,

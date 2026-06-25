@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
-import { getHomeData } from "@/lib/storefront";
+import { getHomeData, getProductPageHrefByName } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
@@ -17,7 +17,23 @@ import {
   HomeInstagramSectionSkeleton,
 } from "@/components/home/HomeInstagramSection";
 
-const HERO_BANNERS = [
+type HeroBannerDef = {
+  id: string;
+  imageSrc: string;
+  alt: string;
+  href: string;
+  objectPosition?: string;
+  productName?: string;
+};
+
+const HERO_BANNER_DEFS: HeroBannerDef[] = [
+  {
+    id: "baligin-isiltisi",
+    imageSrc: "/hero-banner-baligin-isiltisi.png",
+    alt: "Zelula — Balığın Işıltısı; Zelula Artisan Fish Küpe",
+    href: "/urunler/zelula-artisan-fish-kupe",
+    objectPosition: "left center",
+  },
   {
     id: "gold",
     imageSrc: "/hero-banner-gold.png",
@@ -39,11 +55,27 @@ const HERO_BANNERS = [
     href: "/urunler",
     objectPosition: "left center",
   },
-] as const;
+];
+
+async function buildHeroBanners() {
+  const productNames = [...new Set(HERO_BANNER_DEFS.map((b) => b.productName).filter(Boolean))] as string[];
+  const hrefByName = new Map<string, string>();
+  await Promise.all(
+    productNames.map(async (name) => {
+      const href = await getProductPageHrefByName(name);
+      if (href) hrefByName.set(name, href);
+    }),
+  );
+
+  return HERO_BANNER_DEFS.map(({ productName, ...banner }) => ({
+    ...banner,
+    href: productName ? hrefByName.get(productName) ?? banner.href : banner.href,
+  }));
+}
 
 export default async function HomePage() {
-  const [{ categories, bestSellers, newArrivals }, { isSignedIn, favoriteIds }] =
-    await Promise.all([getHomeData(), loadFavoriteUiContext()]);
+  const [{ categories, bestSellers, newArrivals }, { isSignedIn, favoriteIds }, heroBanners] =
+    await Promise.all([getHomeData(), loadFavoriteUiContext(), buildHeroBanners()]);
 
   const bestSellerItems = bestSellers.map((p) => ({
     product_id: p.id,
@@ -106,7 +138,7 @@ export default async function HomePage() {
       <ViewItemListTracker listName="Homepage Best Sellers" listId="home_best_sellers" items={bestSellerItems} />
       <ViewItemListTracker listName="Homepage New Arrivals" listId="home_new_arrivals" items={newArrivalItems} />
 
-      <HomeHeroBannerCarousel banners={[...HERO_BANNERS]} />
+      <HomeHeroBannerCarousel banners={heroBanners} />
 
       <FadeIn delay={0.02}>
         <section className="border-t border-[#ebe6df] bg-[#fffdfb] py-14 sm:py-16">
