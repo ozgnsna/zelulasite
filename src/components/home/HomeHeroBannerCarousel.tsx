@@ -15,8 +15,8 @@ export type HomeHeroBanner = {
 };
 
 const AUTO_MS = 7000;
-/** Banner tasarımları ~1.75:1; tam genişlik görsel, yanlarda site rengi yok. */
-const SLIDE_HEIGHT = "min(72svh, max(16rem, calc(100vw / 1.75)))";
+/** Banner biraz daha kompakt; ~2:1 oran. */
+const SLIDE_HEIGHT = "min(56svh, max(13rem, calc(100vw / 2)))";
 
 export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] }) {
   const [index, setIndex] = useState(0);
@@ -35,15 +35,15 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
   if (count === 0) return null;
 
   return (
-    <section
-      className="relative w-full overflow-hidden bg-[#faf8f5]"
-      style={{ height: SLIDE_HEIGHT }}
-      aria-label="Zelula tanıtım bannerları"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
-    >
+    <section className="bg-[#faf8f5] px-4 pt-4 sm:px-6 sm:pt-5" aria-label="Zelula tanıtım bannerları">
+      <div
+        className="relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-2xl border border-[#e8dfd3]/70 bg-[#faf8f5] shadow-[0_8px_32px_-12px_rgba(45,37,33,0.12)] sm:rounded-[1.35rem]"
+        style={{ height: SLIDE_HEIGHT }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onFocus={() => setPaused(true)}
+        onBlur={() => setPaused(false)}
+      >
       <div
         className="flex h-full transition-transform duration-700 ease-out motion-reduce:transition-none"
         style={{ transform: `translateX(-${index * 100}%)` }}
@@ -107,9 +107,10 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
       ) : null}
 
       <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[2] h-16 bg-gradient-to-t from-[#faf8f5] to-transparent sm:h-20"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[2] h-12 bg-gradient-to-t from-[#faf8f5] to-transparent sm:h-14"
         aria-hidden
       />
+      </div>
     </section>
   );
 }
