@@ -56,26 +56,28 @@ export function ProductCard({
   const showBadges = Boolean(badges?.bestseller || badges?.new);
   const aspectClass =
     imageForward && imageEmphasis === "high"
-      ? "aspect-[11/16] sm:aspect-[10/15] lg:aspect-[3/4]"
+      ? "aspect-square sm:aspect-[10/15] lg:aspect-[3/4]"
       : imageForward
-        ? "aspect-[5/7] sm:aspect-[3/4]"
+        ? "aspect-square sm:aspect-[3/4]"
         : compact
           ? "aspect-[4/5] sm:aspect-[4/5]"
           : "aspect-[4/5]";
   const contentPad = compact
     ? "gap-1 p-2.5 sm:gap-2 sm:p-5"
     : imageForward
-      ? "gap-1.5 p-4 sm:p-4"
+      ? "gap-1 p-2 sm:gap-1.5 sm:p-4"
       : "gap-2 p-5";
   const titleClass = compact
     ? "line-clamp-2 font-serif text-[0.8125rem] leading-snug text-stone-900 sm:line-clamp-none sm:text-[1.12rem]"
     : imageForward
-      ? "font-serif text-[1rem] leading-snug text-stone-900 sm:text-[1.05rem]"
+      ? "line-clamp-2 font-serif text-[0.8125rem] leading-snug text-stone-900 sm:line-clamp-none sm:text-[1.05rem]"
       : "font-serif text-[1.12rem] leading-snug text-stone-900";
   const imageSizes = compact
     ? "(max-width: 640px) 46vw, (max-width: 1024px) 50vw, 33vw"
-    : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
-  const cardRadius = compact ? "rounded-xl sm:rounded-[1.35rem]" : "rounded-[1.35rem]";
+    : imageForward
+      ? "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+      : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
+  const cardRadius = compact || imageForward ? "rounded-xl sm:rounded-[1.35rem]" : "rounded-[1.35rem]";
 
   const showPeek = Boolean(peekHint) && !conversionOverlay;
 
@@ -190,7 +192,7 @@ export function ProductCard({
               <p
                 className={cn(
                   "zl-gold-text font-bold tabular-nums tracking-tight",
-                  compact ? "text-sm sm:text-xl" : "text-lg sm:text-xl",
+                  compact || imageForward ? "text-sm sm:text-xl" : "text-lg sm:text-xl",
                 )}
               >
                 {formatMoney(price * 100, "TRY")}

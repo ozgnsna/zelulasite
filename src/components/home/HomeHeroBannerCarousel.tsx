@@ -15,8 +15,8 @@ export type HomeHeroBanner = {
 };
 
 const AUTO_MS = 7000;
-/** Banner biraz daha kompakt; ~2:1 oran. */
-const SLIDE_HEIGHT = "min(56svh, max(13rem, calc(100vw / 2)))";
+/** Banner tasarımları ~1.75:1; cover + sol hizalı — sağda boşluk kalmaz, yazı okunur. */
+const SLIDE_ASPECT = "7 / 4";
 
 export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] }) {
   const [index, setIndex] = useState(0);
@@ -37,8 +37,8 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
   return (
     <section className="bg-[#faf8f5] px-4 pt-4 sm:px-6 sm:pt-5" aria-label="Zelula tanıtım bannerları">
       <div
-        className="relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-2xl border border-[#e8dfd3]/70 bg-[#faf8f5] shadow-[0_8px_32px_-12px_rgba(45,37,33,0.12)] sm:rounded-[1.35rem]"
-        style={{ height: SLIDE_HEIGHT }}
+        className="relative mx-auto w-full max-w-[1100px] overflow-hidden rounded-2xl border border-[#e8dfd3]/70 bg-[#faf8f5] shadow-[0_8px_32px_-12px_rgba(45,37,33,0.12)] sm:rounded-[1.35rem]"
+        style={{ aspectRatio: SLIDE_ASPECT, width: "100%" }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onFocus={() => setPaused(true)}
@@ -57,9 +57,9 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
                 fill
                 priority={i === 0}
                 unoptimized
-                className="object-cover"
+                className="object-cover object-left"
                 style={{ objectPosition: banner.objectPosition ?? "left center" }}
-                sizes="100vw"
+                sizes="(max-width: 1100px) 100vw, 1100px"
               />
               {banner.href ? (
                 <Link

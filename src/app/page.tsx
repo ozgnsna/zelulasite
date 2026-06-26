@@ -141,7 +141,7 @@ export default async function HomePage() {
       <HomeHeroBannerCarousel banners={heroBanners} />
 
       <FadeIn delay={0.02}>
-        <section className="border-t border-[#ebe6df] bg-[#fffdfb] py-14 sm:py-16">
+        <section className="border-t border-[#ebe6df] bg-[#fffdfb] py-10 sm:py-16">
           <div className="container-premium">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -157,7 +157,7 @@ export default async function HomePage() {
                 Tümünü gör
               </Link>
             </div>
-            <HomeProductRail className="mt-10">
+            <HomeProductRail className="mt-6 sm:mt-10">
               {bestSlice.map((p) => (
                 <HomeProductRailItem key={p.id}>
                   <ProductCard
@@ -223,7 +223,7 @@ export default async function HomePage() {
             </h2>
             <p className="mt-2 text-sm font-light text-stone-600">Günlük ve özel anlara uyumlu seçkiler.</p>
           </div>
-          <HomeProductRail className="mt-10">
+          <HomeProductRail className="mt-6 sm:mt-10">
             {kombinSlice.map((p) => (
               <HomeProductRailItem key={p.id}>
                 <div className="h-full transition-[transform,box-shadow] duration-200 ease-out motion-safe:hover:scale-[1.02] motion-safe:hover:shadow-[0_20px_48px_rgba(55,48,40,0.12)]">
