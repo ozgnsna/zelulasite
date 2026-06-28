@@ -63,6 +63,9 @@ export const metadata: Metadata = {
     description: "Günlük ışıltını tamamlayan seçkiler.",
     images: [ogImage],
   },
+  verification: {
+    google: "HSZYNiQJWmqxM83inO_rr6QFvW17nkgaEY2dR5Dc_S4",
+  },
   icons: {
     icon: [
       { url: "/icon-96.png", type: "image/png", sizes: "96x96" },

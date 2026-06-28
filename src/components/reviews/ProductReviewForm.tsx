@@ -21,6 +21,11 @@ export function ProductReviewForm({
   loginNext: string;
 }) {
   const [rating, setRating] = useState(existingReview?.rating ?? 0);
+  const initialBody =
+    existingReview?.status === "rejected" || existingReview?.status === "hidden"
+      ? (existingReview.body ?? "")
+      : "";
+  const [bodyLength, setBodyLength] = useState(initialBody.length);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,15 +108,17 @@ export function ProductReviewForm({
         <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Yorumun</span>
         <textarea
           name="body"
-          defaultValue={existingReview?.status === "rejected" ? existingReview.body : ""}
+          defaultValue={initialBody}
           required
           minLength={10}
-          maxLength={2000}
-          rows={4}
+          maxLength={4000}
+          rows={8}
           disabled={pending}
-          className="mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm leading-relaxed text-stone-900"
-          placeholder="Ürün hakkındaki deneyimini birkaç cümleyle anlat…"
+          onChange={(e) => setBodyLength(e.target.value.length)}
+          className="mt-2 min-h-[11rem] w-full resize-y rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-stone-900"
+          placeholder="Ürün hakkındaki deneyimini istediğin kadar detaylı anlatabilirsin…"
         />
+        <p className="mt-1.5 text-right text-[11px] tabular-nums text-stone-400">{bodyLength} / 4000</p>
       </label>
 
       <div className="mt-4">

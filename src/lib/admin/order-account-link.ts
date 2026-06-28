@@ -1,4 +1,4 @@
-import { canWriteProductReview } from "@/lib/account/reviews";
+import { canWriteProductReview, isOrderDeliveredForReview } from "@/lib/account/reviews";
 
 export type AdminOrderAccountLink = {
   mode: "linked" | "guest";
@@ -40,7 +40,7 @@ export function buildAdminOrderAccountLink(input: {
     const os = String(input.orderStatus ?? "");
     let detail = "Ödeme ve teslim tamamlanınca yorum açılır.";
     if (pay !== "paid") detail = "Ödeme tamamlanmadan yorum açılmaz.";
-    else if (os !== "hand_delivered") detail = "Sipariş teslim edilince (elden veya kargo) yorum açılır.";
+    else if (!isOrderDeliveredForReview(os)) detail = "Sipariş teslim edilince (elden veya kargo) yorum açılır.";
 
     return {
       mode: "linked",

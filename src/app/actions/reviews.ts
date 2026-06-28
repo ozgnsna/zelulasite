@@ -31,12 +31,12 @@ export async function submitProductReview(formData: FormData): Promise<SubmitPro
   const productSlug = String(formData.get("productSlug") ?? "").trim();
   const rating = parseRating(formData.get("rating"));
   const title = String(formData.get("title") ?? "").trim().slice(0, 120);
-  const body = String(formData.get("body") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim().slice(0, 4000);
 
   if (!productId || !productSlug) return { ok: false, error: "Ürün bulunamadı." };
   if (rating == null) return { ok: false, error: "1–5 arası puan seçin." };
   if (body.length < 10) return { ok: false, error: "Yorum en az 10 karakter olmalı." };
-  if (body.length > 2000) return { ok: false, error: "Yorum en fazla 2000 karakter olabilir." };
+  if (body.length > 4000) return { ok: false, error: "Yorum en fazla 4000 karakter olabilir." };
 
   const supabase = await createClient();
   const {
@@ -46,7 +46,7 @@ export async function submitProductReview(formData: FormData): Promise<SubmitPro
 
   const orderId = await findQualifyingOrderIdForProduct(supabase, user.id, productId);
   if (!orderId) {
-    return { ok: false, error: "Bu ürün için yorum, siparişin teslim edilmesinden sonra açılır." };
+    return { ok: false, error: "Bu ürün için yorum, siparişin sana ulaştıktan (kargo veya elden teslim) sonra açılır." };
   }
 
   const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();

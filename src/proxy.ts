@@ -1,8 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { ZELULA_REFERRAL_COOKIE, ZELULA_REFERRAL_TTL_SECONDS } from "@/lib/referral/constants";
+import {
+  activeProductSlugExists,
+  parseLegacyProductSlugCandidate,
+} from "@/lib/seo/legacy-product-redirect";
 
 export async function proxy(request: NextRequest) {
+  const legacySlug = parseLegacyProductSlugCandidate(request.nextUrl.pathname);
+  if (legacySlug && (await activeProductSlugExists(legacySlug))) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = `/urunler/${legacySlug}`;
+    return NextResponse.redirect(redirectUrl, 301);
+  }
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
   const requestWithHeaders = { headers: requestHeaders };
