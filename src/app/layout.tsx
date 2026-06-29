@@ -108,7 +108,7 @@ export default async function RootLayout({
         {isAdminRoute ? null : (
           <div className="sticky top-0 z-50 shadow-[0_4px_16px_-6px_rgba(62,52,38,0.14)]">
             <AnnouncementBar />
-            <div className="border-t-2 border-[#d4c8b8] border-b border-[#e0d5c8] bg-[#fffdfb]">
+            <div className="border-t-2 border-[#d4c8b8] border-b border-[#e0d5c8] bg-white">
               <StorefrontSiteChrome />
             </div>
           </div>

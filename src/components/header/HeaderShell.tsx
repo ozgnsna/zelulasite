@@ -87,6 +87,95 @@ export function HeaderShell({
           />
         </Link>
 
+        <div className="hidden min-w-0 flex-1 justify-center md:flex md:px-2 lg:px-4">
+          <nav
+            className="relative flex max-w-full flex-wrap items-center justify-center gap-x-0.5 gap-y-1 lg:gap-1 xl:gap-1.5"
+            aria-label="Kategoriler"
+          >
+            {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
+              const t = getTaxonBySlug(slug);
+              if (!t) return null;
+              return (
+                <Link
+                  key={slug}
+                  href={categoryHref(slug)}
+                  className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-3 lg:text-[11px] xl:text-xs"
+                >
+                  {t.name}
+                </Link>
+              );
+            })}
+            <Link
+              href="/cok-satanlar"
+              className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-[#f4f0ea] hover:ring-[color:var(--brand-gold)]/50 lg:px-3 lg:text-[11px] xl:text-xs"
+            >
+              Çok Satanlar
+            </Link>
+            <div
+              ref={megaWrapRef}
+              className="relative"
+              onMouseEnter={() => setMegaOpen(true)}
+              onMouseLeave={() => setMegaOpen(false)}
+            >
+              <button
+                type="button"
+                aria-expanded={megaOpen}
+                aria-haspopup="menu"
+                className="inline-flex min-h-11 items-center gap-0.5 rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-3 lg:text-[11px] xl:text-xs"
+                onClick={() => setMegaOpen((o) => !o)}
+              >
+                Tüm Ürünler
+                <ChevronDown className={cn("h-3 w-3 opacity-50 transition", megaOpen && "rotate-180")} aria-hidden />
+              </button>
+              {megaOpen ? (
+                <div
+                  role="menu"
+                  className="absolute left-1/2 top-[calc(100%+0.25rem)] z-50 min-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 pt-1"
+                >
+                  <div className="rounded-2xl border border-[#e8dfd3] bg-[#fffdfb] p-5 shadow-[0_16px_48px_rgba(55,48,40,0.12)]">
+                    <div className="grid grid-cols-2 gap-6">
+                      {MEGA_MENU_GROUPS.map((group) => (
+                        <div key={group.title}>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-600">
+                            {group.title}
+                          </p>
+                          <ul className="mt-3 space-y-0.5">
+                            {group.slugs.map((s) => {
+                              const tax = getTaxonBySlug(s);
+                              if (!tax) return null;
+                              return (
+                                <li key={s}>
+                                  <Link
+                                    role="menuitem"
+                                    href={categoryHref(s)}
+                                    className="block rounded-lg px-2 py-1.5 text-sm text-stone-800 transition hover:bg-[#faf6ef]"
+                                    onClick={() => setMegaOpen(false)}
+                                  >
+                                    {tax.name}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 border-t border-[#ebe6df] pt-3 text-center">
+                      <Link
+                        href="/urunler"
+                        className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-gold-a11y underline-offset-4 transition hover:underline"
+                        onClick={() => setMegaOpen(false)}
+                      >
+                        Tümünü gör
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </nav>
+        </div>
+
         <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 sm:gap-2 md:pl-4 lg:pl-6">
           <HeaderSearch />
 
@@ -198,97 +287,6 @@ export function HeaderShell({
           </div>
 
           {cartSlot}
-        </div>
-      </div>
-
-      <div className="hidden border-t border-[#ebe4da] bg-[#f7f3ec] md:block">
-        <div className="container-premium py-1.5">
-          <nav
-            className="relative flex max-w-full flex-wrap items-center justify-center gap-x-0.5 gap-y-1 lg:gap-1 xl:gap-1.5"
-            aria-label="Kategoriler"
-          >
-            {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
-              const t = getTaxonBySlug(slug);
-              if (!t) return null;
-              return (
-                <Link
-                  key={slug}
-                  href={categoryHref(slug)}
-                  className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-white/80 hover:text-stone-900 lg:px-3 lg:text-[11px] xl:text-xs"
-                >
-                  {t.name}
-                </Link>
-              );
-            })}
-            <Link
-              href="/cok-satanlar"
-              className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-white/80 hover:ring-[color:var(--brand-gold)]/50 lg:px-3 lg:text-[11px] xl:text-xs"
-            >
-              Çok Satanlar
-            </Link>
-            <div
-              ref={megaWrapRef}
-              className="relative"
-              onMouseEnter={() => setMegaOpen(true)}
-              onMouseLeave={() => setMegaOpen(false)}
-            >
-              <button
-                type="button"
-                aria-expanded={megaOpen}
-                aria-haspopup="menu"
-                className="inline-flex min-h-11 items-center gap-0.5 rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-white/80 hover:text-stone-900 lg:px-3 lg:text-[11px] xl:text-xs"
-                onClick={() => setMegaOpen((o) => !o)}
-              >
-                Tüm Ürünler
-                <ChevronDown className={cn("h-3 w-3 opacity-50 transition", megaOpen && "rotate-180")} aria-hidden />
-              </button>
-              {megaOpen ? (
-                <div
-                  role="menu"
-                  className="absolute left-1/2 top-[calc(100%+0.25rem)] z-50 min-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 pt-1"
-                >
-                  <div className="rounded-2xl border border-[#e8dfd3] bg-[#fffdfb] p-5 shadow-[0_16px_48px_rgba(55,48,40,0.12)]">
-                    <div className="grid grid-cols-2 gap-6">
-                      {MEGA_MENU_GROUPS.map((group) => (
-                        <div key={group.title}>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-600">
-                            {group.title}
-                          </p>
-                          <ul className="mt-3 space-y-0.5">
-                            {group.slugs.map((s) => {
-                              const tax = getTaxonBySlug(s);
-                              if (!tax) return null;
-                              return (
-                                <li key={s}>
-                                  <Link
-                                    role="menuitem"
-                                    href={categoryHref(s)}
-                                    className="block rounded-lg px-2 py-1.5 text-sm text-stone-800 transition hover:bg-[#faf6ef]"
-                                    onClick={() => setMegaOpen(false)}
-                                  >
-                                    {tax.name}
-                                  </Link>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 border-t border-[#ebe6df] pt-3 text-center">
-                      <Link
-                        href="/urunler"
-                        className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-gold-a11y underline-offset-4 transition hover:underline"
-                        onClick={() => setMegaOpen(false)}
-                      >
-                        Tümünü gör
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </nav>
         </div>
       </div>
 
