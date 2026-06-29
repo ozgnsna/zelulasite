@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+
+const emptyPolyfill = "./src/lib/empty-polyfill.js";
+const emptyPolyfillAbs = path.join(process.cwd(), "src/lib/empty-polyfill.js");
 
 function supabaseStorageRemotePattern(): { protocol: "https"; hostname: string; pathname: string } {
   const raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -27,9 +31,26 @@ const nextConfig: NextConfig = {
     ];
   },
   experimental: {
+    inlineCss: true,
     serverActions: {
       bodySizeLimit: "8mb",
     },
+  },
+  turbopack: {
+    resolveAlias: {
+      "../build/polyfills/polyfill-module": emptyPolyfill,
+      "next/dist/build/polyfills/polyfill-module": emptyPolyfill,
+    },
+  },
+  webpack(config, { isServer }) {
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "../build/polyfills/polyfill-module": emptyPolyfillAbs,
+        "next/dist/build/polyfills/polyfill-module": emptyPolyfillAbs,
+      };
+    }
+    return config;
   },
   images: {
     formats: ["image/avif", "image/webp"],

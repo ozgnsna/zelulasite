@@ -30,7 +30,7 @@ const sans = DM_Sans({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
-  preload: true,
+  preload: false,
 });
 
 const siteDescription =
