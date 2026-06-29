@@ -1,5 +1,6 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
 
 const payloadSchema = z.object({
   event_name: z.string().min(1),
@@ -25,11 +26,16 @@ export async function POST(req: Request) {
   const parsed = payloadSchema.safeParse(body);
   if (!parsed.success) return new Response("invalid payload", { status: 400 });
 
+  const pagePath = normalizePagePath(parsed.data.page_path);
+  if (pagePath && isAnalyticsExcludedPath(pagePath)) {
+    return new Response("ok", { status: 200 });
+  }
+
   const admin = createAdminClient();
   const { error } = await admin.from("analytics_events").insert({
     event_name: parsed.data.event_name,
     occurred_at: parsed.data.occurred_at ?? new Date().toISOString(),
-    page_path: normalizePagePath(parsed.data.page_path),
+    page_path: pagePath,
     client_id: parsed.data.client_id ?? null,
     ecommerce: parsed.data.ecommerce ?? null,
     meta: parsed.data.meta ?? null,

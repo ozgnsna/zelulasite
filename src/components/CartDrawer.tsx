@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { addToCart, updateCartItem } from "@/app/actions/store";
 import { formatTry } from "@/lib/money";
 import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
-import { trackRemoveFromCart } from "@/lib/analytics";
+import { trackAddToCart, trackRemoveFromCart } from "@/lib/analytics";
 import { ShoppingBag, Trash2 } from "lucide-react";
 
 type DrawerLine = {
@@ -217,6 +217,12 @@ export function CartDrawer({
                       return;
                     }
                     setPendingUpsellId(null);
+                    trackAddToCart({
+                      product_id: item.id,
+                      product_name: item.name,
+                      price: item.price,
+                      quantity: 1,
+                    });
                     router.refresh();
                   });
                           }}

@@ -2,6 +2,8 @@
 
 import { getCookieConsent } from "@/lib/cookies/consent";
 
+import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
+
 type Primitive = string | number | boolean | null | undefined;
 type EventParams = Record<
   string,
@@ -67,6 +69,7 @@ function getClientId() {
 
 function sendToBackend(event_name: string, payload: Record<string, unknown>) {
   if (typeof window === "undefined") return;
+  if (isAnalyticsExcludedPath(window.location.pathname)) return;
   const body = JSON.stringify({
     event_name,
     occurred_at: new Date().toISOString(),
@@ -91,6 +94,7 @@ export function trackEvent(
   options?: { dedupeKey?: string; dedupe?: boolean },
 ) {
   if (typeof window === "undefined") return;
+  if (isAnalyticsExcludedPath(window.location.pathname)) return;
   if (!analyticsConsentGranted()) {
     if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
     return;
@@ -145,6 +149,7 @@ function trackEcommerceEvent(
   options?: { dedupeKey?: string; dedupe?: boolean },
 ) {
   if (typeof window === "undefined") return;
+  if (isAnalyticsExcludedPath(window.location.pathname)) return;
   if (!analyticsConsentGranted()) {
     if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
     return;
@@ -324,3 +329,5 @@ export function trackCouponUsage(params: {
     { dedupeKey: `coupon:${code}:${params.subtotal_after_discount}`, dedupe: true },
   );
 }
+
+export { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";

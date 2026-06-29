@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { CONSENT_UPDATED_EVENT, getCookieConsent } from "@/lib/cookies/consent";
+import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
 import { trackPageView } from "@/lib/analytics";
 
 export function AnalyticsProvider() {
@@ -11,6 +12,7 @@ export function AnalyticsProvider() {
 
   useEffect(() => {
     const fire = () => {
+      if (isAnalyticsExcludedPath(pathname)) return;
       if (!getCookieConsent()?.analytics) return;
       const search = searchParams?.toString();
       const path = search ? `${pathname}?${search}` : pathname;

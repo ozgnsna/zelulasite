@@ -7,6 +7,7 @@ import { useTransition, useState } from "react";
 import { toast } from "sonner";
 import { addToCart } from "@/app/actions/store";
 import { formatTry } from "@/lib/money";
+import { trackAddToCart } from "@/lib/analytics";
 import { dispatchAtcShareMoment } from "@/lib/referral/share-copy";
 
 export type CartUpsellItem = {
@@ -66,6 +67,12 @@ export function CartUpsellStrip({ items }: { items: CartUpsellItem[] }) {
                       return;
                     }
                     setPendingId(null);
+                    trackAddToCart({
+                      product_id: p.id,
+                      product_name: p.name,
+                      price: p.price,
+                      quantity: 1,
+                    });
                     queueMicrotask(() => dispatchAtcShareMoment(p.slug));
                     router.refresh();
                   });
