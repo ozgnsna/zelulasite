@@ -20,6 +20,8 @@ import {
 type HeroBannerDef = {
   id: string;
   imageSrc: string;
+  width: number;
+  height: number;
   alt: string;
   href: string;
   objectPosition?: string;
@@ -29,28 +31,36 @@ type HeroBannerDef = {
 const HERO_BANNER_DEFS: HeroBannerDef[] = [
   {
     id: "baligin-isiltisi",
-    imageSrc: "/hero-banner-baligin-isiltisi.png",
+    imageSrc: "/hero-banner-baligin-isiltisi.webp",
+    width: 1024,
+    height: 682,
     alt: "Zelula — Balığın Işıltısı; Zelula Artisan Fish Küpe",
     href: "/urunler/zelula-artisan-fish-kupe",
     objectPosition: "left center",
   },
   {
     id: "gold",
-    imageSrc: "/hero-banner-gold.png",
+    imageSrc: "/hero-banner-gold.webp",
+    width: 1024,
+    height: 576,
     alt: "Zelula — Taktığınızda fark edilen detaylar; plaj ve inci kolye koleksiyonu",
     href: "/urunler",
     objectPosition: "left center",
   },
   {
     id: "pearl",
-    imageSrc: "/hero-banner-pearl.png",
+    imageSrc: "/hero-banner-pearl.webp",
+    width: 1024,
+    height: 576,
     alt: "Zelula — Taktığınızda fark edilen detaylar; altın takı koleksiyonu",
     href: "/urunler",
     objectPosition: "left center",
   },
   {
     id: "collection",
-    imageSrc: "/hero-banner-collection.png",
+    imageSrc: "/hero-banner-collection.webp",
+    width: 1024,
+    height: 576,
     alt: "Zelula Kids — Hayal gücü kadar renkli; çocuk kolye koleksiyonu",
     href: "/urunler",
     objectPosition: "left center",

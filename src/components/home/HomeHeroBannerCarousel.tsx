@@ -8,6 +8,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 export type HomeHeroBanner = {
   id: string;
   imageSrc: string;
+  width: number;
+  height: number;
   alt: string;
   href?: string;
   /** object-position; metin solda olduğu için varsayılan left center */
@@ -54,10 +56,12 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
               <Image
                 src={banner.imageSrc}
                 alt={banner.alt}
-                fill
+                width={banner.width}
+                height={banner.height}
                 priority={i === 0}
-                unoptimized
-                className="object-cover object-left"
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "low"}
+                className="h-full w-full object-cover object-left"
                 style={{ objectPosition: banner.objectPosition ?? "left center" }}
                 sizes="(max-width: 1100px) 100vw, 1100px"
               />

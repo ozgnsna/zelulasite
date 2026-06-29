@@ -24,8 +24,8 @@ export function GoogleAnalyticsLoader({ gaId }: { gaId: string | null | undefine
 
   return (
     <>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="afterInteractive" />
-      <Script id="ga-init-consented" strategy="afterInteractive">
+      <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="lazyOnload" />
+      <Script id="ga-init-consented" strategy="lazyOnload">
         {`window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js', new Date());gtag('config', '${gaId}', { send_page_view: false });`}
       </Script>
     </>

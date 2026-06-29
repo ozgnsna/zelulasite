@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "picsum.photos", pathname: "/**" },
       { protocol: "https", hostname: "fastly.picsum.photos", pathname: "/**" },

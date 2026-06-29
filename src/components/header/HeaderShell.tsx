@@ -83,7 +83,7 @@ export function HeaderShell({
             height={42}
             className="header-logo-img h-full w-auto object-contain object-left"
             sizes="(max-width: 768px) 168px, 220px"
-            priority
+            fetchPriority="low"
           />
         </Link>
 

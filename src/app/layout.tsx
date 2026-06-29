@@ -21,12 +21,16 @@ const display = Cormorant_Garamond({
   variable: "--font-display",
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600"],
+  display: "swap",
+  preload: false,
 });
 
 const sans = DM_Sans({
   variable: "--font-sans",
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+  preload: true,
 });
 
 const siteDescription =

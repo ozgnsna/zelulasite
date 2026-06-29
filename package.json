@@ -11,6 +11,7 @@
     "seed:supabase": "node scripts/seed-supabase.mjs",
     "upload:gift-card-image": "node scripts/upload-gift-card-image.mjs",
     "favicons": "node scripts/generate-favicons.mjs",
+    "optimize:hero-banners": "node scripts/optimize-hero-banners.mjs",
     "diagnose:notify": "node scripts/diagnose-admin-notify.mjs",
     "fetch:ptt-addresses": "node scripts/fetch-ptt-addresses.mjs"
   },
