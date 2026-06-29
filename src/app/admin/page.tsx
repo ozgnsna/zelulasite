@@ -2,30 +2,18 @@ import { type ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DashboardRecentOrdersPanel } from "@/components/admin/DashboardRecentOrdersPanel";
-import {
-  fetchTrendyolOrdersAction,
-  importTrendyolProductsAction,
-  testTrendyolConnectionAction,
-} from "@/app/actions/admin";
 import { AdminOperationsDock } from "@/components/admin/AdminOperationsDock";
 import { ADMIN_ORDERS_LIST_SELECT, istanbulDayUtcRange } from "@/lib/admin/admin-orders-list";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import {
-  buildDashboardAnalyticsMetrics,
-  collectVisitorIds,
-} from "@/lib/admin/analytics-dashboard";
 import { AdminAnalyticsSection } from "@/components/admin/dashboard/AdminAnalyticsSection";
+import { ProductHealthPanel } from "@/components/admin/dashboard/ProductHealthPanel";
+import { fetchDashboardProductCounts } from "@/lib/admin/dashboard-product-counts";
 import { resolveAnalyticsRange } from "@/lib/admin/analytics-range";
 import { fetchAnalyticsSectionData } from "@/lib/admin/fetch-analytics-section";
-import { fetchClientIdsSeenBefore } from "@/lib/admin/fetch-analytics-returning-clients";
 
 export const dynamic = "force-dynamic";
-
-function toTry(n: number) {
-  return `${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
-}
 
 function splitTryParts(n: number): { main: string; decimals: string } {
   const full = n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -88,26 +76,6 @@ function istanbulYesterdayUtcRange(): { start: Date; end: Date } {
   };
 }
 
-function shortenOrderNumberDisplay(orderNumber: string): string {
-  const s = String(orderNumber ?? "").trim();
-  if (s.length <= 18) return s;
-  return `${s.slice(0, 10)}…${s.slice(-4)}`;
-}
-
-function formatOrderRelativeTimeTr(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "—";
-  const diffMs = Math.max(0, Date.now() - t);
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "Az önce";
-  if (mins < 60) return `${mins} dk önce`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} sa. önce`;
-  const days = Math.floor(hours / 24);
-  if (days < 8) return `${days} gün önce`;
-  return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
-}
-
 export default async function AdminPage({
   searchParams,
 }: {
@@ -163,8 +131,16 @@ export default async function AdminPage({
   const { start: dayStart, end: dayEnd } = istanbulDayUtcRange();
   const { start: yStart, end: yEnd } = istanbulYesterdayUtcRange();
 
-  const [todayOrdersRes, todayAnalyticsRes, productsRes, todayOrderItemsRes, recentOrdersListRes, yesterdayOrdersRes, pendingShipCountRes, pendingShipListRes, analyticsSectionData] =
-    await Promise.all([
+  const [
+    todayOrdersRes,
+    todayOrderItemsRes,
+    recentOrdersListRes,
+    yesterdayOrdersRes,
+    pendingShipCountRes,
+    pendingShipListRes,
+    analyticsSectionData,
+    productCounts,
+  ] = await Promise.all([
     admin
       .from("orders")
       .select("id,total,payment_status,order_status,order_number,customer_name")
@@ -173,17 +149,6 @@ export default async function AdminPage({
       .order("created_at", { ascending: false })
       .limit(50),
     admin
-      .from("analytics_events")
-      .select("event_name,client_id,ecommerce")
-      .gte("occurred_at", dayStart.toISOString())
-      .lte("occurred_at", dayEnd.toISOString())
-      .limit(3000),
-    admin
-      .from("products")
-      .select("id,name,stock_quantity,is_active,trendyol_active,trendyol_barcode,trendyol_stock_code,trendyol_category_id,created_at")
-      .order("created_at", { ascending: false })
-      .limit(200),
-    admin
       .from("order_items")
       .select("product_id,quantity,order:orders!inner(created_at,payment_status,order_status),product:products(name)")
       .gte("order.created_at", dayStart.toISOString())
@@ -191,11 +156,7 @@ export default async function AdminPage({
       .eq("order.payment_status", "paid")
       .neq("order.order_status", "cancelled")
       .limit(2000),
-    admin
-      .from("orders")
-      .select(ADMIN_ORDERS_LIST_SELECT)
-      .order("created_at", { ascending: false })
-      .limit(50),
+    admin.from("orders").select(ADMIN_ORDERS_LIST_SELECT).order("created_at", { ascending: false }).limit(50),
     admin
       .from("orders")
       .select("id,total,payment_status,order_status")
@@ -216,16 +177,17 @@ export default async function AdminPage({
       .order("created_at", { ascending: true })
       .limit(8),
     fetchAnalyticsSectionData(admin, analyticsRange),
+    fetchDashboardProductCounts(admin),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
   const recentOrdersList = recentOrdersListRes.data ?? [];
-  const todayAnalytics = todayAnalyticsRes.data ?? [];
-  const products = productsRes.data ?? [];
   const todayOrderItems = todayOrderItemsRes.data ?? [];
   const yesterdayOrders = yesterdayOrdersRes.data ?? [];
   const pendingShipmentCount = pendingShipCountRes.count ?? 0;
   const pendingShipQueue = pendingShipListRes.data ?? [];
+
+  const { activeProductsCount, outOfStockCount, lowStockCount, notListedOnMarketplaceCount } = productCounts;
 
   const ordersToday = todayOrders.length;
   const revenueToday = todayOrders
@@ -235,36 +197,7 @@ export default async function AdminPage({
   const revenueYesterday = yesterdayOrders
     .filter((o) => o.payment_status === "paid" && o.order_status !== "cancelled")
     .reduce((sum, o) => sum + Number(o.total ?? 0), 0);
-  const todayVisitorIds = collectVisitorIds(todayAnalytics);
-  const clientIdsSeenBeforeToday = await fetchClientIdsSeenBefore(
-    admin,
-    [...todayVisitorIds],
-    dayStart,
-  );
-  const dashboardAnalytics = buildDashboardAnalyticsMetrics(todayAnalytics, {
-    clientIdsSeenBeforeToday,
-  });
-  const addToCartToday = dashboardAnalytics.addToCarts;
-  const viewItemToday = dashboardAnalytics.productViews;
-  const purchaseToday = dashboardAnalytics.purchases;
 
-  const lowStockCount = products.filter((p) => Boolean(p.is_active) && Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= 3).length;
-  const missingMarketplaceCount = products.filter((p) => {
-    if (!Boolean(p.trendyol_active)) return false;
-    return [String(p.trendyol_barcode ?? "").trim(), String(p.trendyol_stock_code ?? "").trim(), String(p.trendyol_category_id ?? "").trim()].some((v) => !v);
-  }).length;
-  const activeProductsCount = products.filter((p) => Boolean(p.is_active)).length;
-  const notListedOnMarketplaceCount = products.filter((p) => {
-    if (!Boolean(p.is_active)) return false;
-    if (!Boolean(p.trendyol_active)) return true;
-    return [String(p.trendyol_barcode ?? "").trim(), String(p.trendyol_stock_code ?? "").trim(), String(p.trendyol_category_id ?? "").trim()].some((v) => !v);
-  }).length;
-  const productsAddedTodayInSlice = products.filter((p) => {
-    const raw = String((p as { created_at?: string }).created_at ?? "").trim();
-    if (!raw) return false;
-    const t = new Date(raw).getTime();
-    return Number.isFinite(t) && t >= dayStart.getTime() && t <= dayEnd.getTime();
-  }).length;
   const salesByProduct = new Map<string, { name: string; qty: number }>();
   for (const item of todayOrderItems) {
     const pid = String(item.product_id ?? "");
@@ -276,38 +209,11 @@ export default async function AdminPage({
     salesByProduct.set(pid, row);
   }
   const topSellingProduct = [...salesByProduct.values()].sort((a, b) => b.qty - a.qty)[0] ?? null;
-  const trendyolIssueCount = notListedOnMarketplaceCount + missingMarketplaceCount;
   const bestSellersToday = [...salesByProduct.entries()]
     .map(([productId, row]) => ({ productId, name: row.name, qty: row.qty }))
     .sort((a, b) => b.qty - a.qty)
     .slice(0, 5);
-  const hasPaidOrderInRecent = recentOrdersList.some(
-    (o) => o.payment_status === "paid" && String(o.order_status ?? "") !== "cancelled",
-  );
-  const storeProgressSteps = [
-    { key: "products", label: "Ürün vitrinı", done: activeProductsCount > 0 },
-    {
-      key: "marketplace",
-      label: "Pazaryeri tam",
-      done: activeProductsCount > 0 && notListedOnMarketplaceCount === 0,
-    },
-    { key: "sale", label: "Ödenmiş satış", done: hasPaidOrderInRecent || revenueToday > 0 },
-  ] as const;
-  const storeProgressDone = storeProgressSteps.filter((s) => s.done).length;
-  const storeProgressPct = Math.round((storeProgressDone / storeProgressSteps.length) * 100);
-  const progressHighlightKey = storeProgressSteps.find((s) => !s.done)?.key ?? null;
-  const nextProgressHint =
-    progressHighlightKey === "products"
-      ? "Sonraki adım: vitrine ürün ekleyerek ilk satışa yaklaş."
-      : progressHighlightKey === "marketplace"
-        ? "Sonraki adım: Trendyol alanlarını tamamlayıp gönder — checkout trafiği açılır."
-        : progressHighlightKey === "sale"
-          ? "Sonraki adım: ödenmiş sipariş akışını canlı tut (stok, kargo, bildirim)."
-          : "Mağaza hazır görünüyor — yeni ürünlerde aynı ritmi koru.";
-  const newestProductCreatedAt =
-    products.length > 0
-      ? String((products[0] as { created_at?: string }).created_at ?? "").trim() || undefined
-      : undefined;
+
   const importedRaw = String(sp.trendyolImported ?? "").trim();
   const importedCount = Number(importedRaw);
   const hasImported = importedRaw.length > 0 && Number.isFinite(importedCount) && importedCount >= 0;
@@ -345,78 +251,77 @@ export default async function AdminPage({
   const restoredCount = Number(restoredRaw);
   const hasRestored = restoredRaw.length > 0 && Number.isFinite(restoredCount) && restoredCount >= 0;
 
-  const dashboardCheckedAtTr = new Date().toLocaleString("tr-TR", {
-    timeZone: "Europe/Istanbul",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
   return (
     <>
       <main className={`${ADMIN_OPERATIONS_MAIN} pb-28 pt-5 lg:pb-24 lg:pt-7`}>
-        <div className="mb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">Operasyon</p>
-          <h1 className="mt-1 font-serif text-3xl font-light tracking-tight text-stone-950">Kontrol paneli</h1>
-          <p className="mt-1 text-sm text-stone-600">Bugün müdahale gerektiren işler ve satış özeti.</p>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">Operasyon</p>
+            <h1 className="mt-1 font-serif text-3xl font-light tracking-tight text-stone-950">Kontrol paneli</h1>
+            <p className="mt-1 text-sm text-stone-600">Bugün müdahale gerektiren işler ve satış özeti.</p>
+          </div>
+          <Link
+            href="/admin/products/new"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-800/15 bg-stone-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-stone-800"
+          >
+            + Ürün ekle
+          </Link>
         </div>
 
-      {importError ? (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          Trendyol import hatası: {importError}
-        </div>
-      ) : null}
-      {testError ? (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          Trendyol bağlantı testi başarısız: {testError}
-          {testEnv || testSellerId || testEndpoint ? (
-            <div className="mt-2 space-y-1 text-xs text-rose-900/90">
+        {importError ? (
+          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            Trendyol import hatası: {importError}
+          </div>
+        ) : null}
+        {testError ? (
+          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            Trendyol bağlantı testi başarısız: {testError}
+            {testEnv || testSellerId || testEndpoint ? (
+              <div className="mt-2 space-y-1 text-xs text-rose-900/90">
+                {testEnv ? <p>Ortam: {testEnv}</p> : null}
+                {testSellerId ? <p>seller_id: {testSellerId}</p> : null}
+                {testEndpoint ? <p>Endpoint: {testEndpoint}</p> : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {testOk ? (
+          <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            <p className="font-medium">Trendyol bağlantı testi tamamlandı.</p>
+            <div className="mt-2 space-y-1 text-xs text-sky-900/90">
               {testEnv ? <p>Ortam: {testEnv}</p> : null}
               {testSellerId ? <p>seller_id: {testSellerId}</p> : null}
               {testEndpoint ? <p>Endpoint: {testEndpoint}</p> : null}
             </div>
-          ) : null}
-        </div>
-      ) : null}
-      {testOk ? (
-        <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          <p className="font-medium">Trendyol bağlantı testi tamamlandı.</p>
-          <div className="mt-2 space-y-1 text-xs text-sky-900/90">
-            {testEnv ? <p>Ortam: {testEnv}</p> : null}
-            {testSellerId ? <p>seller_id: {testSellerId}</p> : null}
-            {testEndpoint ? <p>Endpoint: {testEndpoint}</p> : null}
+            {testSample || Number.isFinite(approvedTestCount) || Number.isFinite(totalTestCount) ? (
+              <p className="mt-1 text-xs text-sky-700">
+                approved={Number.isFinite(approvedTestCount) ? approvedTestCount : 0}, total=
+                {Number.isFinite(totalTestCount) ? totalTestCount : 0}, sample={testSample || "-"}
+              </p>
+            ) : null}
           </div>
-          {testEnv ? <p className="mt-2 text-xs text-sky-800">Ortam: {testEnv}</p> : null}
-          {testSample || Number.isFinite(approvedTestCount) || Number.isFinite(totalTestCount) ? (
-            <p className="mt-1 text-xs text-sky-700">
-              approved={Number.isFinite(approvedTestCount) ? approvedTestCount : 0}, total=
-              {Number.isFinite(totalTestCount) ? totalTestCount : 0}, sample={testSample || "-"}
+        ) : null}
+        {hasImported ? (
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {importedCount.toLocaleString("tr-TR")} ürün eklendi
+            {hasUpdated ? `, ${updatedCount.toLocaleString("tr-TR")} ürün güncellendi` : ""}
+            {hasDeactivated ? `, ${deactivatedCount.toLocaleString("tr-TR")} ürün pasife alındı` : ""}
+            {hasFetched ? ` (${fetchedCount.toLocaleString("tr-TR")} ürün bulundu)` : ""}
+          </div>
+        ) : null}
+        {hasOrdersProcessed ? (
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <p>{ordersProcessed.toLocaleString("tr-TR")} Trendyol siparişi işlendi.</p>
+            <p className="mt-1">
+              {hasStockUpdated ? `${stockUpdated.toLocaleString("tr-TR")} ürün stoğu güncellendi` : "0 ürün stoğu güncellendi"}
+              {hasUnmatched ? ` · ${unmatchedCount.toLocaleString("tr-TR")} ürün eşleşmedi` : ""}
+              {hasDuplicate ? ` · ${duplicateCount.toLocaleString("tr-TR")} tekrar kayıt atlandı` : ""}
+              {hasRestored ? ` · ${restoredCount.toLocaleString("tr-TR")} siparişte stok iadesi yapıldı` : ""}
             </p>
-          ) : null}
-        </div>
-      ) : null}
-      {hasImported ? (
-        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {importedCount.toLocaleString("tr-TR")} ürün eklendi
-          {hasUpdated ? `, ${updatedCount.toLocaleString("tr-TR")} ürün güncellendi` : ""}
-          {hasDeactivated ? `, ${deactivatedCount.toLocaleString("tr-TR")} ürün pasife alındı` : ""}
-          {hasFetched ? ` (${fetchedCount.toLocaleString("tr-TR")} ürün bulundu)` : ""}
-        </div>
-      ) : null}
-      {hasOrdersProcessed ? (
-        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          <p>{ordersProcessed.toLocaleString("tr-TR")} Trendyol siparişi işlendi.</p>
-          <p className="mt-1">
-            {hasStockUpdated ? `${stockUpdated.toLocaleString("tr-TR")} ürün stoğu güncellendi` : "0 ürün stoğu güncellendi"}
-            {hasUnmatched ? ` · ${unmatchedCount.toLocaleString("tr-TR")} ürün eşleşmedi` : ""}
-            {hasDuplicate ? ` · ${duplicateCount.toLocaleString("tr-TR")} tekrar kayıt atlandı` : ""}
-            {hasRestored ? ` · ${restoredCount.toLocaleString("tr-TR")} siparişte stok iadesi yapıldı` : ""}
-          </p>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
 
-      <section id="analytics" className="space-y-4">
+        <div className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Bugün · Sipariş</p>
@@ -430,25 +335,34 @@ export default async function AdminPage({
               <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
                 {pendingShipmentCount.toLocaleString("tr-TR")}
               </p>
-              <Link href="/admin/orders?queue=ship" className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+              <Link
+                href="/admin/orders?queue=ship"
+                className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline"
+              >
                 Kuyruğu aç →
               </Link>
             </div>
             <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Trendyol uyarı</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Stokta yok</p>
               <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
-                {trendyolIssueCount.toLocaleString("tr-TR")}
+                {outOfStockCount.toLocaleString("tr-TR")}
               </p>
-              <Link href="/admin/trendyol" className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
-                Entegrasyon →
+              <Link
+                href="/admin/products?status=active&stock=out"
+                className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline"
+              >
+                Katalog →
               </Link>
             </div>
             <div className="rounded-2xl border border-stone-200/50 bg-white/90 px-3 py-3 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Düşük stok</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Az stok</p>
               <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-stone-950">
                 {lowStockCount.toLocaleString("tr-TR")}
               </p>
-              <Link href="/admin/products?stock=low" className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+              <Link
+                href="/admin/products?status=active&stock=low"
+                className="mt-1 inline-block text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline"
+              >
                 Katalog →
               </Link>
             </div>
@@ -458,46 +372,6 @@ export default async function AdminPage({
                 <TryPriceSplit n={revenueToday} className="text-xl font-semibold tracking-tight text-stone-900" />
               </div>
               <p className="mt-0.5 text-[10px] leading-snug text-stone-600">{kpiRevenueDeltaTr(revenueToday, revenueYesterday)}</p>
-            </div>
-          </div>
-
-          <div
-            id="visitor-analytics"
-            className="rounded-2xl border border-[#e8dfd3]/90 bg-[linear-gradient(165deg,#fffdfb_0%,#f7f4ef_100%)] px-4 py-3 shadow-sm ring-1 ring-stone-900/[0.04]"
-          >
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-800">Bugün · Ziyaretçiler</h2>
-                <p className="mt-0.5 text-[10px] text-stone-600">
-                  Yeni = ilk kez bu tarayıcı · Dönen = daha önce siteye gelmiş (client_id)
-                </p>
-              </div>
-              <a
-                href="#analytics-detail"
-                className="text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline"
-              >
-                Huninin detayı ↓
-              </a>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:max-w-md">
-              <div className="rounded-xl border border-stone-200/70 bg-white/90 px-3 py-2 text-center shadow-sm">
-                <p className="text-[9px] font-bold uppercase tracking-wide text-stone-500">Toplam</p>
-                <p className="mt-0.5 text-2xl font-bold tabular-nums text-stone-950">
-                  {dashboardAnalytics.visitorsToday.toLocaleString("tr-TR")}
-                </p>
-              </div>
-              <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-3 py-2 text-center shadow-sm">
-                <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-800/90">Yeni</p>
-                <p className="mt-0.5 text-2xl font-bold tabular-nums text-emerald-950">
-                  {dashboardAnalytics.visitorsNewToday.toLocaleString("tr-TR")}
-                </p>
-              </div>
-              <div className="rounded-xl border border-stone-200/70 bg-stone-50/80 px-3 py-2 text-center shadow-sm">
-                <p className="text-[9px] font-bold uppercase tracking-wide text-stone-600">Dönen</p>
-                <p className="mt-0.5 text-2xl font-bold tabular-nums text-stone-950">
-                  {dashboardAnalytics.visitorsReturningToday.toLocaleString("tr-TR")}
-                </p>
-              </div>
             </div>
           </div>
 
@@ -514,378 +388,30 @@ export default async function AdminPage({
               shipping_provider: (o.shipping_provider as string | null) ?? null,
               shipping_tracking_number: (o.shipping_tracking_number as string | null) ?? null,
             }))}
+            pendingShipOrders={pendingShipQueue.map((o) => ({
+              id: String(o.id),
+              order_number: String(o.order_number ?? ""),
+              total: Number(o.total ?? 0),
+              customer_name: String(o.customer_name ?? ""),
+              created_at: String(o.created_at ?? ""),
+              order_status: String(o.order_status ?? ""),
+            }))}
             dayStartIso={dayStart.toISOString()}
             dayEndIso={dayEnd.toISOString()}
           />
 
-          <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900">Yeni gelen siparişler</h2>
-                  <p className="mt-0.5 text-[11px] text-stone-500">Ödendi · henüz hazırlığa alınmadı</p>
-                </div>
-                <Link
-                  href="/admin/orders?queue=ship"
-                  className="shrink-0 rounded-full bg-stone-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-stone-800"
-                >
-                  Tümü
-                </Link>
-              </div>
-              <ul className="mt-2 space-y-0.5">
-                {pendingShipQueue.length === 0 ? (
-                  <li className="rounded-lg border border-dashed border-stone-200 bg-stone-50/80 px-2.5 py-3 text-center text-[11px] text-stone-500">
-                    Bekleyen yok.
-                  </li>
-                ) : (
-                  pendingShipQueue.map((o) => (
-                    <li key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-stone-100/90 bg-stone-50/40 px-2 py-1.5">
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-stone-900">{o.customer_name}</p>
-                        <p className="font-mono text-[10px] text-stone-500">{shortenOrderNumberDisplay(String(o.order_number ?? ""))}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <span className="text-xs font-semibold tabular-nums text-stone-800">
-                          {Number(o.total ?? 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                        </span>
-                        <Link href={`/admin/orders/${o.id}`} className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold text-stone-800 ring-1 ring-stone-200/90 hover:bg-stone-50">
-                          Aç
-                        </Link>
-                      </div>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </div>
-            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900">Trendyol & stok uyarıları</h2>
-                  <p className="mt-0.5 text-[11px] text-stone-500">Pazaryeri ve kritik stok (son 200 ürün dilimi)</p>
-                </div>
-                <Link href="/admin/products" className="text-[11px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
-                  Katalog
-                </Link>
-              </div>
-              <ul className="mt-2 space-y-1 text-[13px] text-stone-700">
-                <li className="flex justify-between gap-2 rounded-lg bg-amber-50/80 px-2.5 py-1.5 ring-1 ring-amber-200/60">
-                  <span>Eksik / yayında değil</span>
-                  <span className="font-semibold tabular-nums text-stone-900">{notListedOnMarketplaceCount}</span>
-                </li>
-                <li className="flex justify-between gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 ring-1 ring-stone-200/60">
-                  <span>Alan eksik (aktif TY)</span>
-                  <span className="font-semibold tabular-nums text-stone-900">{missingMarketplaceCount}</span>
-                </li>
-                <li className="flex justify-between gap-2 rounded-lg bg-rose-50/70 px-2.5 py-1.5 ring-1 ring-rose-200/50">
-                  <span>Kritik stok (1–3)</span>
-                  <span className="font-semibold tabular-nums text-stone-900">{lowStockCount}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {bestSellersToday.length > 0 ? (
-            <div className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-stone-900">Bugün çok satanlar</h2>
-                <Link href="/admin/products" className="text-[11px] font-semibold text-stone-600 underline-offset-2 hover:underline">
-                  Katalogda aç
-                </Link>
-              </div>
-              <ol className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-5">
-                {bestSellersToday.map((row, i) => (
-                  <li
-                    key={row.productId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-stone-100 bg-stone-50/60 px-2.5 py-2 text-[13px]"
-                  >
-                    <span className="font-mono text-xs text-stone-400">{i + 1}</span>
-                    <span className="min-w-0 flex-1 truncate font-medium text-stone-900">{row.name}</span>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-stone-600">{row.qty} ad.</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ) : null}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Metric
-              emphasis
-              title="Aktif ürünler"
-              value={activeProductsCount.toLocaleString("tr-TR")}
-              trend={
-                productsAddedTodayInSlice > 0 ? (
-                  <span className="font-semibold text-emerald-800/90">
-                    +{productsAddedTodayInSlice.toLocaleString("tr-TR")} bugün (son 200 diliminde)
-                  </span>
-                ) : (
-                  <span className="font-medium text-stone-500">Bugün bu dilimde yeni ürün yok</span>
-                )
-              }
-              helper={
-                activeProductsCount === 0 ? (
-                  <>Katalog boş — &quot;Yeni ürün ekle&quot; ile başla; ardından pazaryeri alanlarını doldur.</>
-                ) : (
-                  <>Son 200 ürün dilimi. Çeşitlendir: set, varyant, sezon — sepet değerini büyüt.</>
-                )
-              }
-            />
-            <Metric
-              emphasis
-              title="Pazaryerinde eksik"
-              value={notListedOnMarketplaceCount.toLocaleString("tr-TR")}
-              trend={<span className="font-medium text-stone-500">Canlı liste · dünle kıyas yok</span>}
-              helper={
-                notListedOnMarketplaceCount === 0 ? (
-                  <>Bu dilimde tamam. Yeni ürün eklediğinde barkod, stok kodu ve kategoriyi anında kontrol et.</>
-                ) : (
-                  <>
-                    Gönderim veya alan eksik.{" "}
-                    <span className="font-semibold text-stone-900">Trendyol ekranında tamamla → gönder.</span>
-                  </>
-                )
-              }
-            />
-          </div>
-          <p className="text-center text-[11px] font-medium text-stone-500">
-            Son kontrol: <span className="font-semibold text-stone-700">{dashboardCheckedAtTr}</span> · İstanbul
-          </p>
-
-          <div className="grid gap-3 lg:grid-cols-2 lg:items-stretch">
-            <Link
-              href="/admin/products/new"
-              className="group flex h-full min-h-0 flex-col justify-between rounded-2xl border border-stone-200/85 bg-gradient-to-br from-[#faf9f6] via-[#f3f0ea] to-[#e8e4dc] p-5 shadow-[0_5px_24px_-12px_rgba(28,25,23,0.07)] transition-all hover:border-stone-300/95 hover:shadow-[0_8px_28px_-12px_rgba(28,25,23,0.09)]"
-            >
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-600">Ana aksiyon</p>
-                <p className="mt-2 font-serif text-2xl font-semibold tracking-tight text-stone-900">Yeni ürün ekle</p>
-                <p className="mt-1.5 max-w-md text-[13px] font-medium leading-snug text-stone-700">
-                  Oluştur → fiyat &amp; stok → vitrin ve Trendyol&apos;da yayın.
-                </p>
-                <ol className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-600">
-                  <li className="rounded-full bg-white/85 px-2.5 py-1 ring-1 ring-stone-200/90">1 Oluştur</li>
-                  <li aria-hidden className="px-0.5 text-stone-400">
-                    →
-                  </li>
-                  <li className="rounded-full bg-white/85 px-2.5 py-1 ring-1 ring-stone-200/90">2 Fiyat</li>
-                  <li aria-hidden className="px-0.5 text-stone-400">
-                    →
-                  </li>
-                  <li className="rounded-full bg-white/85 px-2.5 py-1 ring-1 ring-stone-200/90">3 Yayın</li>
-                </ol>
-              </div>
-              <div className="mt-4">
-                <span className="inline-flex w-fit items-center gap-2 rounded-xl bg-stone-950 px-5 py-3 text-sm font-bold text-white shadow-[0_4px_18px_-4px_rgba(0,0,0,0.28)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.32)] hover:ring-white/20 active:translate-y-0">
-                  Ürün oluştur
-                  <span className="transition group-hover:translate-x-0.5" aria-hidden>
-                    →
-                  </span>
-                </span>
-                <p className="mt-2 max-w-sm text-[11px] font-medium leading-snug text-stone-600">
-                  Hızlı başlangıç: isim + stok + bir görsel yeter — detayı sonra rafine edersin; vitrin hemen canlanır.
-                </p>
-              </div>
-            </Link>
-
-            <section className="flex h-full min-h-0 flex-col rounded-2xl border border-stone-200/80 bg-white p-5 shadow-[0_5px_22px_-12px_rgba(28,25,23,0.07)] ring-1 ring-stone-900/[0.025]">
-              <div className="border-b border-stone-100/90 pb-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-stone-900">Trendyol pazaryeri</h2>
-                    <p className="mt-1 text-xs text-stone-600">Gönderim, senkron, bağlantı</p>
-                  </div>
-                  <div className="text-right text-[10px] font-semibold leading-tight text-stone-500">
-                    <p>
-                      <span className="font-medium uppercase tracking-wide text-stone-400">Panel</span>{" "}
-                      <span className="tabular-nums text-stone-700">{dashboardCheckedAtTr}</span>
-                    </p>
-                    {newestProductCreatedAt ? (
-                      <p className="mt-1.5">
-                        <span className="block uppercase tracking-wide text-stone-400">Son eklenen</span>
-                        <span className="mt-0.5 block tabular-nums text-stone-800">{formatOrderRelativeTimeTr(newestProductCreatedAt)}</span>
-                      </p>
-                    ) : (
-                      <p className="mt-1.5 font-medium text-stone-400">Liste boş</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 flex-1">
-                {notListedOnMarketplaceCount > 0 ? (
-                  <div className="rounded-xl border border-amber-300/55 bg-amber-50/85 px-3.5 py-3">
-                    <p className="text-sm font-bold text-amber-950">
-                      {notListedOnMarketplaceCount.toLocaleString("tr-TR")} ürün gönderilmeyi bekliyor
-                    </p>
-                    <p className="mt-1 text-[11px] font-medium leading-snug text-amber-900/85">Pazaryeri kapalı veya zorunlu alan eksik.</p>
-                    <Link
-                      href="/admin/trendyol"
-                      className="mt-2.5 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-amber-700 hover:shadow-md active:scale-[0.99]"
-                    >
-                      Hemen gönder
-                    </Link>
-                  </div>
-                ) : (
-                  <p className="rounded-lg border border-emerald-200/70 bg-emerald-50/60 px-3 py-2 text-[11px] font-medium text-emerald-900">
-                    Bekleyen gönderim yok (bu dilim).
-                  </p>
-                )}
-                <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-stone-500">İşlemler</p>
-                <ul className="mt-2 space-y-1.5">
-                  <li>
-                    <Link
-                      href="/admin/trendyol"
-                      className="flex w-full items-center justify-between rounded-lg border border-stone-200/90 bg-stone-50/70 px-3 py-2.5 text-sm font-semibold text-stone-900 transition hover:border-stone-300 hover:bg-white hover:shadow-sm"
-                    >
-                      Ürünleri gönder
-                      <span className="text-stone-400" aria-hidden>
-                        →
-                      </span>
-                    </Link>
-                  </li>
-                  <li>
-                    <form action={importTrendyolProductsAction}>
-                      <button
-                        type="submit"
-                        className="flex w-full items-center justify-between rounded-lg border border-stone-200/90 bg-stone-50/70 px-3 py-2.5 text-left text-sm font-semibold text-stone-900 transition hover:border-stone-300 hover:bg-white hover:shadow-sm"
-                      >
-                        Senkronize et
-                        <span className="text-[11px] font-normal text-stone-500">Çek</span>
-                      </button>
-                    </form>
-                  </li>
-                  <li>
-                    <form action={fetchTrendyolOrdersAction}>
-                      <button
-                        type="submit"
-                        className="flex w-full items-center justify-between rounded-lg border border-stone-200/90 bg-stone-50/70 px-3 py-2.5 text-left text-sm font-semibold text-stone-900 transition hover:border-stone-300 hover:bg-white hover:shadow-sm"
-                      >
-                        Trendyol siparişlerini çek
-                        <span className="text-[11px] font-normal text-stone-500">Stok</span>
-                      </button>
-                    </form>
-                  </li>
-                  <li>
-                    <form action={testTrendyolConnectionAction}>
-                      <button
-                        type="submit"
-                        className="flex w-full items-center justify-between rounded-lg border border-stone-200/90 bg-stone-50/70 px-3 py-2.5 text-left text-sm font-semibold text-stone-900 transition hover:border-stone-300 hover:bg-white hover:shadow-sm"
-                      >
-                        Bağlantıyı test et
-                        <span className="text-[11px] font-normal text-stone-500">API</span>
-                      </button>
-                    </form>
-                  </li>
-                </ul>
-              </div>
-              <Link
-                href="/admin/products"
-                className="mt-3 block text-center text-[11px] font-semibold text-stone-600 underline-offset-2 hover:text-stone-900 hover:underline"
-              >
-                Katalog: ürünleri yönet →
-              </Link>
-            </section>
-          </div>
-
-          <section className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-[0_6px_28px_-14px_rgba(28,25,23,0.08)] ring-1 ring-stone-900/[0.035]">
-            <div className="flex items-center gap-3">
-              <span className="h-11 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#c4b59a] to-stone-400" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-stone-800">Mağaza ilerlemesi</h2>
-                <p className="mt-0.5 text-xs text-stone-600">Ürün · Pazaryeri · Ödenmiş satış</p>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">Hazırlık</p>
-                <p className="text-5xl font-black tabular-nums leading-none tracking-tight text-stone-950">{storeProgressPct}%</p>
-                <p className="mt-0.5 text-[10px] font-semibold text-stone-500">hazır</p>
-              </div>
-            </div>
-            <div className="mt-5 h-3.5 w-full overflow-hidden rounded-full bg-stone-100 ring-1 ring-stone-200/50">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-stone-400 via-[#b0a08c] to-[#9c8b73] shadow-[0_1px_4px_rgba(28,25,23,0.08)]"
-                style={{ width: `${storeProgressPct}%` }}
-              />
-            </div>
-            <p className="mt-2.5 text-xs font-medium leading-snug text-stone-600">{nextProgressHint}</p>
-            <ol className="mt-5 grid gap-2.5 sm:grid-cols-3">
-              {storeProgressSteps.map((s) => {
-                const isCurrent = !s.done && progressHighlightKey === s.key;
-                return (
-                  <li
-                    key={s.key}
-                    className={`rounded-lg px-2.5 py-2.5 text-xs font-semibold leading-tight ${
-                      s.done
-                        ? "border border-emerald-200/90 bg-emerald-50/80 text-emerald-950"
-                        : isCurrent
-                          ? "border-2 border-stone-800/30 bg-white text-stone-950 shadow-[0_3px_14px_-4px_rgba(28,25,23,0.08)] ring-2 ring-stone-900/[0.06]"
-                          : "border border-stone-200/80 bg-stone-50/80 text-stone-600"
-                    }`}
-                  >
-                    <span className={`mr-1 font-black ${s.done ? "text-emerald-700" : isCurrent ? "text-stone-800" : "text-stone-400"}`}>
-                      {s.done ? "✓" : isCurrent ? "▶" : "○"}
-                    </span>
-                    {s.label}
-                  </li>
-                );
-              })}
-            </ol>
-            {viewItemToday + addToCartToday + purchaseToday > 0 ? (
-              <p className="mt-3 text-[11px] font-medium text-stone-500">
-                Vitrin (örneklem): {viewItemToday.toLocaleString("tr-TR")} görüntüleme · {addToCartToday.toLocaleString("tr-TR")} sepet ·{" "}
-                {purchaseToday.toLocaleString("tr-TR")} ödeme olayı
-              </p>
-            ) : null}
-          </section>
-
-          <section className="rounded-2xl border border-stone-200/75 bg-[#f9f7f3]/80 p-5 shadow-[0_3px_16px_-8px_rgba(28,25,23,0.06)]">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-stone-800">Bugünün odağı</h2>
-            <ul className="mt-4 space-y-4">
-              <li className="flex gap-3">
-                <span className="mt-0.5 shrink-0 text-sm font-bold text-stone-400" aria-hidden>
-                  →
-                </span>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Trendyol</span>
-                  <p className="mt-1 text-[14px] font-bold leading-snug text-stone-950">
-                    {notListedOnMarketplaceCount > 0
-                      ? `Checkout’a giden yolu aç: ${notListedOnMarketplaceCount.toLocaleString("tr-TR")} ürünü bugün gönder.`
-                      : "Tam görünürlük: yeni ürünlerde barkod & kategori — ilk dış satışa zemin."}
-                  </p>
-                </div>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 shrink-0 text-sm font-bold text-stone-400" aria-hidden>
-                  →
-                </span>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Ürün</span>
-                  <p className="mt-1 text-[14px] font-bold leading-snug text-stone-950">
-                    {activeProductsCount === 0
-                      ? "İlk vitrin ürününü yayınla — güven ve keşif başlasın."
-                      : `${activeProductsCount.toLocaleString("tr-TR")} vitrin ürünü — bugün birini öne çıkar, sepete ivme ver.`}
-                  </p>
-                </div>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 shrink-0 text-sm font-bold text-stone-400" aria-hidden>
-                  →
-                </span>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Satış</span>
-                  <p className="mt-1 text-[14px] font-bold leading-snug text-stone-950">
-                    {revenueToday > 0
-                      ? "Ciroyu sürdür: kargoyu netleştir, stokta tut — tekrar siparişe zemin."
-                      : "İlk ödenmiş siparişi hedefle: fiyat + vitrin + pazaryeri aynı gün."}
-                  </p>
-                </div>
-              </li>
-            </ul>
-          </section>
+          <ProductHealthPanel
+            outOfStockCount={outOfStockCount}
+            lowStockCount={lowStockCount}
+            notListedOnMarketplaceCount={notListedOnMarketplaceCount}
+          />
 
           <section>
             <h2 className="text-base font-semibold text-stone-950">Bugün yapılacaklar</h2>
             <p className="mt-1 text-sm text-stone-700">Küçük adımlar; büyük etki. Bugün bitmesi iyi olanlar.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Link
-                href="/admin/products"
+                href="/admin/products?status=active&stock=low"
                 className={`group flex flex-col rounded-2xl border border-stone-200/75 bg-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)] transition-all hover:-translate-y-px hover:border-stone-300/80 hover:shadow-[0_5px_20px_-8px_rgba(28,25,23,0.08)] hover:ring-1 hover:ring-stone-200/40 ${
                   lowStockCount > 0 ? "border-l-[3px] border-l-rose-500 bg-gradient-to-r from-rose-50/40 to-white" : "border-l-[3px] border-l-stone-300"
                 }`}
@@ -911,7 +437,7 @@ export default async function AdminPage({
                 <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Stokları aç →</span>
               </Link>
               <Link
-                href="/admin/trendyol"
+                href="/admin/products?status=active&trendyol=missing"
                 className="group flex flex-col rounded-2xl border border-stone-200/75 border-l-[3px] border-l-stone-300 bg-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)] transition-all hover:-translate-y-px hover:border-stone-300/80 hover:shadow-[0_5px_20px_-8px_rgba(28,25,23,0.08)] hover:ring-1 hover:ring-stone-200/40"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -926,15 +452,15 @@ export default async function AdminPage({
                 </div>
                 <p className="mt-2 text-lg font-bold text-stone-950">
                   {notListedOnMarketplaceCount === 0
-                    ? "Liste tam (bu dilim)"
-                    : `${notListedOnMarketplaceCount.toLocaleString("tr-TR")} ürün Trendyol’da yok veya eksik`}
+                    ? "Liste tam"
+                    : `${notListedOnMarketplaceCount.toLocaleString("tr-TR")} ürün Trendyol'da yok veya eksik`}
                 </p>
                 <p className="mt-2 flex-1 text-sm font-medium text-stone-800">
-                  {missingMarketplaceCount > 0
-                    ? `${missingMarketplaceCount.toLocaleString("tr-TR")} kayıtta alan eksik — düzelt, sonra tek tıkla gönder.`
+                  {notListedOnMarketplaceCount > 0
+                    ? "Alan eksik veya gönderim bekliyor — düzelt, sonra tek tıkla gönder."
                     : "Gönderimi bugün kapat; vitrin trafiği pazaryerine aksın."}
                 </p>
-                <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Gönder ve tamamla →</span>
+                <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Listeyi aç →</span>
               </Link>
               <Link
                 href="/admin/products"
@@ -973,63 +499,12 @@ export default async function AdminPage({
             </div>
           </section>
 
-          <AdminAnalyticsSection data={analyticsSectionData} />
-        </section>
-
-    </main>
+          <div id="analytics">
+            <AdminAnalyticsSection data={analyticsSectionData} bestSellersToday={bestSellersToday} />
+          </div>
+        </div>
+      </main>
       <AdminOperationsDock pendingShipmentCount={pendingShipmentCount} />
     </>
-  );
-}
-
-function Metric({
-  title,
-  value,
-  valueNode,
-  trend,
-  helper,
-  className,
-  valueClassName,
-  emphasis,
-  compact,
-}: {
-  title: string;
-  value?: string;
-  valueNode?: ReactNode;
-  trend?: ReactNode;
-  helper?: ReactNode;
-  className?: string;
-  valueClassName?: string;
-  emphasis?: boolean;
-  /** Analitik KPI kartı: kısa gövde, küçük etiket, sıkı boşluk */
-  compact?: boolean;
-}) {
-  if (compact) {
-    return (
-      <article
-        className={`rounded-md border border-stone-200/50 bg-white px-2 py-1 shadow-[0_1px_0_0_rgba(28,25,23,0.04)] ${className ?? ""}`}
-      >
-        <p className="text-[8px] font-semibold leading-tight tracking-tight text-stone-500">{title}</p>
-        <div
-          className={`mt-0.5 text-lg font-semibold tabular-nums leading-none tracking-tight text-stone-950 ${valueClassName ?? ""}`}
-        >
-          {valueNode ?? value}
-        </div>
-      </article>
-    );
-  }
-
-  const shell = emphasis
-    ? "rounded-2xl border border-stone-200/80 bg-[linear-gradient(165deg,#fffdfb_0%,#f7f4ef_100%)] p-4 shadow-[0_4px_20px_-8px_rgba(28,25,23,0.06)] ring-1 ring-stone-900/[0.04]"
-    : "rounded-2xl border border-stone-200/70 bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)]";
-  return (
-    <article className={`${shell} ${className ?? ""}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-700">{title}</p>
-      <div className={`mt-1.5 font-serif text-xl font-semibold tracking-tight text-stone-950 ${valueClassName ?? ""}`}>
-        {valueNode ?? value}
-      </div>
-      {trend ? <p className="mt-1 text-[11px] leading-snug text-stone-600">{trend}</p> : null}
-      {helper ? <p className="mt-1.5 text-[12px] leading-relaxed text-stone-700">{helper}</p> : null}
-    </article>
   );
 }

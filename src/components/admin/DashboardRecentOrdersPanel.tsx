@@ -4,6 +4,15 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
+export type PendingShipOrderRow = {
+  id: string;
+  order_number: string;
+  total: number;
+  customer_name: string;
+  created_at: string;
+  order_status: string;
+};
+
 export type DashboardOrderRow = {
   id: string;
   total: number;
@@ -49,10 +58,6 @@ function formatTryCompact(n: number): string {
   return `${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
 }
 
-function isNewOrdersQueue(o: DashboardOrderRow): boolean {
-  return resolveOrderFulfillmentStage(o.payment_status, o.order_status) === "new";
-}
-
 function isPaymentPending(o: DashboardOrderRow): boolean {
   if (String(o.order_status ?? "") === "cancelled") return false;
   return o.payment_status === "pending";
@@ -83,17 +88,31 @@ const chipBase =
 
 const FILTERS: { id: FilterId; label: string }[] = [
   { id: "all", label: "Tümü" },
-  { id: "new", label: "Yeni gelen" },
+  { id: "new", label: "Yeni" },
   { id: "payment_pending", label: "Ödeme bekleyen" },
   { id: "today", label: "Bugün" },
 ];
 
+function toDashboardRowFromPending(p: PendingShipOrderRow): DashboardOrderRow {
+  return {
+    id: p.id,
+    total: Number(p.total ?? 0),
+    payment_status: "paid",
+    order_status: String(p.order_status ?? ""),
+    order_number: String(p.order_number ?? ""),
+    customer_name: String(p.customer_name ?? ""),
+    created_at: String(p.created_at ?? ""),
+  };
+}
+
 export function DashboardRecentOrdersPanel({
   orders,
+  pendingShipOrders,
   dayStartIso,
   dayEndIso,
 }: {
   orders: DashboardOrderRow[];
+  pendingShipOrders: PendingShipOrderRow[];
   dayStartIso: string;
   dayEndIso: string;
 }) {
@@ -102,14 +121,16 @@ export function DashboardRecentOrdersPanel({
   const dayEndMs = useMemo(() => new Date(dayEndIso).getTime(), [dayEndIso]);
 
   const filtered = useMemo(() => {
+    if (filter === "new") {
+      return pendingShipOrders.map(toDashboardRowFromPending);
+    }
     return orders.filter((o) => {
       if (filter === "all") return true;
-      if (filter === "new") return isNewOrdersQueue(o);
       if (filter === "payment_pending") return isPaymentPending(o);
       if (filter === "today") return isTodayOrder(o, dayStartMs, dayEndMs);
       return true;
     });
-  }, [orders, filter, dayStartMs, dayEndMs]);
+  }, [orders, pendingShipOrders, filter, dayStartMs, dayEndMs]);
 
   return (
     <section className="rounded-2xl border border-stone-200/70 bg-white p-3 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.06)] sm:p-3.5">
@@ -125,7 +146,9 @@ export function DashboardRecentOrdersPanel({
               Canlı
             </span>
           </div>
-          <p className="mt-0.5 text-[11px] text-stone-500">Operasyon kuyruğu · son {orders.length} kayıt</p>
+          <p className="mt-0.5 text-[11px] text-stone-500">
+            Operasyon kuyruğu · {filter === "new" ? "ödendi, hazırlık bekliyor" : `son ${orders.length} kayıt`}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Link
@@ -133,12 +156,6 @@ export function DashboardRecentOrdersPanel({
             className="rounded-lg border border-stone-800/15 bg-stone-900 px-2 py-1 text-[10px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
           >
             Kuyruk
-          </Link>
-          <Link
-            href="/admin/products/new"
-            className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-700 transition hover:bg-stone-50"
-          >
-            Ürün ekle
           </Link>
         </div>
       </div>
@@ -172,8 +189,16 @@ export function DashboardRecentOrdersPanel({
       <ul className="mt-1">
         {filtered.length === 0 ? (
           <li className="py-6 text-center">
-            <p className="text-[13px] font-medium text-stone-700">{orders.length === 0 ? "Henüz sipariş yok." : "Bu filtrede kayıt yok."}</p>
-            {orders.length === 0 ? (
+            <p className="text-[13px] font-medium text-stone-700">
+              {filter === "new"
+                ? pendingShipOrders.length === 0
+                  ? "Bekleyen yeni sipariş yok."
+                  : "Bu filtrede kayıt yok."
+                : orders.length === 0
+                  ? "Henüz sipariş yok."
+                  : "Bu filtrede kayıt yok."}
+            </p>
+            {orders.length === 0 && filter !== "new" ? (
               <p className="mx-auto mt-1 max-w-sm text-[11px] leading-snug text-stone-500">
                 Vitrin ve fiyatları netleştirin; yeni siparişler burada listelenir.
               </p>

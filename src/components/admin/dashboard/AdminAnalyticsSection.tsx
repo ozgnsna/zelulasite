@@ -215,7 +215,19 @@ function ConversionFunnel({
   );
 }
 
-export function AdminAnalyticsSection({ data }: { data: AnalyticsSectionData }) {
+export type BestSellerTodayRow = {
+  productId: string;
+  name: string;
+  qty: number;
+};
+
+export function AdminAnalyticsSection({
+  data,
+  bestSellersToday = [],
+}: {
+  data: AnalyticsSectionData;
+  bestSellersToday?: BestSellerTodayRow[];
+}) {
   const {
     range,
     metrics,
@@ -299,6 +311,24 @@ export function AdminAnalyticsSection({ data }: { data: AnalyticsSectionData }) 
             Uygula
           </button>
         </form>
+      ) : null}
+
+      {bestSellersToday.length > 0 ? (
+        <p className="mt-3 truncate text-[11px] leading-snug text-stone-700">
+          <span className="font-semibold text-stone-800">Bugün çok satanlar:</span>{" "}
+          {bestSellersToday.slice(0, 3).map((row, index) => (
+            <Fragment key={row.productId}>
+              {index > 0 ? <span className="text-stone-400"> · </span> : null}
+              <Link
+                href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
+                className="font-medium text-stone-800 underline-offset-2 hover:text-[#6b5430] hover:underline"
+              >
+                {row.name}
+              </Link>
+              <span className="tabular-nums text-stone-600"> · {row.qty.toLocaleString("tr-TR")} adet</span>
+            </Fragment>
+          ))}
+        </p>
       ) : null}
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
