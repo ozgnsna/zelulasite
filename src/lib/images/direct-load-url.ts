@@ -9,12 +9,11 @@ export function isSupabaseStorageUrl(url: string): boolean {
 }
 
 /**
- * Harici URL'ler varsayılan olarak doğrudan yüklenir (Vercel Image Optimization kotası / 402 riski).
- * Supabase Storage görselleri allowlist'te olduğu için optimize edilir.
+ * Harici URL'ler doğrudan yüklenir (Vercel Image Optimization kotası / 402 riski).
+ * Supabase dahil — /_next/image üzerinden yükleme prod'da kırılabiliyor.
  */
 export function shouldUseUnoptimizedImage(url: string): boolean {
   const u = String(url ?? "").trim();
   if (!u.startsWith("http://") && !u.startsWith("https://")) return false;
-  if (isSupabaseStorageUrl(u)) return false;
   return true;
 }

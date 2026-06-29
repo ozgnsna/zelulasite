@@ -106,14 +106,11 @@ export default async function RootLayout({
           <ReferralTrackingBridge />
         </Suspense>
         {isAdminRoute ? null : (
-          <>
+          <div className="sticky top-0 z-50 shadow-[0_4px_16px_-6px_rgba(62,52,38,0.14)]">
             <AnnouncementBar />
-            <div className="h-1 shrink-0 bg-gradient-to-b from-[#d9cec0]/70 to-[#fffdfb]" aria-hidden />
-          </>
-        )}
-        {isAdminRoute ? null : (
-          <div className="sticky top-0 z-50 border-b border-[#e0d5c8] bg-[#fffdfb] shadow-[0_4px_14px_-4px_rgba(62,52,38,0.12)]">
-            <StorefrontSiteChrome />
+            <div className="border-t-2 border-[#d4c8b8] border-b border-[#e0d5c8] bg-[#fffdfb]">
+              <StorefrontSiteChrome />
+            </div>
           </div>
         )}
         <div className="flex-1">{children}</div>
