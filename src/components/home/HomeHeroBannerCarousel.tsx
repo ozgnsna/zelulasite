@@ -82,7 +82,7 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
           <button
             type="button"
             onClick={prev}
-            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/30 bg-black/25 p-2 text-white backdrop-blur-sm transition hover:bg-black/40 sm:left-5"
+            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 touch-target rounded-full border border-white/30 bg-black/25 text-white backdrop-blur-sm transition hover:bg-black/40 sm:left-5"
             aria-label="Önceki banner"
           >
             <ChevronLeft className="size-5" strokeWidth={1.75} />
@@ -90,7 +90,7 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
           <button
             type="button"
             onClick={next}
-            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/30 bg-black/25 p-2 text-white backdrop-blur-sm transition hover:bg-black/40 sm:right-5"
+            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 touch-target rounded-full border border-white/30 bg-black/25 text-white backdrop-blur-sm transition hover:bg-black/40 sm:right-5"
             aria-label="Sonraki banner"
           >
             <ChevronRight className="size-5" strokeWidth={1.75} />
@@ -103,8 +103,13 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
                 onClick={() => setIndex(i)}
                 aria-label={`${i + 1}. banner`}
                 aria-current={i === index ? "true" : undefined}
-                className={`h-1.5 rounded-full transition-all ${i === index ? "w-7 bg-[#c9a06e]" : "w-2 bg-white/45 hover:bg-white/70"}`}
-              />
+                className="touch-target rounded-full"
+              >
+                <span
+                  aria-hidden
+                  className={`block rounded-full transition-all ${i === index ? "h-1.5 w-7 bg-[#c9a06e]" : "h-1.5 w-2 bg-white/70"}`}
+                />
+              </button>
             ))}
           </div>
         </>

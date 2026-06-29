@@ -37,7 +37,7 @@ export function ProductPdpShippingCard({ promise }: Props) {
       <div className="border-t border-[#f0ebe3] px-4 py-2 text-center">
         <Link
           href="/kargo-iade"
-          className="text-[11px] font-medium text-[#9a7848] underline-offset-2 hover:text-[#7d5f35] hover:underline"
+          className="text-[11px] font-medium text-brand-gold-a11y underline-offset-2 hover:text-stone-800 hover:underline"
         >
           Kargo ve iade detayları
         </Link>

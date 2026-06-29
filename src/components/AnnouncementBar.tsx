@@ -61,7 +61,7 @@ export function AnnouncementBar() {
             key={`${text}-${index}`}
             className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-5 text-[11px] font-medium tracking-wide text-stone-600 sm:px-6 sm:text-xs"
           >
-            <span className="text-[color:var(--brand-gold)]" aria-hidden>
+            <span className="text-brand-gold-a11y" aria-hidden>
               ●
             </span>
             {text}

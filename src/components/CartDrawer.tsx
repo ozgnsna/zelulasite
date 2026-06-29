@@ -76,7 +76,7 @@ function CartDrawerLine({
           type="button"
           disabled={pending}
           onClick={removeLine}
-          className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-stone-500 transition hover:text-rose-700 disabled:opacity-50"
+          className="mt-1.5 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-xs font-medium text-stone-600 transition hover:text-rose-700 disabled:opacity-50"
         >
           <Trash2 className="size-3.5" strokeWidth={1.75} aria-hidden />
           {pending ? "Kaldırılıyor…" : "Kaldır"}
@@ -135,7 +135,7 @@ export function CartDrawer({
           setHoldSecondsLeft(CART_HOLD_SECONDS);
           setOpen(true);
         }}
-        className="relative inline-flex items-center gap-1.5 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-2.5 py-1.5 text-xs font-medium text-stone-800 shadow-sm transition hover:border-stone-300 sm:px-3 sm:text-sm"
+        className="relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-2 text-xs font-medium text-stone-800 shadow-sm transition hover:border-stone-300 sm:min-w-0 sm:text-sm"
         aria-label={count > 0 ? `Sepet, ${count} ürün` : "Sepet"}
       >
         <ShoppingBag className="h-4 w-4 shrink-0 text-stone-600" strokeWidth={1.75} aria-hidden />
@@ -157,7 +157,7 @@ export function CartDrawer({
               <h2 className="font-serif text-2xl">Sepetim</h2>
               <button
                 type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-stone-300 bg-white text-base font-semibold text-stone-700 shadow-sm transition hover:border-stone-500 hover:text-stone-900"
+                className="touch-target rounded-full border border-stone-300 bg-white text-base font-semibold text-stone-700 shadow-sm transition hover:border-stone-500 hover:text-stone-900"
                 onClick={() => setOpen(false)}
                 aria-label="Sepeti kapat"
               >

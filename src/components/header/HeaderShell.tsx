@@ -99,7 +99,7 @@ export function HeaderShell({
               <Link
                 key={slug}
                 href={categoryHref(slug)}
-                className="whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium tracking-wide text-stone-600 transition hover:bg-white/80 hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs"
+                className="whitespace-nowrap rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-white/80 hover:text-stone-900 min-h-11 inline-flex items-center lg:px-3 lg:text-[11px] xl:text-xs"
               >
                 {t.name}
               </Link>
@@ -107,7 +107,7 @@ export function HeaderShell({
           })}
           <Link
             href="/cok-satanlar"
-            className="whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-white/80 hover:ring-[color:var(--brand-gold)]/50 lg:px-2.5 lg:text-[11px] xl:text-xs"
+            className="whitespace-nowrap rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-white/80 hover:ring-[color:var(--brand-gold)]/50 min-h-11 inline-flex items-center lg:px-3 lg:text-[11px] xl:text-xs"
           >
             Çok Satanlar
           </Link>
@@ -121,7 +121,7 @@ export function HeaderShell({
               type="button"
               aria-expanded={megaOpen}
               aria-haspopup="menu"
-              className="inline-flex items-center gap-0.5 rounded-full px-2 py-1.5 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-white/80 hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs"
+              className="inline-flex min-h-11 items-center gap-0.5 rounded-full px-2.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-white/80 hover:text-stone-900 lg:px-3 lg:text-[11px] xl:text-xs"
               onClick={() => setMegaOpen((o) => !o)}
             >
               Tüm Ürünler
@@ -136,7 +136,7 @@ export function HeaderShell({
                   <div className="grid grid-cols-2 gap-6">
                     {MEGA_MENU_GROUPS.map((group) => (
                       <div key={group.title}>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-600">
                           {group.title}
                         </p>
                         <ul className="mt-3 space-y-0.5">
@@ -163,7 +163,7 @@ export function HeaderShell({
                   <div className="mt-4 border-t border-[#ebe6df] pt-3 text-center">
                     <Link
                       href="/urunler"
-                      className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-gold)] underline-offset-4 transition hover:underline"
+                      className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-gold-a11y underline-offset-4 transition hover:underline"
                       onClick={() => setMegaOpen(false)}
                     >
                       Tümünü gör
@@ -181,7 +181,7 @@ export function HeaderShell({
 
           <button
             type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 md:hidden"
+            className="touch-target shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 md:hidden"
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
             onClick={() => setMobileOpen((o) => !o)}
@@ -197,7 +197,7 @@ export function HeaderShell({
                   aria-expanded={accountOpen}
                   aria-haspopup="menu"
                   onClick={() => setAccountOpen((o) => !o)}
-                  className="inline-flex max-w-[11rem] items-center gap-1 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-1.5 text-xs font-medium text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:text-stone-900"
+                  className="inline-flex min-h-11 max-w-[11rem] items-center gap-1 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-2 text-xs font-medium text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:text-stone-900"
                 >
                   <UserRound className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
                   <span className="truncate">{accountLabel}</span>
@@ -277,7 +277,7 @@ export function HeaderShell({
             ) : (
               <Link
                 href={GIRIS_HREF}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-1.5 text-xs font-medium text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:text-stone-900"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-2 text-xs font-medium text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:text-stone-900"
               >
                 <UserRound className="h-3.5 w-3.5 opacity-70" aria-hidden />
                 <span className="hidden lg:inline">{accountLabel}</span>
@@ -300,10 +300,10 @@ export function HeaderShell({
           />
           <aside className="absolute left-0 top-0 flex h-full w-[min(20rem,88vw)] flex-col border-r border-[#e8dfd3] bg-[#fffdfb] shadow-xl">
             <div className="flex items-center justify-between border-b border-[#ebe6df] px-4 py-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">Menü</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-600">Menü</span>
               <button
                 type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-stone-200 text-stone-700"
+                className="touch-target rounded-full border border-stone-200 text-stone-700"
                 onClick={() => setMobileOpen(false)}
                 aria-label="Kapat"
               >
@@ -311,7 +311,7 @@ export function HeaderShell({
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Kategoriler ve hesap">
-              <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Takılar</p>
+              <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-600">Takılar</p>
               <ul className="mt-2 space-y-0.5">
                 {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
                   const t = getTaxonBySlug(slug);
@@ -320,7 +320,7 @@ export function HeaderShell({
                     <li key={slug}>
                       <Link
                         href={categoryHref(slug)}
-                        className="block rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                        className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
                         onClick={() => setMobileOpen(false)}
                       >
                         {t.name}
@@ -329,7 +329,7 @@ export function HeaderShell({
                   );
                 })}
               </ul>
-              <p className="mt-5 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Aksesuar</p>
+              <p className="mt-5 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-600">Aksesuar</p>
               <ul className="mt-2 space-y-0.5">
                 {(["bros", "sapka", "anahtarlik"] as const).map((slug) => {
                   const t = getTaxonBySlug(slug);
@@ -338,7 +338,7 @@ export function HeaderShell({
                     <li key={slug}>
                       <Link
                         href={categoryHref(slug)}
-                        className="block rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                        className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
                         onClick={() => setMobileOpen(false)}
                       >
                         {t.name}
@@ -351,7 +351,7 @@ export function HeaderShell({
                 <li>
                   <Link
                     href="/cok-satanlar"
-                    className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[#7a5f38] transition hover:bg-[#faf6ef]"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-[#7a5f38] transition hover:bg-[#faf6ef]"
                     onClick={() => setMobileOpen(false)}
                   >
                     Çok Satanlar
@@ -360,7 +360,7 @@ export function HeaderShell({
                 <li>
                   <Link
                     href="/urunler"
-                    className="block rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
                     onClick={() => setMobileOpen(false)}
                   >
                     Tüm Ürünler
@@ -369,7 +369,7 @@ export function HeaderShell({
                 <li>
                   <Link
                     href={categoryHref("takilar")}
-                    className="block rounded-lg px-3 py-2 text-xs text-stone-500 transition hover:bg-[#faf6ef]"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2 text-xs text-stone-600 transition hover:bg-[#faf6ef]"
                     onClick={() => setMobileOpen(false)}
                   >
                     Takılar — tümü
@@ -378,7 +378,7 @@ export function HeaderShell({
                 <li>
                   <Link
                     href={categoryHref("aksesuar")}
-                    className="block rounded-lg px-3 py-2 text-xs text-stone-500 transition hover:bg-[#faf6ef]"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2 text-xs text-stone-600 transition hover:bg-[#faf6ef]"
                     onClick={() => setMobileOpen(false)}
                   >
                     Aksesuar — tümü
@@ -391,7 +391,7 @@ export function HeaderShell({
                   <li>
                     <Link
                       href="/hesabim#profil"
-                      className="block rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
+                      className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
                       onClick={() => setMobileOpen(false)}
                     >
                       Profilim
@@ -400,7 +400,7 @@ export function HeaderShell({
                   <li>
                     <Link
                       href="/hesabim#siparisler"
-                      className="block rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
+                      className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
                       onClick={() => setMobileOpen(false)}
                     >
                       Siparişlerim
@@ -409,7 +409,7 @@ export function HeaderShell({
                   <li>
                     <Link
                       href="/hesabim#adreslerim"
-                      className="block rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
+                      className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
                       onClick={() => setMobileOpen(false)}
                     >
                       Adreslerim
@@ -418,7 +418,7 @@ export function HeaderShell({
                   <li>
                     <Link
                       href="/hesabim#zelula-puan"
-                      className="block rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
+                      className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
                       onClick={() => setMobileOpen(false)}
                     >
                       Puanlarım
@@ -427,7 +427,7 @@ export function HeaderShell({
                   <li>
                     <Link
                       href="/hesabim#favorilerim"
-                      className="block rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
+                      className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm text-stone-800 hover:bg-[#faf6ef]"
                       onClick={() => setMobileOpen(false)}
                     >
                       Favorilerim

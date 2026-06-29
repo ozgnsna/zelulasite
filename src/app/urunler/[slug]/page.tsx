@@ -134,11 +134,11 @@ export default async function ProductPage({ params, searchParams }: Props) {
           collection: product.collection?.name ?? null,
         }}
       />
-      <nav className="text-sm text-stone-500">
-        <Link href="/urunler" className="transition hover:text-brand-gold">
+      <nav className="text-sm text-stone-600">
+        <Link href="/urunler" className="transition hover:text-brand-gold-a11y">
           Ürünler
         </Link>
-        <span className="mx-2 text-stone-400">/</span>
+        <span className="mx-2 text-stone-500">/</span>
         <span className="text-stone-800">{product.name}</span>
       </nav>
 
@@ -194,7 +194,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <aside className="mt-8 max-w-xl border-l-[3px] border-brand-gold/60 bg-[#faf8f5]/90 px-5 py-5 sm:px-6 sm:py-5">
               <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-stone-500">Seçilmiş parça</p>
               <p className="mt-3 flex items-start gap-2.5 font-serif text-lg font-light leading-[1.55] text-stone-800 sm:text-xl">
-                <Sparkles className="mt-1 size-4 shrink-0 text-[color:var(--brand-gold)] sm:size-[1.05rem]" strokeWidth={1.5} aria-hidden />
+                <Sparkles className="mt-1 size-4 shrink-0 text-brand-gold-a11y sm:size-[1.05rem]" strokeWidth={1.5} aria-hidden />
                 Kova burcunun özgür ve vizyoner ruhunu taşıyan bu parça, sıradan bir aksesuardan fazlası: her bakışta
                 hatırlanacak duygusal bir bağ kurar. Kendinize veya hayatınızdaki o eşsiz Kovaya, zarafeti ve anlamı
                 bir arada sunar.
@@ -212,7 +212,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-end gap-2.5">
                 {hasRealDiscount ? (
-                  <span className="text-sm text-stone-400 line-through sm:text-base">{formatTry(compareAt ?? 0)}</span>
+                  <span className="text-sm text-stone-500 line-through sm:text-base">{formatTry(compareAt ?? 0)}</span>
                 ) : null}
                 <p className="text-[2.85rem] font-bold leading-none tracking-tight text-[#7d5f35] sm:text-[3.35rem]">
                   {formatTry(priceNum)}

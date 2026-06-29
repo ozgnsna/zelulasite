@@ -20,7 +20,7 @@ export function HomeTrustStrip() {
               <div
                 className="flex cursor-default items-center justify-center gap-3 rounded-2xl border border-transparent px-3 py-3 transition-all duration-200 ease-out motion-safe:hover:scale-105 motion-safe:hover:border-[color:var(--brand-gold)]/25 motion-safe:hover:bg-white/70 motion-safe:hover:shadow-[0_10px_32px_rgba(201,168,106,0.28)] sm:justify-center"
               >
-                <Icon className="size-[1.05rem] shrink-0 text-[color:var(--brand-gold)]" strokeWidth={1.35} aria-hidden />
+                <Icon className="size-[1.05rem] shrink-0 text-brand-gold-a11y" strokeWidth={1.35} aria-hidden />
                 <span className="text-[12px] font-medium tracking-[0.06em] text-stone-700 sm:text-[13px]">{label}</span>
               </div>
             </li>

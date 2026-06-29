@@ -14,7 +14,7 @@ import { trackInstagramClick, trackWhatsAppClick } from "@/lib/analytics";
 import { PaymentTrustStrip } from "@/components/payments/PaymentTrustStrip";
 
 const linkClass =
-  "text-sm text-stone-600 transition hover:text-stone-900 hover:underline underline-offset-2 decoration-stone-400/80";
+  "inline-flex min-h-11 items-center text-sm text-stone-700 transition hover:text-stone-900 hover:underline underline-offset-2 decoration-stone-500/80";
 
 const whatsappDefaultText =
   "Merhaba Zelula, ürünler hakkında bilgi almak istiyorum.";
@@ -85,7 +85,7 @@ export function Footer() {
 
           <div className="grid grid-cols-2 gap-x-5 gap-y-0 lg:contents">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Hızlı erişim</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-600">Hızlı erişim</p>
               <ul className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-2.5">
                 <li>
                   <Link href="/urunler" className={linkClass}>
@@ -111,7 +111,7 @@ export function Footer() {
             </div>
 
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Destek</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-600">Destek</p>
               <ul className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-2.5">
                 <li>
                   <Link href="/mesafeli-satis-sozlesmesi" className={`${linkClass} text-[13px] sm:text-sm`}>
@@ -147,21 +147,21 @@ export function Footer() {
           </div>
 
           <div className="text-sm text-stone-600">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">İletişim</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-600">İletişim</p>
 
             <div className="mt-4 space-y-3.5 rounded-2xl border border-neutral-200 bg-white/70 p-4 sm:space-y-3 sm:border-0 sm:bg-transparent sm:p-0">
               <div className="flex items-start gap-2.5">
-                <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-stone-600" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Ünvan</p>
+                  <p className="text-[11px] uppercase tracking-wide text-stone-600">Ünvan</p>
                   <p className="text-stone-700">Özgün Sena Uğur (Şahıs Firması)</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-2.5">
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-stone-600" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-stone-400">E-posta</p>
+                  <p className="text-[11px] uppercase tracking-wide text-stone-600">E-posta</p>
                   <a href="mailto:destek@zeluladesign.com" className={`${linkClass} inline font-medium break-all`}>
                     destek@zeluladesign.com
                   </a>
@@ -169,9 +169,9 @@ export function Footer() {
               </div>
 
               <div className="flex items-start gap-2.5">
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-stone-600" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Telefon</p>
+                  <p className="text-[11px] uppercase tracking-wide text-stone-600">Telefon</p>
                   <a href={`tel:+${getSupportWhatsAppNumber()}`} className={`${linkClass} inline font-medium`}>
                     {getSupportPhoneDisplay()}
                   </a>
@@ -179,17 +179,17 @@ export function Footer() {
               </div>
 
               <div className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" aria-hidden />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-stone-600" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Adres</p>
+                  <p className="text-[11px] uppercase tracking-wide text-stone-600">Adres</p>
                   <p className="text-stone-700">Beylerbeyi Mah. Arabacılar Sok. No:39/1 Üsküdar / İstanbul</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-2.5">
-                <InstagramIcon className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                <InstagramIcon className="mt-0.5 h-4 w-4 shrink-0 text-stone-600" />
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-stone-400">Instagram</p>
+                  <p className="text-[11px] uppercase tracking-wide text-stone-600">Instagram</p>
                   <a
                     href={instagramHref}
                     target="_blank"
@@ -209,7 +209,7 @@ export function Footer() {
               href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-700 transition hover:bg-green-100 sm:w-auto"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-700 transition hover:bg-green-100 sm:w-auto"
               onClick={() =>
                 trackWhatsAppClick({ location: "footer_support", href: whatsappHref })
               }
@@ -218,7 +218,7 @@ export function Footer() {
               <span>WhatsApp ile hızlı destek</span>
             </a>
 
-            <p className="mt-3 text-xs text-stone-500">Instagram DM&apos;den %10 indirim al 🎁</p>
+            <p className="mt-3 text-xs text-stone-600">Instagram DM&apos;den %10 indirim al 🎁</p>
           </div>
         </div>
 
@@ -235,7 +235,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               title="Sitemizin ETBİS kaydını T.C. Ticaret Bakanlığı sisteminde doğrulayın"
-              className="inline-flex items-center gap-2 rounded-full border border-[#c6a15b] bg-gradient-to-r from-[#f6edda] to-[#fbf7f0] px-3.5 py-1.5 shadow-sm transition hover:from-[#f0e2c5] hover:to-[#f6edda]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c6a15b] bg-gradient-to-r from-[#f6edda] to-[#fbf7f0] px-3.5 py-2 shadow-sm transition hover:from-[#f0e2c5] hover:to-[#f6edda]"
             >
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#8b5a2b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -243,7 +243,7 @@ export function Footer() {
               </svg>
               <span className="flex flex-col leading-tight text-left">
                 <span className="text-[11px] font-bold text-[#7a5320]">ETBİS&apos;e Kayıtlıdır</span>
-                <span className="text-[8.5px] font-medium uppercase tracking-[0.08em] text-[#a07d4a]">
+                <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#6d4a24]">
                   T.C. Ticaret Bakanlığı
                 </span>
               </span>

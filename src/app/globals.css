@@ -8,6 +8,7 @@
   --muted: #efe8df;
   /* Marka — PDP / dönüşüm vurguları */
   --brand-gold: #c9a86a;
+  --brand-gold-text: #7a5f38;
   --brand-rose: #e8cfc6;
   --zelula-gold-grad: linear-gradient(135deg, #c6a15b, #e8c98b);
 }
@@ -31,7 +32,16 @@ body {
 }
 
 .editorial-kicker {
-  @apply text-[11px] font-medium uppercase tracking-[0.24em] text-stone-500;
+  @apply text-[11px] font-medium uppercase tracking-[0.24em] text-stone-600;
+}
+
+/** WCAG 2.5.5 — minimum 44×44px touch target (visual can be smaller inside). */
+.touch-target {
+  @apply inline-flex min-h-11 min-w-11 items-center justify-center;
+}
+
+.text-brand-gold-a11y {
+  color: var(--brand-gold-text);
 }
 
 .editorial-title {
@@ -384,7 +394,7 @@ body {
 }
 
 .zl-gold-text {
-  color: #c6a15b;
+  color: var(--brand-gold-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

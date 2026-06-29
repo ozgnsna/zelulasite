@@ -38,7 +38,7 @@ export function HeaderSearch() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label="Ürün ara"
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:text-stone-900"
+        className="touch-target shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:text-stone-900"
       >
         <Search className="h-4 w-4" aria-hidden />
       </button>
@@ -49,7 +49,7 @@ export function HeaderSearch() {
             <form onSubmit={submit} className="flex items-center gap-2">
               <div className="relative min-w-0 flex-1">
                 <Search
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500"
                   aria-hidden
                 />
                 <input
@@ -64,7 +64,7 @@ export function HeaderSearch() {
               </div>
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
+                className="shrink-0 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800 min-h-11 inline-flex items-center"
               >
                 Ara
               </button>
@@ -72,7 +72,7 @@ export function HeaderSearch() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Aramayı kapat"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-stone-200 text-stone-600 transition hover:bg-stone-50"
+                className="touch-target shrink-0 rounded-full border border-stone-200 text-stone-600 transition hover:bg-stone-50"
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>

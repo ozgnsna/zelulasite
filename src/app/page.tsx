@@ -155,14 +155,14 @@ export default async function HomePage() {
           <div className="container-premium">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Öne çıkan</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Öne çıkan</p>
                 <h2 className="mt-2 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
                   Çok satanlar
                 </h2>
               </div>
               <Link
                 href="/cok-satanlar"
-                className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500 underline-offset-4 transition hover:text-stone-800 hover:underline"
+                className="inline-flex min-h-11 items-center text-[11px] font-medium uppercase tracking-[0.2em] text-stone-600 underline-offset-4 transition hover:text-stone-800 hover:underline"
               >
                 Tümünü gör
               </Link>
@@ -196,7 +196,7 @@ export default async function HomePage() {
       <FadeIn delay={0.03}>
         <section className="container-premium py-14 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Alışverişe başla</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Alışverişe başla</p>
             <h2 className="mt-3 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
               Kategoriler
             </h2>
@@ -216,7 +216,7 @@ export default async function HomePage() {
             </p>
             <Link
               href="/urunler"
-              className="mt-6 inline-flex text-[11px] font-medium uppercase tracking-[0.22em] text-[color:var(--brand-gold)] underline-offset-[6px] transition hover:text-stone-800 hover:underline"
+              className="mt-6 inline-flex min-h-11 items-center text-[11px] font-medium uppercase tracking-[0.22em] text-brand-gold-a11y underline-offset-[6px] transition hover:text-stone-800 hover:underline"
             >
               Ürünleri keşfet
             </Link>
@@ -227,7 +227,7 @@ export default async function HomePage() {
       <FadeIn delay={0.05}>
         <section className="container-premium py-14 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Stil</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Stil</p>
             <h2 className="mt-3 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
               Kombinini tamamla
             </h2>

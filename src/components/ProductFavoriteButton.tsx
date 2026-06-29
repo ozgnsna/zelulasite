@@ -34,7 +34,7 @@ export function ProductFavoriteButton({
 
   const baseBtn =
     variant === "card"
-      ? "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e8dfd3]/95 bg-[#fffdfb]/95 text-stone-600 shadow-sm backdrop-blur-sm transition hover:border-[color:var(--brand-gold)]/40 hover:text-[#8b6a3f]"
+      ? "touch-target rounded-full border border-[#e8dfd3]/95 bg-[#fffdfb]/95 text-stone-600 shadow-sm backdrop-blur-sm transition hover:border-[color:var(--brand-gold)]/40 hover:text-[#8b6a3f]"
       : "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#e8dfd3]/95 bg-[#fffdfb]/90 text-stone-600 shadow-sm transition hover:border-[color:var(--brand-gold)]/40 hover:text-[#8b6a3f]";
 
   if (!isSignedIn) {

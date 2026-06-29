@@ -198,7 +198,7 @@ export function ProductCard({
                 {formatMoney(price * 100, "TRY")}
               </p>
               {compareAtPrice ? (
-                <span className="text-sm font-medium tabular-nums text-stone-400 line-through decoration-stone-300/90">
+                <span className="text-sm font-medium tabular-nums text-stone-500 line-through decoration-stone-400/90">
                   {formatMoney(compareAtPrice * 100, "TRY")}
                 </span>
               ) : null}
@@ -207,7 +207,7 @@ export function ProductCard({
           <Link
             href={`/urunler/${slug}`}
             className={cn(
-              "shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a7848] underline-offset-2 transition hover:text-[#7d5f35] hover:underline",
+              "shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-gold-a11y underline-offset-2 transition hover:text-stone-800 hover:underline",
               compact && "hidden sm:inline",
             )}
           >

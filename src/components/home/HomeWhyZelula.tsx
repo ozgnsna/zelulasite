@@ -17,7 +17,7 @@ export function HomeWhyZelula() {
     <section className="border-t border-[#ebe6df] bg-[#faf8f5] py-14 sm:py-20">
       <div className="container-premium">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-500">Güven</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Güven</p>
           <h2 className="mt-4 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
             Neden Zelula?
           </h2>
@@ -32,7 +32,7 @@ export function HomeWhyZelula() {
               transition={{ delay: reduce ? 0 : i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="flex h-full flex-col rounded-2xl border border-[#e8e2d9] bg-[#fffdfb] px-5 py-6 shadow-[0_10px_28px_rgba(55,48,40,0.05)] transition-shadow duration-300 hover:shadow-[0_14px_36px_rgba(198,161,91,0.12)]">
-                <span className="flex size-11 items-center justify-center rounded-full border border-[color:var(--brand-gold)]/30 bg-[#fff9f0] text-[color:var(--brand-gold)]">
+                <span className="flex size-11 items-center justify-center rounded-full border border-[color:var(--brand-gold)]/30 bg-[#fff9f0] text-brand-gold-a11y">
                   <Icon className="size-5" strokeWidth={1.5} aria-hidden />
                 </span>
                 <p className="mt-4 text-sm font-semibold text-stone-900">{label}</p>
