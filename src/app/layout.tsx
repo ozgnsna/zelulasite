@@ -105,9 +105,14 @@ export default async function RootLayout({
           <AnalyticsProvider />
           <ReferralTrackingBridge />
         </Suspense>
-        {isAdminRoute ? null : <AnnouncementBar />}
         {isAdminRoute ? null : (
-          <div className="sticky top-0 z-50 border-b border-[#e8e2d9]/70 bg-[#fffdfb] shadow-[0_1px_0_rgba(255,255,255,0.65)]">
+          <>
+            <AnnouncementBar />
+            <div className="h-1 shrink-0 bg-gradient-to-b from-[#d9cec0]/70 to-[#fffdfb]" aria-hidden />
+          </>
+        )}
+        {isAdminRoute ? null : (
+          <div className="sticky top-0 z-50 border-b border-[#e0d5c8] bg-[#fffdfb] shadow-[0_4px_14px_-4px_rgba(62,52,38,0.12)]">
             <StorefrontSiteChrome />
           </div>
         )}

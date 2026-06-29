@@ -46,7 +46,7 @@ export function AnnouncementBar() {
 
   return (
     <div
-      className="relative flex h-9 items-center overflow-hidden border-b border-[#e8e2d9]/90 bg-[#faf8f5] sm:h-10"
+      className="relative flex h-9 items-center overflow-hidden border-b-2 border-[#d4c8b8] bg-[linear-gradient(180deg,#f0e9df_0%,#e9e1d6_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] sm:h-10"
       aria-label="Duyurular"
     >
       <div
