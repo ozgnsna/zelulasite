@@ -36,6 +36,8 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
 
   if (count === 0) return null;
 
+  const active = banners[index]!;
+
   return (
     <section className="bg-[#faf8f5] px-4 pt-4 sm:px-6 sm:pt-5" aria-label="Zelula tanıtım bannerları">
       <div
@@ -46,79 +48,72 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
         onFocus={() => setPaused(true)}
         onBlur={() => setPaused(false)}
       >
-      <div
-        className="flex h-full transition-transform duration-700 ease-out motion-reduce:transition-none"
-        style={{ transform: `translateX(-${index * 100}%)` }}
-      >
-        {banners.map((banner, i) => (
-          <article key={banner.id} className="relative h-full min-w-full shrink-0">
-            <div className="relative h-full w-full">
-              <Image
-                src={banner.imageSrc}
-                alt={banner.alt}
-                width={banner.width}
-                height={banner.height}
-                priority={i === 0}
-                loading={i === 0 ? "eager" : "lazy"}
-                fetchPriority={i === 0 ? "high" : "low"}
-                className="h-full w-full object-cover object-left"
-                style={{ objectPosition: banner.objectPosition ?? "left center" }}
-                sizes="(max-width: 1100px) 100vw, 1100px"
+        <article key={active.id} className="relative h-full w-full">
+          <div className="relative h-full w-full">
+            <Image
+              src={active.imageSrc}
+              alt={active.alt}
+              width={active.width}
+              height={active.height}
+              priority={index === 0}
+              loading={index === 0 ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : "low"}
+              className="h-full w-full object-cover object-left"
+              style={{ objectPosition: active.objectPosition ?? "left center" }}
+              sizes="(max-width: 1100px) 100vw, 1100px"
+            />
+            {active.href ? (
+              <Link
+                href={active.href}
+                className="absolute inset-0 z-[1]"
+                aria-label={active.alt}
               />
-              {banner.href ? (
-                <Link
-                  href={banner.href}
-                  className="absolute inset-0 z-[1]"
-                  aria-label={banner.alt}
-                />
-              ) : null}
-            </div>
-          </article>
-        ))}
-      </div>
-
-      {count > 1 ? (
-        <>
-          <button
-            type="button"
-            onClick={prev}
-            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 touch-target rounded-full border border-white/30 bg-black/25 text-white backdrop-blur-sm transition hover:bg-black/40 sm:left-5"
-            aria-label="Önceki banner"
-          >
-            <ChevronLeft className="size-5" strokeWidth={1.75} />
-          </button>
-          <button
-            type="button"
-            onClick={next}
-            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 touch-target rounded-full border border-white/30 bg-black/25 text-white backdrop-blur-sm transition hover:bg-black/40 sm:right-5"
-            aria-label="Sonraki banner"
-          >
-            <ChevronRight className="size-5" strokeWidth={1.75} />
-          </button>
-          <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
-            {banners.map((b, i) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => setIndex(i)}
-                aria-label={`${i + 1}. banner`}
-                aria-current={i === index ? "true" : undefined}
-                className="touch-target rounded-full"
-              >
-                <span
-                  aria-hidden
-                  className={`block rounded-full transition-all ${i === index ? "h-1.5 w-7 bg-[#c9a06e]" : "h-1.5 w-2 bg-white/70"}`}
-                />
-              </button>
-            ))}
+            ) : null}
           </div>
-        </>
-      ) : null}
+        </article>
 
-      <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[2] h-12 bg-gradient-to-t from-[#faf8f5] to-transparent sm:h-14"
-        aria-hidden
-      />
+        {count > 1 ? (
+          <>
+            <button
+              type="button"
+              onClick={prev}
+              className="absolute left-3 top-1/2 z-10 -translate-y-1/2 touch-target rounded-full border border-white/30 bg-black/25 text-white backdrop-blur-sm transition hover:bg-black/40 sm:left-5"
+              aria-label="Önceki banner"
+            >
+              <ChevronLeft className="size-5" strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              onClick={next}
+              className="absolute right-3 top-1/2 z-10 -translate-y-1/2 touch-target rounded-full border border-white/30 bg-black/25 text-white backdrop-blur-sm transition hover:bg-black/40 sm:right-5"
+              aria-label="Sonraki banner"
+            >
+              <ChevronRight className="size-5" strokeWidth={1.75} />
+            </button>
+            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
+              {banners.map((b, i) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setIndex(i)}
+                  aria-label={`${i + 1}. banner`}
+                  aria-current={i === index ? "true" : undefined}
+                  className="touch-target rounded-full"
+                >
+                  <span
+                    aria-hidden
+                    className={`block rounded-full transition-all ${i === index ? "h-1.5 w-7 bg-[#c9a06e]" : "h-1.5 w-2 bg-white/70"}`}
+                  />
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[2] h-12 bg-gradient-to-t from-[#faf8f5] to-transparent sm:h-14"
+          aria-hidden
+        />
       </div>
     </section>
   );

@@ -1,5 +1,25 @@
 import type { NextConfig } from "next";
 
+function supabaseStorageRemotePattern(): { protocol: "https"; hostname: string; pathname: string } {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (raw) {
+    try {
+      return {
+        protocol: "https",
+        hostname: new URL(raw).hostname,
+        pathname: "/storage/v1/object/public/**",
+      };
+    } catch {
+      /* fall through */
+    }
+  }
+  return {
+    protocol: "https",
+    hostname: "*.supabase.co",
+    pathname: "/storage/v1/object/public/**",
+  };
+}
+
 const nextConfig: NextConfig = {
   async redirects() {
     return [
@@ -17,7 +37,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "picsum.photos", pathname: "/**" },
       { protocol: "https", hostname: "fastly.picsum.photos", pathname: "/**" },
       { protocol: "https", hostname: "images.pexels.com", pathname: "/**" },
-      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
+      supabaseStorageRemotePattern(),
       { protocol: "https", hostname: "*.cdninstagram.com", pathname: "/**" },
       { protocol: "https", hostname: "scontent.cdninstagram.com", pathname: "/**" },
       { protocol: "https", hostname: "*.fbcdn.net", pathname: "/**" },
