@@ -119,7 +119,8 @@ function funnelConversionRate(funnel: DashboardAnalyticsMetrics["funnel"]): numb
 
 function stepTransitionRate(current: number, previous: number): number | null {
   if (previous <= 0) return null;
-  return Math.round((current / previous) * 1000) / 10;
+  const rate = Math.round((current / previous) * 1000) / 10;
+  return Number.isFinite(rate) ? rate : null;
 }
 
 type FunnelStepConfig = {
@@ -157,6 +158,7 @@ function findWorstFunnelTransition(
   for (let index = 1; index < steps.length; index += 1) {
     const prev = steps[index - 1]!;
     const curr = steps[index]!;
+    if (prev.value <= 0) continue;
     const rate = stepTransitionRate(curr.value, prev.value);
     if (rate == null) continue;
     if (!worst || rate < worst.rate) {
@@ -296,6 +298,7 @@ function ConversionGaugeCard({ rate }: { rate: number }) {
 }
 
 function TransitionBadge({ rate }: { rate: number }) {
+  if (!Number.isFinite(rate)) return null;
   const tone = transitionBadgeTone(rate);
   return (
     <span
@@ -324,7 +327,10 @@ function VisualConversionFunnel({ funnel }: { funnel: DashboardAnalyticsMetrics[
         const Icon = step.icon;
         const barWidthPct = funnel.site_visit > 0 ? Math.round((step.value / siteVisit) * 1000) / 10 : 0;
         const prevValue = index > 0 ? steps[index - 1]!.value : null;
-        const transitionRate = index > 0 && prevValue != null ? stepTransitionRate(step.value, prevValue) : null;
+        const transitionRate =
+          index > 0 && prevValue != null && prevValue > 0
+            ? stepTransitionRate(step.value, prevValue)
+            : null;
 
         return (
           <Fragment key={step.key}>

@@ -3,11 +3,71 @@ import { buildDashboardAnalyticsMetrics, type DashboardAnalyticsMetrics } from "
 import type { ResolvedAnalyticsRange } from "@/lib/admin/analytics-range";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
+type AnalyticsEventRow = {
+  event_name: string | null;
+  client_id?: string | null;
+  ecommerce?: unknown;
+};
+
 type OrderRow = {
   total?: number | null;
   payment_status?: string | null;
   order_status?: string | null;
 };
+
+const ANALYTICS_PAGE_SIZE = 1000;
+
+async function fetchAnalyticsEventsInRange(
+  admin: SupabaseClient,
+  start: Date,
+  end: Date,
+): Promise<AnalyticsEventRow[]> {
+  const rows: AnalyticsEventRow[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await admin
+      .from("analytics_events")
+      .select("event_name,client_id,ecommerce")
+      .gte("occurred_at", start.toISOString())
+      .lte("occurred_at", end.toISOString())
+      .order("occurred_at", { ascending: true })
+      .range(offset, offset + ANALYTICS_PAGE_SIZE - 1);
+
+    if (error) break;
+
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < ANALYTICS_PAGE_SIZE) break;
+    offset += ANALYTICS_PAGE_SIZE;
+  }
+
+  return rows;
+}
+
+async function fetchOrdersInRange(admin: SupabaseClient, start: Date, end: Date): Promise<OrderRow[]> {
+  const rows: OrderRow[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await admin
+      .from("orders")
+      .select("id,total,payment_status,order_status")
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString())
+      .order("created_at", { ascending: true })
+      .range(offset, offset + ANALYTICS_PAGE_SIZE - 1);
+
+    if (error) break;
+
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < ANALYTICS_PAGE_SIZE) break;
+    offset += ANALYTICS_PAGE_SIZE;
+  }
+
+  return rows;
+}
 
 function sumPaidRevenue(orders: OrderRow[]): number {
   return orders
@@ -37,38 +97,16 @@ export async function fetchAnalyticsSectionData(
   admin: SupabaseClient,
   range: ResolvedAnalyticsRange,
 ): Promise<AnalyticsSectionData> {
-  const [currentEventsRes, previousEventsRes, currentOrdersRes, previousOrdersRes] = await Promise.all([
-    admin
-      .from("analytics_events")
-      .select("event_name,client_id,ecommerce")
-      .gte("occurred_at", range.start.toISOString())
-      .lte("occurred_at", range.end.toISOString())
-      .limit(5000),
-    admin
-      .from("analytics_events")
-      .select("event_name,client_id,ecommerce")
-      .gte("occurred_at", range.compareStart.toISOString())
-      .lte("occurred_at", range.compareEnd.toISOString())
-      .limit(5000),
-    admin
-      .from("orders")
-      .select("id,total,payment_status,order_status")
-      .gte("created_at", range.start.toISOString())
-      .lte("created_at", range.end.toISOString())
-      .limit(500),
-    admin
-      .from("orders")
-      .select("id,total,payment_status,order_status")
-      .gte("created_at", range.compareStart.toISOString())
-      .lte("created_at", range.compareEnd.toISOString())
-      .limit(500),
+  const [currentEvents, previousEvents, currentOrders, previousOrders] = await Promise.all([
+    fetchAnalyticsEventsInRange(admin, range.start, range.end),
+    fetchAnalyticsEventsInRange(admin, range.compareStart, range.compareEnd),
+    fetchOrdersInRange(admin, range.start, range.end),
+    fetchOrdersInRange(admin, range.compareStart, range.compareEnd),
   ]);
 
-  const metrics = buildDashboardAnalyticsMetrics(currentEventsRes.data ?? []);
-  const previousMetrics = buildDashboardAnalyticsMetrics(previousEventsRes.data ?? []);
+  const metrics = buildDashboardAnalyticsMetrics(currentEvents);
+  const previousMetrics = buildDashboardAnalyticsMetrics(previousEvents);
 
-  const currentOrders = currentOrdersRes.data ?? [];
-  const previousOrders = previousOrdersRes.data ?? [];
   const revenue = sumPaidRevenue(currentOrders);
   const previousRevenue = sumPaidRevenue(previousOrders);
   const paidOrderCount = countPaidOrders(currentOrders);

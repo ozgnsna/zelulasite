@@ -110,6 +110,18 @@ export default async function AdminPage({
   if (tab === "products") redirect("/admin/products");
   if (tab === "trendyol") redirect("/admin/trendyol");
 
+  if (!String(sp.analyticsRange ?? "").trim()) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(sp)) {
+      if (value == null) continue;
+      const trimmed = String(value).trim();
+      if (!trimmed || key === "analyticsRange") continue;
+      params.set(key, trimmed);
+    }
+    params.set("analyticsRange", "month");
+    redirect(`/admin?${params.toString()}#analytics-detail`);
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
