@@ -28,6 +28,7 @@ export type DashboardAnalyticsMetrics = {
     addToCartRate: number;
   }>;
   funnel: {
+    site_visit: number;
     view_item: number;
     add_to_cart: number;
     begin_checkout: number;
@@ -64,9 +65,14 @@ function pct(numerator: number, denominator: number): number {
   return Math.round((numerator / denominator) * 10000) / 100;
 }
 
-export function collectVisitorIds(events: AnalyticsEventRow[]): Set<string> {
+export function collectVisitorIds(
+  events: AnalyticsEventRow[],
+  options?: { eventName?: string },
+): Set<string> {
+  const eventFilter = String(options?.eventName ?? "").trim();
   const visitors = new Set<string>();
   for (const event of events) {
+    if (eventFilter && String(event.event_name ?? "") !== eventFilter) continue;
     const clientId = String(event.client_id ?? "").trim();
     if (clientId) visitors.add(clientId);
   }
@@ -92,6 +98,10 @@ export function buildDashboardAnalyticsMetrics(
   options?: { clientIdsSeenBeforeToday?: ReadonlySet<string> },
 ): DashboardAnalyticsMetrics {
   const visitors = collectVisitorIds(events);
+  const viewItemVisitors = collectVisitorIds(events, { eventName: "view_item" });
+  const addToCartVisitors = collectVisitorIds(events, { eventName: "add_to_cart" });
+  const checkoutVisitors = collectVisitorIds(events, { eventName: "begin_checkout" });
+  const purchaseVisitors = collectVisitorIds(events, { eventName: "purchase" });
   const { visitorsNewToday, visitorsReturningToday } = options?.clientIdsSeenBeforeToday
     ? splitNewAndReturningVisitors(visitors, options.clientIdsSeenBeforeToday)
     : { visitorsNewToday: 0, visitorsReturningToday: 0 };
@@ -152,10 +162,11 @@ export function buildDashboardAnalyticsMetrics(
       .sort((a, b) => b.views - a.views)
       .slice(0, 5),
     funnel: {
-      view_item: productViews,
-      add_to_cart: addToCarts,
-      begin_checkout: checkoutStarts,
-      purchase: purchases,
+      site_visit: visitors.size,
+      view_item: viewItemVisitors.size,
+      add_to_cart: addToCartVisitors.size,
+      begin_checkout: checkoutVisitors.size,
+      purchase: purchaseVisitors.size,
     },
   };
 }

@@ -1,6 +1,13 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowDown, ChevronRight } from "lucide-react";
+import {
+  Check,
+  CreditCard,
+  Eye,
+  ShoppingCart,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
 import type { DashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
 import {
@@ -8,6 +15,23 @@ import {
   type AnalyticsRangeKey,
 } from "@/lib/admin/analytics-range";
 import type { AnalyticsSectionData } from "@/lib/admin/fetch-analytics-section";
+
+const ANALYTICS_THEME = {
+  "--surface-1": "var(--surface)",
+  "--text-primary": "#2d2521",
+  "--text-secondary": "#57534e",
+  "--text-muted": "#a8a29e",
+  "--c-blue": "#378ADD",
+  "--c-amber": "#BA7517",
+  "--c-red": "#e5484d",
+  "--c-green": "#30a46c",
+  "--accent-bg": "color-mix(in srgb, #378ADD 14%, transparent)",
+  "--accent-text": "#2563b3",
+  "--warning-bg": "color-mix(in srgb, #f59e0b 18%, transparent)",
+  "--warning-text": "#b45309",
+  "--danger-bg": "color-mix(in srgb, #ef4444 14%, transparent)",
+  "--danger-text": "#b91c1c",
+} as CSSProperties;
 
 function splitTryParts(n: number): { main: string; decimals: string } {
   const full = n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -21,107 +45,125 @@ function TryPriceSplit({ n, className }: { n: number; className?: string }) {
   return (
     <span className={`inline-flex items-baseline gap-0 tabular-nums ${className ?? ""}`}>
       <span>{main}</span>
-      <span className="text-[0.62em] font-medium text-stone-500">,{decimals}</span>
-      <span className="ml-0.5 text-[0.55em] font-semibold text-stone-400">₺</span>
+      <span className="text-[0.62em] font-medium" style={{ color: "var(--text-muted)" }}>
+        ,{decimals}
+      </span>
+      <span className="ml-0.5 text-[0.55em] font-semibold" style={{ color: "var(--text-muted)" }}>
+        ₺
+      </span>
     </span>
   );
 }
 
-function funnelDropOffPct(current: number, previous: number): number | null {
+function buildSparklineValues(previous: number, current: number, count = 8): number[] {
+  if (count <= 1) return [current];
+  if (previous <= 0 && current <= 0) return Array.from({ length: count }, () => 0);
+  return Array.from({ length: count }, (_, index) => {
+    const t = index / (count - 1);
+    return previous + (current - previous) * t;
+  });
+}
+
+function buildSparklinePolyline(values: number[], width: number, height: number, padding = 4): string {
+  if (values.length === 0) return "";
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const span = Math.max(max - min, 1);
+  const innerW = width - padding * 2;
+  const innerH = height - padding * 2;
+  return values
+    .map((value, index) => {
+      const x = padding + (index / Math.max(values.length - 1, 1)) * innerW;
+      const y = padding + innerH - ((value - min) / span) * innerH;
+      return `${x},${y}`;
+    })
+    .join(" ");
+}
+
+function revenuePercentTrend(current: number, previous: number, compareLabel: string): ReactNode {
+  if (previous <= 0 && current <= 0) {
+    return <span style={{ color: "var(--text-muted)" }}>Henüz ciro verisi yok</span>;
+  }
+  if (previous <= 0) {
+    return (
+      <span className="font-semibold tabular-nums" style={{ color: "var(--c-green)" }}>
+        ↑ geçen döneme göre yeni ciro
+      </span>
+    );
+  }
+  const pct = Math.round(((current - previous) / previous) * 1000) / 10;
+  if (pct === 0) {
+    return (
+      <span style={{ color: "var(--text-muted)" }}>
+        {compareLabel === "dün" ? "Dünle aynı" : "Geçen dönemle aynı"}
+      </span>
+    );
+  }
+  const up = pct > 0;
+  const tone = up ? "var(--c-green)" : "var(--c-red)";
+  return (
+    <span className="inline-flex items-center gap-0.5 font-semibold tabular-nums" style={{ color: tone }}>
+      <span aria-hidden>{up ? "↑" : "↓"}</span>
+      <span>
+        geçen döneme göre {up ? "+" : ""}
+        {pct.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+      </span>
+    </span>
+  );
+}
+
+function funnelConversionRate(funnel: DashboardAnalyticsMetrics["funnel"]): number {
+  if (funnel.site_visit <= 0) return 0;
+  return Math.round((funnel.purchase / funnel.site_visit) * 10000) / 100;
+}
+
+function stepTransitionRate(current: number, previous: number): number | null {
   if (previous <= 0) return null;
-  return Math.round(((previous - current) / previous) * 1000) / 10;
+  return Math.round((current / previous) * 1000) / 10;
 }
 
-function countTrend(current: number, previous: number, compareLabel: string): ReactNode {
-  const d = current - previous;
-  if (d === 0) {
-    return (
-      <span className="font-medium text-stone-500">
-        {compareLabel === "dün" ? "Dünle aynı" : "Önceki dönemle aynı"}
-      </span>
-    );
+type FunnelStepConfig = {
+  key: keyof DashboardAnalyticsMetrics["funnel"];
+  label: string;
+  icon: LucideIcon;
+  barColor: string;
+};
+
+const FUNNEL_STEP_CONFIG: FunnelStepConfig[] = [
+  { key: "site_visit", label: "Site ziyareti", icon: Users, barColor: "var(--c-blue)" },
+  { key: "view_item", label: "Ürün görüntüleme", icon: Eye, barColor: "var(--c-blue)" },
+  { key: "add_to_cart", label: "Sepete ekleme", icon: ShoppingCart, barColor: "var(--c-amber)" },
+  { key: "begin_checkout", label: "Ödeme", icon: CreditCard, barColor: "var(--c-red)" },
+  { key: "purchase", label: "Satış", icon: Check, barColor: "var(--c-green)" },
+];
+
+const TRANSITION_HINTS: Record<string, string> = {
+  "site_visit→view_item": "Ziyaretçiler ürün sayfalarına yönlendirilmiyor olabilir.",
+  "view_item→add_to_cart": "Ürün sayfaları sepete ekleme konusunda zayıf kalıyor.",
+  "add_to_cart→begin_checkout": "Sepet terk oranı yüksek olabilir.",
+  "begin_checkout→purchase": "Ödeme adımında kayıp yaşanıyor.",
+};
+
+function transitionBadgeTone(rate: number): { bg: string; text: string } {
+  if (rate > 50) return { bg: "var(--accent-bg)", text: "var(--accent-text)" };
+  if (rate >= 25) return { bg: "var(--warning-bg)", text: "var(--warning-text)" };
+  return { bg: "var(--danger-bg)", text: "var(--danger-text)" };
+}
+
+function findWorstFunnelTransition(
+  steps: Array<{ key: string; label: string; value: number }>,
+): { from: (typeof steps)[number]; to: (typeof steps)[number]; rate: number } | null {
+  let worst: { from: (typeof steps)[number]; to: (typeof steps)[number]; rate: number } | null = null;
+  for (let index = 1; index < steps.length; index += 1) {
+    const prev = steps[index - 1]!;
+    const curr = steps[index]!;
+    const rate = stepTransitionRate(curr.value, prev.value);
+    if (rate == null) continue;
+    if (!worst || rate < worst.rate) {
+      worst = { from: prev, to: curr, rate };
+    }
   }
-  const up = d > 0;
-  const abs = Math.abs(d).toLocaleString("tr-TR");
-  const tone = up ? "text-emerald-700" : "text-rose-700";
-  return (
-    <span className={`inline-flex items-center gap-0.5 font-semibold ${tone}`}>
-      <span aria-hidden>{up ? "↑" : "↓"}</span>
-      <span>
-        {up ? "+" : "−"}
-        {abs} {compareLabel === "dün" ? "dünden" : "önceki dönemden"}
-      </span>
-    </span>
-  );
-}
-
-function revenueTrend(current: number, previous: number, compareLabel: string): ReactNode {
-  const d = Math.round((current - previous) * 100) / 100;
-  if (d === 0) {
-    return (
-      <span className="font-medium text-stone-500">
-        {compareLabel === "dün" ? "Dünle aynı" : "Önceki dönemle aynı"}
-      </span>
-    );
-  }
-  const up = d > 0;
-  const abs = Math.abs(d);
-  const tone = up ? "text-emerald-700" : "text-rose-700";
-  const { main, decimals } = splitTryParts(abs);
-  return (
-    <span className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${tone}`}>
-      <span aria-hidden>{up ? "↑" : "↓"}</span>
-      <span>
-        {up ? "+" : "−"}
-        {main},{decimals} ₺ {compareLabel === "dün" ? "dünden" : "önceki dönemden"}
-      </span>
-    </span>
-  );
-}
-
-function percentTrend(current: number, previous: number, compareLabel: string): ReactNode {
-  const d = Math.round((current - previous) * 100) / 100;
-  if (d === 0) {
-    return (
-      <span className="font-medium text-stone-500">
-        {compareLabel === "dün" ? "Dünle aynı" : "Önceki dönemle aynı"}
-      </span>
-    );
-  }
-  const up = d > 0;
-  const tone = up ? "text-emerald-700" : "text-rose-700";
-  return (
-    <span className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${tone}`}>
-      <span aria-hidden>{up ? "↑" : "↓"}</span>
-      <span>
-        {up ? "+" : "−"}
-        {Math.abs(d).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} puan{" "}
-        {compareLabel === "dün" ? "dünden" : "önceki dönemden"}
-      </span>
-    </span>
-  );
-}
-
-function AnalyticsMetricCard({
-  title,
-  value,
-  valueNode,
-  trend,
-}: {
-  title: string;
-  value?: string;
-  valueNode?: ReactNode;
-  trend?: ReactNode;
-}) {
-  return (
-    <article className="rounded-xl border border-stone-200/60 bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] px-3 py-2.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)]">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-stone-600">{title}</p>
-      <div className="mt-1 font-serif text-xl font-semibold tabular-nums tracking-tight text-stone-950">
-        {valueNode ?? value}
-      </div>
-      {trend ? <p className="mt-1 text-[10px] leading-snug text-stone-600">{trend}</p> : null}
-    </article>
-  );
+  return worst;
 }
 
 function TimeFilterButton({
@@ -136,75 +178,201 @@ function TimeFilterButton({
   return (
     <Link
       href={href}
-      className={`rounded-lg px-2.5 py-1.5 text-[10px] font-semibold transition ${
+      className="rounded-lg px-2.5 py-1.5 text-[10px] font-semibold transition"
+      style={
         active
-          ? "bg-stone-900 text-white shadow-sm"
-          : "border border-stone-200/70 bg-white/80 text-stone-700 hover:border-stone-300 hover:bg-white"
-      }`}
+          ? { background: "var(--text-primary)", color: "#fffdfb" }
+          : {
+              border: "1px solid color-mix(in srgb, var(--text-muted) 35%, transparent)",
+              background: "var(--surface-1)",
+              color: "var(--text-secondary)",
+            }
+      }
     >
       {children}
     </Link>
   );
 }
 
-function ConversionFunnel({
-  funnel,
-  maxValue,
+function RevenueSparklineCard({
+  revenue,
+  previousRevenue,
+  compareLabel,
+  title,
 }: {
-  funnel: DashboardAnalyticsMetrics["funnel"];
-  maxValue: number;
+  revenue: number;
+  previousRevenue: number;
+  compareLabel: string;
+  title: string;
 }) {
-  const steps = [
-    { key: "view", label: "Ürün Görüntüleme", value: funnel.view_item },
-    { key: "cart", label: "Sepete Ekleme", value: funnel.add_to_cart },
-    { key: "pay", label: "Ödeme Adımı", value: funnel.begin_checkout },
-    { key: "buy", label: "Satın Alma", value: funnel.purchase },
-  ] as const;
-
-  const barMax = Math.max(maxValue, 1);
+  const sparkValues = buildSparklineValues(previousRevenue, revenue);
+  const sparkPoints = buildSparklinePolyline(sparkValues, 120, 36);
 
   return (
-    <div className="space-y-2">
+    <article
+      className="rounded-[12px] p-3"
+      style={{ background: "var(--surface-1)", border: "1px solid color-mix(in srgb, var(--text-muted) 22%, transparent)" }}
+    >
+      <p
+        className="text-[9px] font-semibold uppercase tracking-[0.1em]"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        {title}
+      </p>
+      <div className="mt-1 font-serif text-2xl font-semibold tabular-nums tracking-tight" style={{ color: "var(--text-primary)" }}>
+        <TryPriceSplit n={revenue} />
+      </div>
+      <svg
+        viewBox="0 0 120 36"
+        className="mt-2 h-9 w-full max-w-[10rem]"
+        aria-hidden
+        role="presentation"
+      >
+        <polyline
+          points={sparkPoints}
+          fill="none"
+          stroke="var(--c-blue)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray="4 3"
+        />
+      </svg>
+      <p className="mt-1.5 text-[10px] leading-snug">{revenuePercentTrend(revenue, previousRevenue, compareLabel)}</p>
+    </article>
+  );
+}
+
+function ConversionGaugeCard({ rate }: { rate: number }) {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(rate, 100));
+  const dash = (clamped / 100) * circumference;
+
+  return (
+    <article
+      className="flex flex-col items-center justify-center rounded-[12px] p-3"
+      style={{ background: "var(--surface-1)", border: "1px solid color-mix(in srgb, var(--text-muted) 22%, transparent)" }}
+    >
+      <p
+        className="w-full text-[9px] font-semibold uppercase tracking-[0.1em]"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Dönüşüm oranı
+      </p>
+      <div className="relative mt-1 flex h-[5.5rem] w-[5.5rem] items-center justify-center">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden role="presentation">
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="color-mix(in srgb, var(--text-muted) 28%, transparent)"
+            strokeWidth="8"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="var(--c-green)"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${circumference}`}
+          />
+        </svg>
+        <span
+          className="absolute font-serif text-xl font-semibold tabular-nums"
+          style={{ color: "var(--text-primary)" }}
+        >
+          {rate.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+        </span>
+      </div>
+      <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+        Ziyaretçi → satış
+      </p>
+    </article>
+  );
+}
+
+function TransitionBadge({ rate }: { rate: number }) {
+  const tone = transitionBadgeTone(rate);
+  return (
+    <span
+      className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+      style={{ background: tone.bg, color: tone.text }}
+    >
+      %
+      {rate.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+    </span>
+  );
+}
+
+function VisualConversionFunnel({ funnel }: { funnel: DashboardAnalyticsMetrics["funnel"] }) {
+  const steps = FUNNEL_STEP_CONFIG.map((config) => ({
+    key: config.key,
+    label: config.label,
+    icon: config.icon,
+    barColor: config.barColor,
+    value: funnel[config.key],
+  }));
+  const siteVisit = Math.max(funnel.site_visit, 1);
+
+  return (
+    <div className="space-y-0">
       {steps.map((step, index) => {
-        const prev = index > 0 ? steps[index - 1]!.value : null;
-        const dropOff = prev != null ? funnelDropOffPct(step.value, prev) : null;
-        const widthPct = Math.max(8, Math.round((step.value / barMax) * 100));
+        const Icon = step.icon;
+        const barWidthPct = funnel.site_visit > 0 ? Math.round((step.value / siteVisit) * 1000) / 10 : 0;
+        const prevValue = index > 0 ? steps[index - 1]!.value : null;
+        const transitionRate = index > 0 && prevValue != null ? stepTransitionRate(step.value, prevValue) : null;
 
         return (
           <Fragment key={step.key}>
-            {index > 0 ? (
-              <div className="flex items-center gap-2 pl-1 text-[10px] text-stone-500">
-                <ArrowDown className="size-3 shrink-0 text-stone-400" aria-hidden />
-                {dropOff != null && dropOff > 0 ? (
-                  <span className="font-semibold text-rose-700/90">−{dropOff.toLocaleString("tr-TR")}% düşüş</span>
-                ) : dropOff === 0 ? (
-                  <span className="font-medium text-stone-500">Adım kaybı yok</span>
-                ) : (
-                  <span className="font-medium text-stone-500">Önceki adım yok</span>
-                )}
-                {prev != null && prev > 0 ? (
-                  <span className="text-stone-400">
-                    ({step.value.toLocaleString("tr-TR")} / {prev.toLocaleString("tr-TR")})
-                  </span>
-                ) : null}
+            {index > 0 && transitionRate != null ? (
+              <div className="flex justify-center py-1.5">
+                <TransitionBadge rate={transitionRate} />
               </div>
             ) : null}
-            <div className="rounded-lg border border-stone-200/55 bg-white px-3 py-2 shadow-[0_1px_0_0_rgba(28,25,23,0.03)]">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold text-stone-600">{step.label}</p>
-                  <p className="mt-0.5 font-serif text-lg font-semibold tabular-nums text-stone-950">
-                    {step.value.toLocaleString("tr-TR")}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+                    style={{
+                      background: "color-mix(in srgb, var(--text-muted) 12%, transparent)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                  </span>
+                  <p className="truncate text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {step.label}
                   </p>
                 </div>
-                <div className="hidden shrink-0 items-center gap-1 text-stone-300 sm:flex" aria-hidden>
-                  {index < steps.length - 1 ? <ChevronRight className="size-4" /> : null}
-                </div>
+                <span
+                  className="shrink-0 font-serif text-base font-semibold tabular-nums"
+                  style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}
+                >
+                  {step.value.toLocaleString("tr-TR")}
+                </span>
               </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
+              <div
+                className="h-3 overflow-hidden rounded-[4px]"
+                style={{
+                  height: "12px",
+                  background: "var(--surface-1)",
+                  boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--text-muted) 22%, transparent)",
+                }}
+              >
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#8a734f]/80 to-stone-700/70 transition-all"
-                  style={{ width: `${widthPct}%` }}
+                  className="admin-analytics-funnel-bar h-full rounded-[4px]"
+                  style={
+                    {
+                      width: `${barWidthPct}%`,
+                      background: step.barColor,
+                      animationDelay: `${index * 0.15}s`,
+                    } as CSSProperties
+                  }
                 />
               </div>
             </div>
@@ -231,11 +399,8 @@ export function AdminAnalyticsSection({
   const {
     range,
     metrics,
-    previousMetrics,
     revenue,
     previousRevenue,
-    averageOrderValue,
-    previousAverageOrderValue,
     productImages,
     customFromYmd,
     customToYmd,
@@ -243,33 +408,49 @@ export function AdminAnalyticsSection({
   const compareLabel = range.compareLabel;
   const topViewedMaxViews =
     metrics.topViewedProducts.length > 0 ? Math.max(...metrics.topViewedProducts.map((r) => r.views)) : 1;
-  const funnelMax = Math.max(metrics.funnel.view_item, 1);
+  const conversionRate = funnelConversionRate(metrics.funnel);
+  const funnelSteps = FUNNEL_STEP_CONFIG.map((config) => ({
+    key: config.key,
+    label: config.label,
+    value: metrics.funnel[config.key],
+  }));
+  const allFunnelZero = funnelSteps.every((step) => step.value === 0);
+  const worstTransition = allFunnelZero ? null : findWorstFunnelTransition(funnelSteps);
+  const worstHintKey = worstTransition ? `${worstTransition.from.key}→${worstTransition.to.key}` : "";
+  const worstHint = TRANSITION_HINTS[worstHintKey] ?? "Bu adımda ziyaretçi kaybı en yüksek.";
 
   const filterOptions: Array<{ key: AnalyticsRangeKey; label: string }> = [
     { key: "today", label: "Bugün" },
-    { key: "week", label: "Bu hafta" },
-    { key: "month", label: "Bu ay" },
+    { key: "week", label: "Hafta" },
+    { key: "month", label: "Ay" },
   ];
 
   return (
     <section
       id="analytics-detail"
       aria-label="Analitik özeti"
-      className="rounded-2xl border border-stone-200/45 bg-stone-50/35 p-3 shadow-sm ring-1 ring-stone-900/[0.02] sm:p-4"
+      className="admin-analytics-dashboard rounded-2xl border p-3 shadow-sm sm:p-4"
+      style={{
+        ...ANALYTICS_THEME,
+        borderColor: "color-mix(in srgb, var(--text-muted) 28%, transparent)",
+        background: "color-mix(in srgb, var(--surface-1) 72%, var(--background))",
+      }}
     >
-      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
-        <div>
-          <h2 className="font-serif text-lg font-light tracking-tight text-stone-900">Analitik özeti</h2>
-          <p className="mt-0.5 text-[11px] text-stone-600">
-            {range.periodLabel} · vitrin olayları · ziyaretçi = tarayıcı profili (client_id)
-          </p>
-        </div>
-        <a href="#visitor-analytics" className="text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline">
-          Ziyaretçi özeti ↑
-        </a>
-      </div>
+      <style>{`
+        @keyframes admin-analytics-bar-grow {
+          from { width: 0; }
+        }
+        .admin-analytics-dashboard .admin-analytics-funnel-bar {
+          animation: admin-analytics-bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .admin-analytics-dashboard .admin-analytics-funnel-bar {
+            animation: none;
+          }
+        }
+      `}</style>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {filterOptions.map((opt) => (
           <TimeFilterButton key={opt.key} href={buildAnalyticsFilterHref(opt.key)} active={range.key === opt.key}>
             {opt.label}
@@ -279,34 +460,45 @@ export function AdminAnalyticsSection({
           href={buildAnalyticsFilterHref("custom", { from: customFromYmd, to: customToYmd })}
           active={range.key === "custom"}
         >
-          Özel aralık
+          Özel
         </TimeFilterButton>
       </div>
 
       {range.key === "custom" ? (
         <form method="get" action="/admin#analytics-detail" className="mt-2 flex flex-wrap items-end gap-2">
           <input type="hidden" name="analyticsRange" value="custom" />
-          <label className="text-[10px] font-semibold text-stone-600">
+          <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
             Başlangıç
             <input
               type="date"
               name="analyticsFrom"
               defaultValue={customFromYmd}
-              className="mt-1 block rounded-lg border border-stone-200 bg-white px-2 py-1.5 text-xs text-stone-900"
+              className="mt-1 block rounded-lg border px-2 py-1.5 text-xs"
+              style={{
+                borderColor: "color-mix(in srgb, var(--text-muted) 35%, transparent)",
+                background: "var(--surface-1)",
+                color: "var(--text-primary)",
+              }}
             />
           </label>
-          <label className="text-[10px] font-semibold text-stone-600">
+          <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
             Bitiş
             <input
               type="date"
               name="analyticsTo"
               defaultValue={customToYmd}
-              className="mt-1 block rounded-lg border border-stone-200 bg-white px-2 py-1.5 text-xs text-stone-900"
+              className="mt-1 block rounded-lg border px-2 py-1.5 text-xs"
+              style={{
+                borderColor: "color-mix(in srgb, var(--text-muted) 35%, transparent)",
+                background: "var(--surface-1)",
+                color: "var(--text-primary)",
+              }}
             />
           </label>
           <button
             type="submit"
-            className="rounded-lg bg-stone-900 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-stone-800"
+            className="rounded-lg px-3 py-1.5 text-[10px] font-semibold text-white"
+            style={{ background: "var(--text-primary)" }}
           >
             Uygula
           </button>
@@ -314,78 +506,91 @@ export function AdminAnalyticsSection({
       ) : null}
 
       {bestSellersToday.length > 0 ? (
-        <p className="mt-3 truncate text-[11px] leading-snug text-stone-700">
-          <span className="font-semibold text-stone-800">Bugün çok satanlar:</span>{" "}
+        <p className="mt-3 truncate text-[11px] leading-snug" style={{ color: "var(--text-secondary)" }}>
+          <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+            Bugün çok satanlar:
+          </span>{" "}
           {bestSellersToday.slice(0, 3).map((row, index) => (
             <Fragment key={row.productId}>
-              {index > 0 ? <span className="text-stone-400"> · </span> : null}
+              {index > 0 ? (
+                <span style={{ color: "var(--text-muted)" }}> · </span>
+              ) : null}
               <Link
                 href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
-                className="font-medium text-stone-800 underline-offset-2 hover:text-[#6b5430] hover:underline"
+                className="font-medium underline-offset-2 hover:underline"
+                style={{ color: "var(--text-primary)" }}
               >
                 {row.name}
               </Link>
-              <span className="tabular-nums text-stone-600"> · {row.qty.toLocaleString("tr-TR")} adet</span>
+              <span className="tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                {" "}
+                · {row.qty.toLocaleString("tr-TR")} adet
+              </span>
             </Fragment>
           ))}
         </p>
       ) : null}
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        <AnalyticsMetricCard
-          title="Ürün Görüntüleme"
-          value={metrics.productViews.toLocaleString("tr-TR")}
-          trend={countTrend(metrics.productViews, previousMetrics.productViews, compareLabel)}
-        />
-        <AnalyticsMetricCard
-          title="Sepete Ekleme"
-          value={metrics.addToCarts.toLocaleString("tr-TR")}
-          trend={countTrend(metrics.addToCarts, previousMetrics.addToCarts, compareLabel)}
-        />
-        <AnalyticsMetricCard
-          title="Ödeme Adımı"
-          value={metrics.checkoutStarts.toLocaleString("tr-TR")}
-          trend={countTrend(metrics.checkoutStarts, previousMetrics.checkoutStarts, compareLabel)}
-        />
-        <AnalyticsMetricCard
-          title="Satın Alma"
-          value={metrics.purchases.toLocaleString("tr-TR")}
-          trend={countTrend(metrics.purchases, previousMetrics.purchases, compareLabel)}
-        />
-        <AnalyticsMetricCard
-          title="Dönüşüm"
-          value={`${metrics.conversionRate.toLocaleString("tr-TR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}%`}
-          trend={percentTrend(metrics.conversionRate, previousMetrics.conversionRate, compareLabel)}
-        />
-        <AnalyticsMetricCard
+      <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <RevenueSparklineCard
           title={range.key === "today" ? "Ciro (bugün)" : "Ciro"}
-          valueNode={<TryPriceSplit n={revenue} />}
-          trend={revenueTrend(revenue, previousRevenue, compareLabel)}
+          revenue={revenue}
+          previousRevenue={previousRevenue}
+          compareLabel={compareLabel}
         />
-        <AnalyticsMetricCard
-          title="Ort. sipariş tutarı"
-          valueNode={<TryPriceSplit n={averageOrderValue} />}
-          trend={revenueTrend(averageOrderValue, previousAverageOrderValue, compareLabel)}
-        />
-      </div>
-
-      <div className="mt-4 rounded-xl border border-stone-200/50 bg-white/70 p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">Dönüşüm hunisi</p>
-        <p className="mt-0.5 text-[10px] text-stone-500">Her adımda bir öncekine göre kayıp yüzdesi</p>
-        <div className="mt-3">
-          <ConversionFunnel funnel={metrics.funnel} maxValue={funnelMax} />
-        </div>
+        <ConversionGaugeCard rate={conversionRate} />
       </div>
 
       <div className="mt-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">En çok görüntülenen ürünler</p>
-        {metrics.topViewedProducts.length === 0 ? (
-          <p className="mt-2 text-[11px] text-stone-500">Seçili dönemde görüntülenme yok.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-stone-200/50 overflow-visible rounded-xl border border-stone-200/50 bg-white/80">
+        <p
+          className="text-[9px] font-semibold uppercase tracking-[0.12em]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          Dönüşüm hunisi · {range.periodLabel} · benzersiz ziyaretçi
+        </p>
+        <div
+          className="mt-3 rounded-[12px] p-3"
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid color-mix(in srgb, var(--text-muted) 22%, transparent)",
+          }}
+        >
+          <VisualConversionFunnel funnel={metrics.funnel} />
+        </div>
+
+        {worstTransition ? (
+          <div
+            className="mt-3 rounded-[12px] px-3 py-2.5 text-[12px] leading-snug"
+            style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
+          >
+            <p className="font-semibold">
+              En büyük kayıp: {worstTransition.from.label} → {worstTransition.to.label} (%
+              {worstTransition.rate.toLocaleString("tr-TR", {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })}
+              )
+            </p>
+            <p className="mt-0.5 font-medium opacity-90">{worstHint}</p>
+          </div>
+        ) : null}
+      </div>
+
+      {metrics.topViewedProducts.length > 0 ? (
+        <div className="mt-4">
+          <p
+            className="text-[9px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            En çok görüntülenen ürünler
+          </p>
+          <ul
+            className="mt-2 divide-y overflow-visible rounded-[12px] border"
+            style={{
+              borderColor: "color-mix(in srgb, var(--text-muted) 22%, transparent)",
+              background: "var(--surface-1)",
+            }}
+          >
             {metrics.topViewedProducts.map((row) => {
               const imageUrl = productImages[row.productId];
               return (
@@ -399,27 +604,41 @@ export function AdminAnalyticsSection({
                   <div className="min-w-0 flex-1">
                     <Link
                       href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
-                      className="block truncate text-[12px] font-medium text-stone-800 underline-offset-2 hover:text-[#6b5430] hover:underline"
+                      className="block truncate text-[12px] font-medium underline-offset-2 hover:underline"
+                      style={{ color: "var(--text-primary)" }}
                     >
                       {row.productName}
                     </Link>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-stone-500">
+                    <div
+                      className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px]"
+                      style={{ color: "var(--text-muted)" }}
+                    >
                       <span>{row.views.toLocaleString("tr-TR")} görüntülenme</span>
-                      <span className="font-semibold text-[#8a734f]">
+                      <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
                         Sepete ekleme %
-                        {row.addToCartRate.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        {row.addToCartRate.toLocaleString("tr-TR", {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}
                       </span>
                     </div>
-                    <div className="mt-1.5 h-1 w-full max-w-[10rem] overflow-hidden rounded-full bg-stone-200/90">
+                    <div
+                      className="mt-1.5 h-1 w-full max-w-[10rem] overflow-hidden rounded-full"
+                      style={{ background: "color-mix(in srgb, var(--text-muted) 28%, transparent)" }}
+                    >
                       <div
-                        className="h-full rounded-full bg-stone-400/90"
-                        style={{ width: `${Math.round((row.views / topViewedMaxViews) * 100)}%` }}
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.round((row.views / topViewedMaxViews) * 100)}%`,
+                          background: "var(--text-muted)",
+                        }}
                       />
                     </div>
                   </div>
                   <Link
                     href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
-                    className="shrink-0 text-[10px] font-semibold text-[#8a734f] underline-offset-2 hover:underline"
+                    className="shrink-0 text-[10px] font-semibold underline-offset-2 hover:underline"
+                    style={{ color: "var(--accent-text)" }}
                   >
                     Ürün →
                   </Link>
@@ -427,8 +646,8 @@ export function AdminAnalyticsSection({
               );
             })}
           </ul>
-        )}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
