@@ -140,6 +140,7 @@ export default async function AdminPage({
     pendingShipListRes,
     analyticsSectionData,
     productCounts,
+    paidOrdersAllTimeRes,
   ] = await Promise.all([
     admin
       .from("orders")
@@ -178,6 +179,11 @@ export default async function AdminPage({
       .limit(8),
     fetchAnalyticsSectionData(admin, analyticsRange),
     fetchDashboardProductCounts(admin),
+    admin
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("payment_status", "paid")
+      .neq("order_status", "cancelled"),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
@@ -186,6 +192,7 @@ export default async function AdminPage({
   const yesterdayOrders = yesterdayOrdersRes.data ?? [];
   const pendingShipmentCount = pendingShipCountRes.count ?? 0;
   const pendingShipQueue = pendingShipListRes.data ?? [];
+  const paidOrdersAllTime = paidOrdersAllTimeRes.count ?? 0;
 
   const { activeProductsCount, outOfStockCount, lowStockCount, notListedOnMarketplaceCount } = productCounts;
 
@@ -464,10 +471,14 @@ export default async function AdminPage({
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-800">Satış</p>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                      topSellingProduct ? "bg-stone-200/90 text-stone-800" : "bg-stone-200/90 text-stone-700"
+                      topSellingProduct
+                        ? "bg-stone-200/90 text-stone-800"
+                        : paidOrdersAllTime === 0
+                          ? "bg-stone-200/90 text-stone-700"
+                          : "bg-sky-100/90 text-sky-900"
                     }`}
                   >
-                    {topSellingProduct ? "Tamam" : "Hedef"}
+                    {topSellingProduct ? "Tamam" : paidOrdersAllTime === 0 ? "Hedef" : "Bilgi"}
                   </span>
                 </div>
                 {topSellingProduct ? (
@@ -480,11 +491,19 @@ export default async function AdminPage({
                     </p>
                     <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Ürüne git →</span>
                   </>
-                ) : (
+                ) : paidOrdersAllTime === 0 ? (
                   <>
                     <p className="mt-2 text-lg font-bold text-stone-950">İlk satışa son düzlük</p>
                     <p className="mt-2 flex-1 text-sm font-medium text-stone-800">
                       Görsel + net fiyat + Trendyol gönderimi — bugün vitrini canlı tut, dönüşümü bekleme.
+                    </p>
+                    <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Kataloğu aç →</span>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-lg font-bold text-stone-950">Bugün henüz satış yok</p>
+                    <p className="mt-2 flex-1 text-sm font-medium text-stone-800">
+                      Dünkü liderle kıyasla bugün vitrini güçlü tut.
                     </p>
                     <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Kataloğu aç →</span>
                   </>
