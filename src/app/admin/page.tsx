@@ -409,33 +409,27 @@ export default async function AdminPage({
           <section>
             <h2 className="text-base font-semibold text-stone-950">Bugün yapılacaklar</h2>
             <p className="mt-1 text-sm text-stone-700">Küçük adımlar; büyük etki. Bugün bitmesi iyi olanlar.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Link
-                href="/admin/products?status=active&stock=low"
-                className={`group flex flex-col rounded-2xl border border-stone-200/75 bg-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)] transition-all hover:-translate-y-px hover:border-stone-300/80 hover:shadow-[0_5px_20px_-8px_rgba(28,25,23,0.08)] hover:ring-1 hover:ring-stone-200/40 ${
-                  lowStockCount > 0 ? "border-l-[3px] border-l-rose-500 bg-gradient-to-r from-rose-50/40 to-white" : "border-l-[3px] border-l-stone-300"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-800">Stok</p>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                      lowStockCount > 0 ? "bg-rose-100 text-rose-900" : "bg-stone-200/90 text-stone-700"
-                    }`}
-                  >
-                    {lowStockCount > 0 ? "Acele" : "Tamam"}
-                  </span>
-                </div>
-                <p className="mt-2 text-lg font-bold text-stone-950">
-                  {lowStockCount === 0 ? "Kritik stok yok" : `${lowStockCount.toLocaleString("tr-TR")} ürün tükenmek üzere`}
-                </p>
-                <p className="mt-2 flex-1 text-sm font-medium text-stone-800">
-                  {lowStockCount === 0
-                    ? "Yine de fiyat ve görselleri taze tut — dönüşüm düşmesin."
-                    : "Şimdi miktar gir — satış yarıda kalmasın; birkaç adet bile yetişir."}
-                </p>
-                <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Stokları aç →</span>
-              </Link>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {outOfStockCount > 0 ? (
+                <Link
+                  href="/admin/products?status=active&stock=out"
+                  className="group flex flex-col rounded-2xl border border-stone-200/75 border-l-[3px] border-l-rose-500 bg-gradient-to-r from-rose-50/40 to-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)] transition-all hover:-translate-y-px hover:border-stone-300/80 hover:shadow-[0_5px_20px_-8px_rgba(28,25,23,0.08)] hover:ring-1 hover:ring-stone-200/40"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-800">Stok</p>
+                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-900">
+                      Acil
+                    </span>
+                  </div>
+                  <p className="mt-2 text-lg font-bold text-stone-950">
+                    {outOfStockCount.toLocaleString("tr-TR")} ürün stokta yok — acil
+                  </p>
+                  <p className="mt-2 flex-1 text-sm font-medium text-stone-800">
+                    Satış durur — stok gir veya ürünü pasife al.
+                  </p>
+                  <span className="mt-3 text-sm font-bold text-stone-800 group-hover:underline">Stokları aç →</span>
+                </Link>
+              ) : null}
               <Link
                 href="/admin/products?status=active&trendyol=missing"
                 className="group flex flex-col rounded-2xl border border-stone-200/75 border-l-[3px] border-l-stone-300 bg-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)] transition-all hover:-translate-y-px hover:border-stone-300/80 hover:shadow-[0_5px_20px_-8px_rgba(28,25,23,0.08)] hover:ring-1 hover:ring-stone-200/40"
@@ -464,7 +458,7 @@ export default async function AdminPage({
               </Link>
               <Link
                 href="/admin/products"
-                className="group flex flex-col rounded-2xl border border-stone-200/75 border-l-[3px] border-l-stone-300 bg-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)] transition-all hover:-translate-y-px hover:border-stone-300/80 hover:shadow-[0_5px_20px_-8px_rgba(28,25,23,0.08)] hover:ring-1 hover:ring-stone-200/40 sm:col-span-2 lg:col-span-1"
+                className="group flex flex-col rounded-2xl border border-stone-200/75 border-l-[3px] border-l-stone-300 bg-white p-3.5 shadow-[0_2px_14px_-6px_rgba(28,25,23,0.05)] transition-all hover:-translate-y-px hover:border-stone-300/80 hover:shadow-[0_5px_20px_-8px_rgba(28,25,23,0.08)] hover:ring-1 hover:ring-stone-200/40"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-800">Satış</p>
