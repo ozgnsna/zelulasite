@@ -35,7 +35,7 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUP
 
 const TABLE = "gift_card_denominations";
 const DELETE_SLUGS = ["manual-2600-try", "manual-5000-try"];
-const TARGET_2000_SLUG = "manual-2000-try";
+const TARGET_2000_SLUG = "hediye-karti-2000";
 const KEEP_SLUGS = ["hediye-karti-500", "hediye-karti-750", "hediye-karti-1000", TARGET_2000_SLUG];
 
 console.log("=== Tablo yapısı: gift_card_denominations ===");
