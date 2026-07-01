@@ -119,7 +119,7 @@ function funnelConversionRate(funnel: DashboardAnalyticsMetrics["funnel"]): numb
 
 function stepTransitionRate(current: number, previous: number): number | null {
   if (previous <= 0) return null;
-  const rate = Math.round((current / previous) * 1000) / 10;
+  const rate = Math.round((current / previous) * 100);
   return Number.isFinite(rate) ? rate : null;
 }
 
@@ -207,6 +207,7 @@ function RevenueSparklineCard({
   compareLabel: string;
   title: string;
 }) {
+  const showSparkline = Number(revenue) > 0;
   const sparkValues = buildSparklineValues(previousRevenue, revenue);
   const sparkPoints = buildSparklinePolyline(sparkValues, 120, 36);
 
@@ -224,23 +225,27 @@ function RevenueSparklineCard({
       <div className="mt-1 font-serif text-2xl font-semibold tabular-nums tracking-tight" style={{ color: "var(--text-primary)" }}>
         <TryPriceSplit n={revenue} />
       </div>
-      <svg
-        viewBox="0 0 120 36"
-        className="mt-2 h-9 w-full max-w-[10rem]"
-        aria-hidden
-        role="presentation"
-      >
-        <polyline
-          points={sparkPoints}
-          fill="none"
-          stroke="var(--c-blue)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray="4 3"
-        />
-      </svg>
-      <p className="mt-1.5 text-[10px] leading-snug">{revenuePercentTrend(revenue, previousRevenue, compareLabel)}</p>
+      {showSparkline ? (
+        <svg
+          viewBox="0 0 120 36"
+          className="mt-2 h-9 w-full max-w-[10rem]"
+          aria-hidden
+          role="presentation"
+        >
+          <polyline
+            points={sparkPoints}
+            fill="none"
+            stroke="var(--c-blue)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="4 3"
+          />
+        </svg>
+      ) : null}
+      {showSparkline ? (
+        <p className="mt-1.5 text-[10px] leading-snug">{revenuePercentTrend(revenue, previousRevenue, compareLabel)}</p>
+      ) : null}
     </article>
   );
 }
@@ -306,7 +311,7 @@ function TransitionBadge({ rate }: { rate: number }) {
       style={{ background: tone.bg, color: tone.text }}
     >
       %
-      {rate.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+      {Math.round(rate).toLocaleString("tr-TR", { maximumFractionDigits: 0, minimumFractionDigits: 0 })}
     </span>
   );
 }
