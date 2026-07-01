@@ -20,6 +20,7 @@ export async function fetchGiftCardAdminSummary(
         .select(
           "id, amount, currency, label, slug, sort_order, image_url, product_id, is_active, products:product_id ( id, slug, price, is_active )",
         )
+        .eq("is_active", true)
         .order("sort_order", { ascending: true }),
       admin.from("gift_cards").select("id", { count: "exact", head: true }),
       admin
