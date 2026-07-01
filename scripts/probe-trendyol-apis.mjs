@@ -74,7 +74,12 @@ console.log(`Entegrasyon: ${integration.environment}, seller=${integration.selle
 
 await probe("Ürün listesi (read)", "GET", `/integration/product/sellers/${integration.seller_id}/products/approved?size=1&page=0`);
 await probe(
-  "Siparişler (read)",
+  "Siparişler (read, yeni path)",
+  "GET",
+  `/integration/order/sellers/${integration.seller_id}/orders?page=0&size=1&startDate=${start}&endDate=${end}`,
+);
+await probe(
+  "Siparişler (read, eski path — deprecated)",
   "GET",
   `/suppliers/${supplierId}/orders?page=0&size=1&startDate=${start}&endDate=${end}`,
 );

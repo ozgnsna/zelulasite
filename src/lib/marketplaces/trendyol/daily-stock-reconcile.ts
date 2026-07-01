@@ -22,6 +22,8 @@ export type DailyStockReconcileResult =
       ordersFetched: number;
       orderStockUpdates: number;
       orderUnmatched: number;
+      ordersSkipped?: boolean;
+      ordersError?: string | null;
       trendyolRowsRead: number;
       stockAdjusted: number;
       siteDeactivated: number;
@@ -31,10 +33,37 @@ export type DailyStockReconcileResult =
   | { ok: true; skipped: true }
   | { ok: false; message: string };
 
+async function logDailyReconcileRun(
+  admin: SupabaseClient,
+  params: {
+    integrationId: string | null;
+    status: "success" | "error" | "skipped";
+    message: string;
+    affectedCount?: number;
+    errorMessage?: string | null;
+    responsePayload?: Record<string, unknown>;
+  },
+) {
+  const ranAt = new Date().toISOString();
+  await logMarketplaceSync(admin, {
+    integrationId: params.integrationId,
+    entityType: "inventory",
+    action: "daily_stock_reconcile",
+    status: params.status,
+    message: params.message,
+    responsePayload: params.responsePayload ?? null,
+    metadata: {
+      ran_at: ranAt,
+      affected_count: params.affectedCount ?? 0,
+      error_message: params.errorMessage ?? null,
+    },
+  });
+}
+
 /**
  * Günlük stok eşitleme (Trendyol = kaynak):
- * 1) Son N gün Trendyol siparişlerini işle (Zelula stok düş)
- * 2) Trendyol API stok snapshot'ı ile barkod/stok kodu/SKU eşleşen ürünlerde site stoğu = TY stoğu (azalır da artar da)
+ * 1) Son N gün Trendyol siparişlerini işle (opsiyonel — hata olursa atla, devam et)
+ * 2) Trendyol API stok snapshot'ı ile eşleşen ürünlerde site stoğu = TY stoğu
  * 3) Trendyol'a açık ürünlerde güncel stoku gönder
  */
 export async function reconcileDailyStockWithTrendyol(
@@ -44,19 +73,66 @@ export async function reconcileDailyStockWithTrendyol(
   const orderLookbackDays = Math.min(7, Math.max(1, Math.trunc(opts?.orderLookbackDays ?? 1)));
   const integration = await getActiveTrendyolIntegration(admin);
   if (!integration) {
+    await logDailyReconcileRun(admin, {
+      integrationId: null,
+      status: "skipped",
+      message: "Trendyol entegrasyonu aktif değil; günlük reconcile atlandı.",
+      affectedCount: 0,
+    });
     return { ok: true, skipped: true };
   }
 
   const startDate = new Date(Date.now() - orderLookbackDays * 24 * 60 * 60 * 1000);
   const orderResult = await fetchTrendyolOrdersForSync(admin, { startDate, endDate: new Date() });
+
+  let ordersFetched = 0;
+  let orderStockUpdates = 0;
+  let orderUnmatched = 0;
+  let ordersSkipped = false;
+  let ordersError: string | null = null;
+
   if (!orderResult.ok) {
-    return { ok: false, message: orderResult.message ?? "Trendyol siparişleri işlenemedi." };
+    ordersSkipped = true;
+    ordersError = orderResult.message ?? "Trendyol siparişleri işlenemedi.";
+    await logMarketplaceSync(admin, {
+      integrationId: integration.id,
+      entityType: "order",
+      action: "daily_stock_reconcile_orders_skip",
+      status: "skipped",
+      message: `Sipariş adımı atlandı, stok snapshot devam ediyor: ${ordersError}`,
+      metadata: {
+        ran_at: new Date().toISOString(),
+        error_message: ordersError,
+      },
+    });
+  } else if ("skipped" in orderResult && orderResult.skipped) {
+    ordersSkipped = true;
+  } else {
+    ordersFetched = orderResult.orders.length;
+    orderStockUpdates = orderResult.updatedProducts;
+    orderUnmatched = orderResult.unmatchedProducts;
   }
 
   const snapshot = await fetchTrendyolStockByBarcodeSnapshot(admin);
   if (!snapshot.ok) {
-    if ("skipped" in snapshot && snapshot.skipped) return { ok: true, skipped: true };
-    return { ok: false, message: "message" in snapshot ? snapshot.message : "Trendyol stok okunamadı." };
+    if ("skipped" in snapshot && snapshot.skipped) {
+      await logDailyReconcileRun(admin, {
+        integrationId: integration.id,
+        status: "skipped",
+        message: "Trendyol stok snapshot atlandı (kimlik bilgisi yok).",
+        errorMessage: null,
+      });
+      return { ok: true, skipped: true };
+    }
+    const message = "message" in snapshot ? snapshot.message : "Trendyol stok okunamadı.";
+    await logDailyReconcileRun(admin, {
+      integrationId: integration.id,
+      status: "error",
+      message: `Günlük stok eşitleme başarısız: ${message}`,
+      errorMessage: message,
+      responsePayload: { ordersSkipped, ordersError, ordersFetched },
+    });
+    return { ok: false, message };
   }
 
   const { data: linkedRows } = await admin
@@ -72,7 +148,6 @@ export async function reconcileDailyStockWithTrendyol(
   for (const row of (linkedRows ?? []) as LinkedProduct[]) {
     const id = String(row.id ?? "").trim();
     if (!id) continue;
-    /** Sipariş akışıyla tutarlı: barkod / stok kodu / SKU üçlüsünden TY feed'inde eşleşeni bul. */
     const matchKey = [row.trendyol_barcode, row.trendyol_stock_code, row.sku]
       .map((v) => String(v ?? "").trim())
       .find((c) => c && snapshot.stockByBarcode.has(c));
@@ -83,7 +158,6 @@ export async function reconcileDailyStockWithTrendyol(
 
     const tyStock = snapshot.stockByBarcode.get(matchKey) ?? 0;
     const zelulaStock = Math.max(0, Math.trunc(Number(row.stock_quantity ?? 0)));
-    /** Trendyol kaynak kabul edilir: site stoğu TY ile birebir eşitlenir (azalır da artar da). */
     const target = tyStock;
     const wasActive = Boolean(row.is_active);
     const willBeActive = target > 0;
@@ -109,42 +183,50 @@ export async function reconcileDailyStockWithTrendyol(
   const pushResult = await syncPriceInventoryForProducts(admin, [...new Set(pushIds)], "daily_stock_reconcile");
   const pushedToTrendyol = pushResult.ok && !pushResult.skipped ? (pushResult.count ?? 0) : 0;
 
+  const summaryPayload = {
+    orderLookbackDays,
+    ordersFetched,
+    orderStockUpdates,
+    orderUnmatched,
+    ordersSkipped,
+    ordersError,
+    trendyolRowsRead: snapshot.fetchedCount,
+    stockAdjusted,
+    siteDeactivated,
+    pushedToTrendyol,
+    skippedNotInTrendyolFeed,
+  };
+
   if (!pushResult.ok && pushResult.message) {
-    await logMarketplaceSync(admin, {
+    await logDailyReconcileRun(admin, {
       integrationId: integration.id,
-      entityType: "inventory",
-      action: "daily_stock_reconcile",
       status: "error",
-      message: pushResult.message,
+      message: `Günlük stok eşitleme push başarısız: ${pushResult.message}`,
+      affectedCount: pushedToTrendyol,
+      errorMessage: pushResult.message,
+      responsePayload: summaryPayload,
     });
     return { ok: false, message: pushResult.message };
   }
 
-  await logMarketplaceSync(admin, {
+  const affectedCount = stockAdjusted + pushedToTrendyol;
+  await logDailyReconcileRun(admin, {
     integrationId: integration.id,
-    entityType: "inventory",
-    action: "daily_stock_reconcile",
     status: "success",
-    message: `Günlük stok eşitleme: ${stockAdjusted} ürün güncellendi, ${pushedToTrendyol} ürün Trendyol'a gönderildi.`,
-    responsePayload: {
-      orderLookbackDays,
-      ordersFetched: orderResult.orders.length,
-      orderStockUpdates: orderResult.updatedProducts,
-      orderUnmatched: orderResult.unmatchedProducts,
-      trendyolRowsRead: snapshot.fetchedCount,
-      stockAdjusted,
-      siteDeactivated,
-      pushedToTrendyol,
-      skippedNotInTrendyolFeed,
-    },
+    message: `Günlük stok eşitleme: ${stockAdjusted} ürün güncellendi, ${pushedToTrendyol} ürün Trendyol'a gönderildi.${ordersSkipped ? " (Sipariş adımı atlandı.)" : ""}`,
+    affectedCount,
+    errorMessage: ordersError,
+    responsePayload: summaryPayload,
   });
 
   return {
     ok: true,
     orderLookbackDays,
-    ordersFetched: orderResult.orders.length,
-    orderStockUpdates: orderResult.updatedProducts,
-    orderUnmatched: orderResult.unmatchedProducts,
+    ordersFetched,
+    orderStockUpdates,
+    orderUnmatched,
+    ordersSkipped,
+    ordersError,
     trendyolRowsRead: snapshot.fetchedCount,
     stockAdjusted,
     siteDeactivated,

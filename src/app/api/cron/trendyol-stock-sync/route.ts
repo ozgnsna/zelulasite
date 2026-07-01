@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logMarketplaceSync } from "@/lib/marketplaces/trendyol/client";
 import { reconcileDailyStockWithTrendyol } from "@/lib/marketplaces/trendyol/daily-stock-reconcile";
 
 export const runtime = "nodejs";
@@ -28,11 +29,25 @@ export async function GET(req: Request) {
   }
 
   const admin = createAdminClient();
+  const ranAt = new Date().toISOString();
   try {
     const result = await reconcileDailyStockWithTrendyol(admin, { orderLookbackDays: 1 });
-    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+    return NextResponse.json({ ...result, ran_at: ranAt }, { status: result.ok ? 200 : 500 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown_error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    await logMarketplaceSync(admin, {
+      integrationId: null,
+      entityType: "inventory",
+      action: "daily_stock_reconcile",
+      status: "error",
+      message: `Cron reconcile beklenmeyen hata: ${message}`,
+      metadata: {
+        ran_at: ranAt,
+        affected_count: 0,
+        error_message: message,
+        source: "cron_uncaught",
+      },
+    });
+    return NextResponse.json({ ok: false, error: message, ran_at: ranAt }, { status: 500 });
   }
 }

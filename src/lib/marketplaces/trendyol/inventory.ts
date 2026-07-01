@@ -79,14 +79,15 @@ export async function syncPriceInventoryForProducts(
   const payload = {
     items: eligible.map(mapPriceInventoryItem),
   };
-  const supplierId = integration.supplier_id || integration.seller_id;
   const requestTimeoutMs = opts?.requestTimeoutMs ?? 14_000;
+  const sellerId = integration.seller_id;
   const postPriceInventory = () =>
     trendyolRequest<{ batchRequestId?: string }>({
       integration,
       method: "POST",
-      path: `/suppliers/${supplierId}/products/price-and-inventory`,
+      path: `/integration/inventory/sellers/${encodeURIComponent(sellerId!)}/products/price-and-inventory`,
       body: payload,
+      headers: { storeFrontCode: "TR" },
       timeoutMs: requestTimeoutMs,
     });
 

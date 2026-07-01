@@ -162,7 +162,7 @@ export async function fetchTrendyolOrdersForSync(admin: SupabaseClient, params?:
 
   const start = params?.startDate ?? new Date(Date.now() - 1000 * 60 * 60 * 24 * 3);
   const end = params?.endDate ?? new Date();
-  const supplierId = integration.supplier_id || integration.seller_id;
+  const sellerId = integration.seller_id;
   const query =
     `page=0&size=50` +
     `&startDate=${start.getTime()}` +
@@ -172,7 +172,7 @@ export async function fetchTrendyolOrdersForSync(admin: SupabaseClient, params?:
     const response = await trendyolRequest<{ content?: Array<Record<string, unknown>> }>({
       integration,
       method: "GET",
-      path: `/suppliers/${supplierId}/orders?${query}`,
+      path: `/integration/order/sellers/${encodeURIComponent(sellerId!)}/orders?${query}`,
     });
     const rows = response.content ?? [];
     const externalOrderIds = rows.map((row) => String(row.orderNumber ?? "").trim()).filter(Boolean);
