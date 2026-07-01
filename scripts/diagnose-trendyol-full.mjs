@@ -47,16 +47,21 @@ function extractBarcode(item) {
 
 function extractQty(item) {
   if (Number.isFinite(Number(item?.quantity))) return Math.max(0, Math.trunc(Number(item.quantity)));
-  const stock = firstVariant(item)?.stock;
-  if (stock && Number.isFinite(Number(stock.quantity))) {
+  const variant = firstVariant(item);
+  const stock = variant?.stock;
+  if (stock && typeof stock === "object" && Number.isFinite(Number(stock.quantity))) {
     return Math.max(0, Math.trunc(Number(stock.quantity)));
+  }
+  if (variant && Number.isFinite(Number(variant.quantity))) {
+    return Math.max(0, Math.trunc(Number(variant.quantity)));
   }
   return 0;
 }
 
-function isOnSale(item) {
-  const v = firstVariant(item);
-  return v ? Boolean(v.onSale) : false;
+function isVariantOnSale(item) {
+  const variant = firstVariant(item);
+  if (!variant) return false;
+  return Boolean(variant.onSale);
 }
 
 async function testTrendyolApi(integration) {
@@ -92,13 +97,14 @@ async function testTrendyolApi(integration) {
           title: trim(first.title),
           barcode: extractBarcode(first),
           quantity: extractQty(first),
-          onSale: isOnSale(first),
+          onSale: isVariantOnSale(first),
         }
       : null,
     errorPreview: res.ok ? null : JSON.stringify(body).slice(0, 300),
   };
 }
 
+/** products.ts fetchTrendyolStockByBarcodeSnapshot ile aynı: approved V2 + variants[0].onSale */
 async function fetchTyStockMap(integration) {
   const base = integration.environment === "prod" ? "https://apigw.trendyol.com" : "https://stageapigw.trendyol.com";
   const auth = Buffer.from(`${integration.api_key}:${integration.api_secret}`).toString("base64");
@@ -108,33 +114,47 @@ async function fetchTyStockMap(integration) {
     "User-Agent": `${integration.seller_id} - Zelula`,
   };
   const sellerId = encodeURIComponent(integration.seller_id);
+  const size = 100;
+  const maxPages = 25;
   const all = [];
-  for (const approved of [true, null]) {
-    let page = 0;
-    for (;;) {
-      const q = approved === true ? "approved=true&" : "";
-      const url = `${base}/integration/product/sellers/${sellerId}/products?${q}size=200&page=${page}`;
-      const res = await fetch(url, { headers });
-      const text = await res.text();
-      if (!res.ok) throw new Error(`TY products HTTP ${res.status}: ${text.slice(0, 200)}`);
-      const body = JSON.parse(text);
-      const content = Array.isArray(body?.content) ? body.content : [];
-      all.push(...content);
-      if (content.length < 200) break;
-      page += 1;
-      if (page > 50) break;
+  let nextPageToken = null;
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const qs = new URLSearchParams();
+    qs.set("size", String(size));
+    if (nextPageToken) {
+      qs.set("nextPageToken", nextPageToken);
+    } else {
+      qs.set("page", String(page));
     }
-    if (all.length > 0) break;
+    const url = `${base}/integration/product/sellers/${sellerId}/products/approved?${qs}`;
+    const res = await fetch(url, { headers });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`TY products/approved HTTP ${res.status}: ${text.slice(0, 200)}`);
+    const body = JSON.parse(text);
+    const content = Array.isArray(body?.content) ? body.content : [];
+    if (content.length === 0) break;
+    all.push(...content);
+    if (content.length < size) break;
+    const token = trim(body?.nextPageToken);
+    if (!token) break;
+    nextPageToken = token;
   }
+
   const stockByBarcode = new Map();
+  let onSaleTrue = 0;
+  let onSaleFalse = 0;
   for (const item of all) {
     const barcode = extractBarcode(item);
     if (!barcode) continue;
     const qty = extractQty(item);
-    const effective = isOnSale(item) ? qty : 0;
-    stockByBarcode.set(barcode, effective);
+    const onSale = isVariantOnSale(item);
+    if (onSale) onSaleTrue += 1;
+    else onSaleFalse += 1;
+    const effective = onSale ? qty : 0;
+    stockByBarcode.set(barcode, { effective, raw: qty, onSale });
   }
-  return { stockByBarcode, fetchedCount: all.length };
+  return { stockByBarcode, fetchedCount: all.length, onSaleTrue, onSaleFalse };
 }
 
 const { data: integration, error: intErr } = await admin
@@ -230,7 +250,9 @@ const { data: dbProducts } = await admin
 let snapshot;
 try {
   snapshot = await fetchTyStockMap(integration);
-  console.log(`Trendyol'dan ${snapshot.fetchedCount} ürün satırı okundu, ${snapshot.stockByBarcode.size} barkod eşlemesi.`);
+  console.log(
+    `Trendyol'dan ${snapshot.fetchedCount} onaylı ürün (V2 /products/approved) okundu, ${snapshot.stockByBarcode.size} barkod. onSale: true=${snapshot.onSaleTrue}, false=${snapshot.onSaleFalse}`,
+  );
 } catch (e) {
   console.error("Stok snapshot hatası:", e instanceof Error ? e.message : e);
   process.exit(1);
@@ -238,7 +260,10 @@ try {
 
 function matchTyStock(p) {
   for (const key of [p.trendyol_barcode, p.trendyol_stock_code, p.sku].map(trim).filter(Boolean)) {
-    if (snapshot.stockByBarcode.has(key)) return { key, qty: snapshot.stockByBarcode.get(key) };
+    if (snapshot.stockByBarcode.has(key)) {
+      const row = snapshot.stockByBarcode.get(key);
+      return { key, qty: row.effective, raw: row.raw, onSale: row.onSale };
+    }
   }
   return null;
 }
@@ -268,6 +293,7 @@ const { count: activeTyCount } = await admin
 
 let mismatchTotal = 0;
 let matchedTotal = 0;
+const mismatches = [];
 const { data: allActive } = await admin
   .from("products")
   .select("stock_quantity,trendyol_barcode,trendyol_stock_code,sku")
@@ -278,7 +304,29 @@ for (const p of allActive ?? []) {
   if (!ty) continue;
   matchedTotal += 1;
   const dbQty = Math.max(0, Math.trunc(Number(p.stock_quantity ?? 0)));
-  if (dbQty !== ty.qty) mismatchTotal += 1;
+  if (dbQty !== ty.qty) {
+    mismatchTotal += 1;
+    mismatches.push({
+      sku: trim(p.sku) || trim(p.trendyol_stock_code) || trim(p.trendyol_barcode),
+      db_stock: dbQty,
+      ty_stock: ty.qty,
+      ty_raw_stock: ty.raw,
+      ty_onSale: ty.onSale,
+      match_key: ty.key,
+    });
+  }
 }
 
-console.log(`\nÖzet: trendyol_active=${activeTyCount ?? 0}, TY feed'de eşleşen=${matchedTotal}, stok farkı=${mismatchTotal}`);
+mismatches.sort((a, b) => a.sku.localeCompare(b.sku, "tr"));
+
+console.log(`\nÖzet: trendyol_active=${activeTyCount ?? 0}, TY feed'de eşleşen=${matchedTotal}, stok farkı=${mismatchTotal}, uyumlu=${matchedTotal - mismatchTotal}`);
+
+if (mismatches.length > 0) {
+  console.log("\n=== 6. Stok uyumsuzlukları (tüm liste) ===");
+  console.log("SKU | DB stok | TY stok (effective)");
+  for (const row of mismatches) {
+    console.log(`${row.sku} | ${row.db_stock} | ${row.ty_stock}`);
+  }
+  console.log("\nDetay (JSON):");
+  console.log(JSON.stringify(mismatches, null, 2));
+}
