@@ -69,7 +69,7 @@ export async function Header() {
     }));
 
     return (
-      <header className="bg-white">
+      <header className="overflow-visible bg-white">
         <HeaderShell
           isLoggedIn={Boolean(user)}
           greetingFirstName={greetingFirstName}
@@ -80,7 +80,7 @@ export async function Header() {
     );
   } catch {
     return (
-      <header className="bg-white">
+      <header className="overflow-visible bg-white">
         <HeaderShell
           isLoggedIn={false}
           greetingFirstName={null}

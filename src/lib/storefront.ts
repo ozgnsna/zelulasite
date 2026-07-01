@@ -210,8 +210,18 @@ export type CategoryPageData =
       listCaption?: string;
     };
 
+export type CategoryListingOptions = {
+  sort?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
+  collection?: string;
+  min?: number;
+  max?: number;
+};
+
 /** `/kategori/[slug]` için ürün listesi veya hub verisi */
-export async function getCategoryPageData(slug: string): Promise<CategoryPageData | null> {
+export async function getCategoryPageData(
+  slug: string,
+  options: CategoryListingOptions = {},
+): Promise<CategoryPageData | null> {
   const taxon = getTaxonBySlug(slug);
   if (!taxon) return null;
 
@@ -220,7 +230,10 @@ export async function getCategoryPageData(slug: string): Promise<CategoryPageDat
     if (taxon.slug === "takilar") {
       const r = await getProducts({
         categorySlugs: [...TAKILAR_PRODUCT_DB_SLUGS],
-        sort: "newest",
+        sort: options.sort ?? "newest",
+        collection: options.collection,
+        min: options.min,
+        max: options.max,
       });
       return {
         mode: "hub",
@@ -234,7 +247,10 @@ export async function getCategoryPageData(slug: string): Promise<CategoryPageDat
     if (taxon.slug === "aksesuar") {
       const r = await getProducts({
         categorySlugs: ["bros", "sapka", "anahtarlik", "aksesuar"],
-        sort: "newest",
+        sort: options.sort ?? "newest",
+        collection: options.collection,
+        min: options.min,
+        max: options.max,
       });
       return {
         mode: "hub",
@@ -249,7 +265,13 @@ export async function getCategoryPageData(slug: string): Promise<CategoryPageDat
   }
 
   if (taxon.slug === "setler") {
-    const r = await getProducts({ sort: "featured", featuredOnly: true });
+    const r = await getProducts({
+      sort: options.sort ?? "featured",
+      featuredOnly: true,
+      collection: options.collection,
+      min: options.min,
+      max: options.max,
+    });
     return {
       mode: "list",
       taxon,
@@ -261,7 +283,13 @@ export async function getCategoryPageData(slug: string): Promise<CategoryPageDat
   }
 
   if (taxon.dbCategorySlug) {
-    const r = await getProducts({ category: taxon.dbCategorySlug, sort: "newest" });
+    const r = await getProducts({
+      category: taxon.dbCategorySlug,
+      sort: options.sort ?? "newest",
+      collection: options.collection,
+      min: options.min,
+      max: options.max,
+    });
     return {
       mode: "list",
       taxon,

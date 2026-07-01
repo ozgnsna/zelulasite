@@ -42,6 +42,12 @@ export default async function ProductsPage({ searchParams }: Props) {
     q: searchQuery,
   });
   const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
+  const activeCategoryName = categorySlug
+    ? categories.find((c) => c.slug === categorySlug)?.name
+    : undefined;
+  const pageTitle = searchQuery
+    ? `“${searchQuery}” için sonuçlar`
+    : activeCategoryName ?? "Tüm ürünler";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
@@ -71,7 +77,7 @@ export default async function ProductsPage({ searchParams }: Props) {
       />
       <header className="max-w-2xl">
         <h1 className="font-serif text-3xl font-medium text-stone-900 sm:text-4xl">
-          {searchQuery ? `“${searchQuery}” için sonuçlar` : "Tüm ürünler"}
+          {pageTitle}
         </h1>
         <p className="mt-3 text-stone-600">
           {searchQuery

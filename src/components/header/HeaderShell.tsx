@@ -14,6 +14,7 @@ import {
 } from "@/lib/categories/taxonomy";
 import { cn } from "@/lib/utils";
 import { HeaderSearch } from "@/components/header/HeaderSearch";
+import { TUM_URUNLER_HREF } from "@/components/header/header-nav";
 
 const AUTH_NEXT = encodeURIComponent("/hesabim");
 const GIRIS_HREF = `/giris?next=${AUTH_NEXT}`;
@@ -87,9 +88,9 @@ export function HeaderShell({
           />
         </Link>
 
-        <div className="hidden min-w-0 flex-1 justify-center overflow-hidden md:flex md:px-1 lg:px-2">
+        <div className="hidden min-w-0 flex-1 justify-center md:flex md:overflow-visible md:px-1 lg:px-2">
           <nav
-            className="relative flex max-w-full flex-nowrap items-center justify-center gap-x-0.5 overflow-x-auto [scrollbar-width:none] lg:gap-1 xl:gap-1.5 [&::-webkit-scrollbar]:hidden"
+            className="relative flex max-w-full flex-nowrap items-center justify-center gap-x-0.5 overflow-visible lg:gap-1 xl:gap-1.5"
             aria-label="Kategoriler"
           >
             {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
@@ -113,24 +114,29 @@ export function HeaderShell({
             </Link>
             <div
               ref={megaWrapRef}
-              className="relative"
+              className="relative shrink-0"
               onMouseEnter={() => setMegaOpen(true)}
               onMouseLeave={() => setMegaOpen(false)}
             >
-              <button
-                type="button"
+              <Link
+                href={TUM_URUNLER_HREF}
                 aria-expanded={megaOpen}
                 aria-haspopup="menu"
                 className="inline-flex min-h-11 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs"
-                onClick={() => setMegaOpen((o) => !o)}
+                onFocus={() => setMegaOpen(true)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
+                    setMegaOpen(false);
+                  }
+                }}
               >
                 Tüm Ürünler
                 <ChevronDown className={cn("h-3 w-3 opacity-50 transition", megaOpen && "rotate-180")} aria-hidden />
-              </button>
+              </Link>
               {megaOpen ? (
                 <div
                   role="menu"
-                  className="absolute left-1/2 top-[calc(100%+0.25rem)] z-50 min-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 pt-1"
+                  className="absolute left-1/2 top-full z-[60] min-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 pt-1"
                 >
                   <div className="rounded-2xl border border-[#e8dfd3] bg-[#fffdfb] p-5 shadow-[0_16px_48px_rgba(55,48,40,0.12)]">
                     <div className="grid grid-cols-2 gap-6">
@@ -162,7 +168,7 @@ export function HeaderShell({
                     </div>
                     <div className="mt-4 border-t border-[#ebe6df] pt-3 text-center">
                       <Link
-                        href="/urunler"
+                        href={TUM_URUNLER_HREF}
                         className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-gold-a11y underline-offset-4 transition hover:underline"
                         onClick={() => setMegaOpen(false)}
                       >
