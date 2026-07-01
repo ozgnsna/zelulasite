@@ -1,6 +1,7 @@
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import {
+  ArrowDown,
   Check,
   CreditCard,
   Eye,
@@ -21,17 +22,16 @@ const ANALYTICS_THEME = {
   "--text-primary": "#2d2521",
   "--text-secondary": "#57534e",
   "--text-muted": "#a8a29e",
-  "--c-blue": "#378ADD",
-  "--c-amber": "#BA7517",
-  "--c-red": "#e5484d",
-  "--c-green": "#30a46c",
-  "--accent-bg": "color-mix(in srgb, #378ADD 14%, transparent)",
-  "--accent-text": "#2563b3",
-  "--warning-bg": "color-mix(in srgb, #f59e0b 18%, transparent)",
-  "--warning-text": "#b45309",
-  "--danger-bg": "color-mix(in srgb, #ef4444 14%, transparent)",
-  "--danger-text": "#b91c1c",
+  "--border": "color-mix(in srgb, var(--text-muted) 28%, transparent)",
+  "--radius": "8px",
+  "--bg-accent": "color-mix(in srgb, #2a78d6 14%, transparent)",
+  "--text-accent": "#1e5fad",
+  "--bg-warning": "color-mix(in srgb, #f59e0b 16%, transparent)",
+  "--text-warning": "#b45309",
+  "--border-warning": "#d97706",
 } as CSSProperties;
+
+const GAUGE_CIRCUMFERENCE = 239;
 
 function splitTryParts(n: number): { main: string; decimals: string } {
   const full = n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -40,15 +40,15 @@ function splitTryParts(n: number): { main: string; decimals: string } {
   return { main: full.slice(0, i), decimals: full.slice(i + 1) };
 }
 
-function TryPriceSplit({ n, className }: { n: number; className?: string }) {
+function TryPriceSplit({ n }: { n: number }) {
   const { main, decimals } = splitTryParts(n);
   return (
-    <span className={`inline-flex items-baseline gap-0 tabular-nums ${className ?? ""}`}>
+    <span className="inline-flex items-baseline gap-0 tabular-nums" style={{ lineHeight: 1 }}>
       <span>{main}</span>
-      <span className="text-[0.62em] font-medium" style={{ color: "var(--text-muted)" }}>
+      <span className="text-[0.5em] font-medium" style={{ color: "var(--text-muted)" }}>
         ,{decimals}
       </span>
-      <span className="ml-0.5 text-[0.55em] font-semibold" style={{ color: "var(--text-muted)" }}>
+      <span className="ml-0.5 text-[0.45em] font-medium" style={{ color: "var(--text-muted)" }}>
         ₺
       </span>
     </span>
@@ -86,7 +86,7 @@ function revenuePercentTrend(current: number, previous: number, compareLabel: st
   }
   if (previous <= 0) {
     return (
-      <span className="font-semibold tabular-nums" style={{ color: "var(--c-green)" }}>
+      <span className="font-medium tabular-nums" style={{ color: "#1baf7a" }}>
         ↑ geçen döneme göre yeni ciro
       </span>
     );
@@ -100,9 +100,9 @@ function revenuePercentTrend(current: number, previous: number, compareLabel: st
     );
   }
   const up = pct > 0;
-  const tone = up ? "var(--c-green)" : "var(--c-red)";
+  const tone = up ? "#1baf7a" : "#e34948";
   return (
-    <span className="inline-flex items-center gap-0.5 font-semibold tabular-nums" style={{ color: tone }}>
+    <span className="inline-flex items-center gap-0.5 font-medium tabular-nums" style={{ color: tone }}>
       <span aria-hidden>{up ? "↑" : "↓"}</span>
       <span>
         geçen döneme göre {up ? "+" : ""}
@@ -114,7 +114,7 @@ function revenuePercentTrend(current: number, previous: number, compareLabel: st
 
 function funnelConversionRate(funnel: DashboardAnalyticsMetrics["funnel"]): number {
   if (funnel.site_visit <= 0) return 0;
-  return Math.round((funnel.purchase / funnel.site_visit) * 10000) / 100;
+  return Math.round((funnel.purchase / funnel.site_visit) * 100);
 }
 
 function stepTransitionRate(current: number, previous: number): number | null {
@@ -127,15 +127,16 @@ type FunnelStepConfig = {
   key: keyof DashboardAnalyticsMetrics["funnel"];
   label: string;
   icon: LucideIcon;
+  iconColor: string;
   barColor: string;
 };
 
 const FUNNEL_STEP_CONFIG: FunnelStepConfig[] = [
-  { key: "site_visit", label: "Site ziyareti", icon: Users, barColor: "var(--c-blue)" },
-  { key: "view_item", label: "Ürün görüntüleme", icon: Eye, barColor: "var(--c-blue)" },
-  { key: "add_to_cart", label: "Sepete ekleme", icon: ShoppingCart, barColor: "var(--c-amber)" },
-  { key: "begin_checkout", label: "Ödeme", icon: CreditCard, barColor: "var(--c-red)" },
-  { key: "purchase", label: "Satış", icon: Check, barColor: "var(--c-green)" },
+  { key: "site_visit", label: "Site ziyareti", icon: Users, iconColor: "#2a78d6", barColor: "#2a78d6" },
+  { key: "view_item", label: "Ürün görüntüleme", icon: Eye, iconColor: "#2a78d6", barColor: "#2a78d6" },
+  { key: "add_to_cart", label: "Sepete ekleme", icon: ShoppingCart, iconColor: "#eda100", barColor: "#eda100" },
+  { key: "begin_checkout", label: "Ödeme", icon: CreditCard, iconColor: "#e34948", barColor: "#e34948" },
+  { key: "purchase", label: "Satış", icon: Check, iconColor: "#1baf7a", barColor: "#1baf7a" },
 ];
 
 const TRANSITION_HINTS: Record<string, string> = {
@@ -145,10 +146,22 @@ const TRANSITION_HINTS: Record<string, string> = {
   "begin_checkout→purchase": "Ödeme adımında kayıp yaşanıyor.",
 };
 
-function transitionBadgeTone(rate: number): { bg: string; text: string } {
-  if (rate > 50) return { bg: "var(--accent-bg)", text: "var(--accent-text)" };
-  if (rate >= 25) return { bg: "var(--warning-bg)", text: "var(--warning-text)" };
-  return { bg: "var(--danger-bg)", text: "var(--danger-text)" };
+function transitionBadgeStyle(rate: number): { bg: string; text: string; label: string } {
+  if (rate === 0) {
+    return { bg: "var(--border)", text: "var(--text-muted)", label: "%0 devam etti" };
+  }
+  if (rate > 50) {
+    return {
+      bg: "var(--bg-accent)",
+      text: "var(--text-accent)",
+      label: `%${rate.toLocaleString("tr-TR")}`,
+    };
+  }
+  return {
+    bg: "var(--border)",
+    text: "var(--text-muted)",
+    label: `%${rate.toLocaleString("tr-TR")}`,
+  };
 }
 
 function findWorstFunnelTransition(
@@ -180,14 +193,19 @@ function TimeFilterButton({
   return (
     <Link
       href={href}
-      className="rounded-lg px-2.5 py-1.5 text-[10px] font-semibold transition"
+      className="px-2.5 py-1.5 text-[10px] font-semibold transition"
       style={
         active
-          ? { background: "var(--text-primary)", color: "#fffdfb" }
+          ? {
+              background: "var(--text-primary)",
+              color: "#fffdfb",
+              borderRadius: "var(--radius)",
+            }
           : {
-              border: "1px solid color-mix(in srgb, var(--text-muted) 35%, transparent)",
+              border: "1px solid var(--border)",
               background: "var(--surface-1)",
               color: "var(--text-secondary)",
+              borderRadius: "var(--radius)",
             }
       }
     >
@@ -196,123 +214,134 @@ function TimeFilterButton({
   );
 }
 
-function RevenueSparklineCard({
+function RevenueCard({
   revenue,
   previousRevenue,
   compareLabel,
-  title,
 }: {
   revenue: number;
   previousRevenue: number;
   compareLabel: string;
-  title: string;
 }) {
-  const showSparkline = Number(revenue) > 0;
+  const hasRevenue = revenue > 0;
   const sparkValues = buildSparklineValues(previousRevenue, revenue);
   const sparkPoints = buildSparklinePolyline(sparkValues, 120, 36);
 
   return (
     <article
-      className="rounded-[12px] p-3"
-      style={{ background: "var(--surface-1)", border: "1px solid color-mix(in srgb, var(--text-muted) 22%, transparent)" }}
+      className="rounded-[12px]"
+      style={{ background: "var(--surface-1)", padding: "16px 18px" }}
     >
       <p
-        className="text-[9px] font-semibold uppercase tracking-[0.1em]"
-        style={{ color: "var(--text-secondary)" }}
+        className="text-[11px] font-medium uppercase"
+        style={{ color: "var(--text-muted)", letterSpacing: "0.06em" }}
       >
-        {title}
+        CİRO
       </p>
-      <div className="mt-1 font-serif text-2xl font-semibold tabular-nums tracking-tight" style={{ color: "var(--text-primary)" }}>
+      <div
+        className="mt-2 text-[32px] font-medium tabular-nums"
+        style={{ color: "var(--text-primary)", lineHeight: 1 }}
+      >
         <TryPriceSplit n={revenue} />
       </div>
-      {showSparkline ? (
-        <svg
-          viewBox="0 0 120 36"
-          className="mt-2 h-9 w-full max-w-[10rem]"
-          aria-hidden
-          role="presentation"
-        >
-          <polyline
-            points={sparkPoints}
-            fill="none"
-            stroke="var(--c-blue)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeDasharray="4 3"
-          />
-        </svg>
-      ) : null}
-      {showSparkline ? (
-        <p className="mt-1.5 text-[10px] leading-snug">{revenuePercentTrend(revenue, previousRevenue, compareLabel)}</p>
-      ) : null}
+      {hasRevenue ? (
+        <>
+          <p className="mt-2 text-[11px] leading-snug">{revenuePercentTrend(revenue, previousRevenue, compareLabel)}</p>
+          <svg
+            viewBox="0 0 120 36"
+            className="mt-2 h-9 w-full max-w-[10rem]"
+            aria-hidden
+            role="presentation"
+          >
+            <polyline
+              points={sparkPoints}
+              fill="none"
+              stroke="#2a78d6"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </>
+      ) : (
+        <p className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+          Ay başlangıcı — veri birikirken
+        </p>
+      )}
     </article>
   );
 }
 
 function ConversionGaugeCard({ rate }: { rate: number }) {
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
   const clamped = Math.max(0, Math.min(rate, 100));
-  const dash = (clamped / 100) * circumference;
+  const dashOffset = GAUGE_CIRCUMFERENCE - (clamped / 100) * GAUGE_CIRCUMFERENCE;
 
   return (
     <article
-      className="flex flex-col items-center justify-center rounded-[12px] p-3"
-      style={{ background: "var(--surface-1)", border: "1px solid color-mix(in srgb, var(--text-muted) 22%, transparent)" }}
+      className="flex flex-col items-center justify-center rounded-[12px]"
+      style={{ background: "var(--surface-1)", padding: "16px 18px" }}
     >
-      <p
-        className="w-full text-[9px] font-semibold uppercase tracking-[0.1em]"
-        style={{ color: "var(--text-secondary)" }}
-      >
-        Dönüşüm oranı
-      </p>
-      <div className="relative mt-1 flex h-[5.5rem] w-[5.5rem] items-center justify-center">
-        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden role="presentation">
+      <div className="relative flex h-[72px] w-[72px] items-center justify-center">
+        <svg viewBox="0 0 96 96" className="h-[72px] w-[72px]" aria-hidden role="presentation">
           <circle
-            cx="50"
-            cy="50"
-            r={radius}
+            cx="48"
+            cy="48"
+            r="38"
             fill="none"
-            stroke="color-mix(in srgb, var(--text-muted) 28%, transparent)"
+            stroke="var(--border)"
             strokeWidth="8"
           />
           <circle
-            cx="50"
-            cy="50"
-            r={radius}
+            cx="48"
+            cy="48"
+            r="38"
             fill="none"
-            stroke="var(--c-green)"
+            stroke="#2a78d6"
             strokeWidth="8"
             strokeLinecap="round"
-            strokeDasharray={`${dash} ${circumference}`}
+            strokeDasharray={GAUGE_CIRCUMFERENCE}
+            strokeDashoffset={dashOffset}
+            transform="rotate(-90 48 48)"
           />
+          <text
+            x="48"
+            y="48"
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="tabular-nums"
+            style={{ fontSize: 15, fontWeight: 500, fill: "var(--text-primary)" }}
+          >
+            %{Math.round(clamped).toLocaleString("tr-TR")}
+          </text>
         </svg>
-        <span
-          className="absolute font-serif text-xl font-semibold tabular-nums"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {rate.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-        </span>
       </div>
-      <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
         Ziyaretçi → satış
       </p>
     </article>
   );
 }
 
-function TransitionBadge({ rate }: { rate: number }) {
-  if (!Number.isFinite(rate)) return null;
-  const tone = transitionBadgeTone(rate);
+function TransitionRow({ rate }: { rate: number }) {
+  const style = transitionBadgeStyle(rate);
   return (
-    <span
-      className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
-      style={{ background: tone.bg, color: tone.text }}
+    <div
+      className="flex items-center"
+      style={{ gap: 6, padding: "3px 0 3px 4px" }}
     >
-      %
-      {Math.round(rate).toLocaleString("tr-TR", { maximumFractionDigits: 0, minimumFractionDigits: 0 })}
-    </span>
+      <ArrowDown className="h-[13px] w-[13px] shrink-0" style={{ color: "var(--text-muted)" }} aria-hidden />
+      <span
+        className="text-[11px] font-medium tabular-nums"
+        style={{
+          padding: "2px 8px",
+          borderRadius: "var(--radius)",
+          background: style.bg,
+          color: style.text,
+        }}
+      >
+        {style.label}
+      </span>
+    </div>
   );
 }
 
@@ -321,16 +350,17 @@ function VisualConversionFunnel({ funnel }: { funnel: DashboardAnalyticsMetrics[
     key: config.key,
     label: config.label,
     icon: config.icon,
+    iconColor: config.iconColor,
     barColor: config.barColor,
     value: funnel[config.key],
   }));
-  const siteVisit = Math.max(funnel.site_visit, 1);
 
   return (
-    <div className="space-y-0">
+    <div>
       {steps.map((step, index) => {
         const Icon = step.icon;
-        const barWidthPct = funnel.site_visit > 0 ? Math.round((step.value / siteVisit) * 1000) / 10 : 0;
+        const barWidthPct = funnel.site_visit > 0 ? (step.value / funnel.site_visit) * 100 : 0;
+        const isLast = index === steps.length - 1;
         const prevValue = index > 0 ? steps[index - 1]!.value : null;
         const transitionRate =
           index > 0 && prevValue != null && prevValue > 0
@@ -339,57 +369,99 @@ function VisualConversionFunnel({ funnel }: { funnel: DashboardAnalyticsMetrics[
 
         return (
           <Fragment key={step.key}>
-            {index > 0 && transitionRate != null ? (
-              <div className="flex justify-center py-1.5">
-                <TransitionBadge rate={transitionRate} />
-              </div>
-            ) : null}
-            <div>
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-                    style={{
-                      background: "color-mix(in srgb, var(--text-muted) 12%, transparent)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  </span>
-                  <p className="truncate text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {step.label}
-                  </p>
-                </div>
-                <span
-                  className="shrink-0 font-serif text-base font-semibold tabular-nums"
-                  style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}
-                >
-                  {step.value.toLocaleString("tr-TR")}
+            {index > 0 && transitionRate != null ? <TransitionRow rate={transitionRate} /> : null}
+            <div
+              className="admin-analytics-funnel-step grid items-center"
+              style={
+                {
+                  gridTemplateColumns: "130px 1fr 32px",
+                  gap: 10,
+                  padding: "10px 0",
+                  borderBottom: isLast ? "none" : "0.5px solid var(--border)",
+                  animationDelay: `${index * 0.12}s`,
+                } as CSSProperties
+              }
+            >
+              <div className="flex min-w-0 items-center" style={{ gap: 7 }}>
+                <Icon className="h-[15px] w-[15px] shrink-0" style={{ color: step.iconColor }} strokeWidth={2} aria-hidden />
+                <span className="truncate text-[13px]" style={{ color: "var(--text-secondary)" }}>
+                  {step.label}
                 </span>
               </div>
               <div
-                className="h-3 overflow-hidden rounded-[4px]"
+                className="overflow-hidden"
                 style={{
-                  height: "12px",
-                  background: "var(--surface-1)",
-                  boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--text-muted) 22%, transparent)",
+                  background: "var(--border)",
+                  borderRadius: 4,
+                  height: 8,
                 }}
               >
                 <div
-                  className="admin-analytics-funnel-bar h-full rounded-[4px]"
+                  className="admin-analytics-funnel-bar h-full"
                   style={
                     {
                       width: `${barWidthPct}%`,
                       background: step.barColor,
-                      animationDelay: `${index * 0.15}s`,
+                      borderRadius: 4,
+                      animationDelay: `${index * 0.1}s`,
                     } as CSSProperties
                   }
                 />
               </div>
+              <span
+                className="text-right text-[15px] font-medium tabular-nums"
+                style={{ color: step.value === 0 ? "var(--text-muted)" : "var(--text-primary)" }}
+              >
+                {step.value.toLocaleString("tr-TR")}
+              </span>
             </div>
           </Fragment>
         );
       })}
+    </div>
+  );
+}
+
+function FunnelWarningBox({
+  funnel,
+  worstTransition,
+}: {
+  funnel: DashboardAnalyticsMetrics["funnel"];
+  worstTransition: { from: { key: string; label: string }; to: { key: string; label: string }; rate: number } | null;
+}) {
+  const allZero = FUNNEL_STEP_CONFIG.every((c) => funnel[c.key] === 0);
+  if (allZero) return null;
+
+  let title: string;
+  let hint: string;
+
+  if (funnel.site_visit > 0 && funnel.view_item === 0) {
+    title = "En büyük kayıp: Site ziyareti → Ürün görüntüleme (%0)";
+    hint = TRANSITION_HINTS["site_visit→view_item"]!;
+  } else if (worstTransition) {
+    const hintKey = `${worstTransition.from.key}→${worstTransition.to.key}`;
+    title = `En büyük kayıp: ${worstTransition.from.label} → ${worstTransition.to.label} (%${worstTransition.rate.toLocaleString("tr-TR")})`;
+    hint = TRANSITION_HINTS[hintKey] ?? "Bu adımda ziyaretçi kaybı en yüksek.";
+  } else {
+    return null;
+  }
+
+  return (
+    <div
+      className="mt-3"
+      style={{
+        background: "var(--bg-warning)",
+        borderRadius: "var(--radius)",
+        borderLeft: "3px solid var(--border-warning)",
+        padding: "12px 14px",
+      }}
+    >
+      <p className="text-[12px] font-medium" style={{ color: "var(--text-warning)", marginBottom: 2 }}>
+        {title}
+      </p>
+      <p className="text-[11px]" style={{ color: "var(--text-warning)" }}>
+        {hint}
+      </p>
     </div>
   );
 }
@@ -425,10 +497,7 @@ export function AdminAnalyticsSection({
     label: config.label,
     value: metrics.funnel[config.key],
   }));
-  const allFunnelZero = funnelSteps.every((step) => step.value === 0);
-  const worstTransition = allFunnelZero ? null : findWorstFunnelTransition(funnelSteps);
-  const worstHintKey = worstTransition ? `${worstTransition.from.key}→${worstTransition.to.key}` : "";
-  const worstHint = TRANSITION_HINTS[worstHintKey] ?? "Bu adımda ziyaretçi kaybı en yüksek.";
+  const worstTransition = findWorstFunnelTransition(funnelSteps);
 
   const filterOptions: Array<{ key: AnalyticsRangeKey; label: string }> = [
     { key: "today", label: "Bugün" },
@@ -443,18 +512,26 @@ export function AdminAnalyticsSection({
       className="admin-analytics-dashboard rounded-2xl border p-3 shadow-sm sm:p-4"
       style={{
         ...ANALYTICS_THEME,
-        borderColor: "color-mix(in srgb, var(--text-muted) 28%, transparent)",
+        borderColor: "var(--border)",
         background: "color-mix(in srgb, var(--surface-1) 72%, var(--background))",
       }}
     >
       <style>{`
+        @keyframes admin-analytics-fadein {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         @keyframes admin-analytics-bar-grow {
           from { width: 0; }
         }
+        .admin-analytics-dashboard .admin-analytics-funnel-step {
+          animation: admin-analytics-fadein 0.6s ease both;
+        }
         .admin-analytics-dashboard .admin-analytics-funnel-bar {
-          animation: admin-analytics-bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+          animation: admin-analytics-bar-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         @media (prefers-reduced-motion: reduce) {
+          .admin-analytics-dashboard .admin-analytics-funnel-step,
           .admin-analytics-dashboard .admin-analytics-funnel-bar {
             animation: none;
           }
@@ -486,7 +563,7 @@ export function AdminAnalyticsSection({
               defaultValue={customFromYmd}
               className="mt-1 block rounded-lg border px-2 py-1.5 text-xs"
               style={{
-                borderColor: "color-mix(in srgb, var(--text-muted) 35%, transparent)",
+                borderColor: "var(--border)",
                 background: "var(--surface-1)",
                 color: "var(--text-primary)",
               }}
@@ -500,7 +577,7 @@ export function AdminAnalyticsSection({
               defaultValue={customToYmd}
               className="mt-1 block rounded-lg border px-2 py-1.5 text-xs"
               style={{
-                borderColor: "color-mix(in srgb, var(--text-muted) 35%, transparent)",
+                borderColor: "var(--border)",
                 background: "var(--surface-1)",
                 color: "var(--text-primary)",
               }}
@@ -508,8 +585,8 @@ export function AdminAnalyticsSection({
           </label>
           <button
             type="submit"
-            className="rounded-lg px-3 py-1.5 text-[10px] font-semibold text-white"
-            style={{ background: "var(--text-primary)" }}
+            className="px-3 py-1.5 text-[10px] font-semibold text-white"
+            style={{ background: "var(--text-primary)", borderRadius: "var(--radius)" }}
           >
             Uygula
           </button>
@@ -542,63 +619,36 @@ export function AdminAnalyticsSection({
         </p>
       ) : null}
 
-      <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <RevenueSparklineCard
-          title={range.key === "today" ? "Ciro (bugün)" : "Ciro"}
-          revenue={revenue}
-          previousRevenue={previousRevenue}
-          compareLabel={compareLabel}
-        />
+      <div className="mt-4 grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <RevenueCard revenue={revenue} previousRevenue={previousRevenue} compareLabel={compareLabel} />
         <ConversionGaugeCard rate={conversionRate} />
       </div>
 
       <div className="mt-4">
         <p
-          className="text-[9px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: "var(--text-muted)" }}
+          className="text-[11px] font-medium uppercase"
+          style={{ color: "var(--text-muted)", letterSpacing: "0.07em" }}
         >
           Dönüşüm hunisi · {range.periodLabel} · benzersiz ziyaretçi
         </p>
-        <div
-          className="mt-3 rounded-[12px] p-3"
-          style={{
-            background: "var(--surface-1)",
-            border: "1px solid color-mix(in srgb, var(--text-muted) 22%, transparent)",
-          }}
-        >
+        <div className="mt-3">
           <VisualConversionFunnel funnel={metrics.funnel} />
         </div>
-
-        {worstTransition ? (
-          <div
-            className="mt-3 rounded-[12px] px-3 py-2.5 text-[12px] leading-snug"
-            style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
-          >
-            <p className="font-semibold">
-              En büyük kayıp: {worstTransition.from.label} → {worstTransition.to.label} (%
-              {worstTransition.rate.toLocaleString("tr-TR", {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              })}
-              )
-            </p>
-            <p className="mt-0.5 font-medium opacity-90">{worstHint}</p>
-          </div>
-        ) : null}
+        <FunnelWarningBox funnel={metrics.funnel} worstTransition={worstTransition} />
       </div>
 
       {metrics.topViewedProducts.length > 0 ? (
         <div className="mt-4">
           <p
-            className="text-[9px] font-semibold uppercase tracking-[0.12em]"
-            style={{ color: "var(--text-muted)" }}
+            className="text-[11px] font-medium uppercase"
+            style={{ color: "var(--text-muted)", letterSpacing: "0.07em" }}
           >
             En çok görüntülenen ürünler
           </p>
           <ul
             className="mt-2 divide-y overflow-visible rounded-[12px] border"
             style={{
-              borderColor: "color-mix(in srgb, var(--text-muted) 22%, transparent)",
+              borderColor: "var(--border)",
               background: "var(--surface-1)",
             }}
           >
@@ -625,7 +675,7 @@ export function AdminAnalyticsSection({
                       style={{ color: "var(--text-muted)" }}
                     >
                       <span>{row.views.toLocaleString("tr-TR")} görüntülenme</span>
-                      <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
+                      <span className="font-semibold" style={{ color: "var(--text-accent)" }}>
                         Sepete ekleme %
                         {row.addToCartRate.toLocaleString("tr-TR", {
                           minimumFractionDigits: 1,
@@ -635,7 +685,7 @@ export function AdminAnalyticsSection({
                     </div>
                     <div
                       className="mt-1.5 h-1 w-full max-w-[10rem] overflow-hidden rounded-full"
-                      style={{ background: "color-mix(in srgb, var(--text-muted) 28%, transparent)" }}
+                      style={{ background: "var(--border)" }}
                     >
                       <div
                         className="h-full rounded-full"
@@ -649,7 +699,7 @@ export function AdminAnalyticsSection({
                   <Link
                     href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
                     className="shrink-0 text-[10px] font-semibold underline-offset-2 hover:underline"
-                    style={{ color: "var(--accent-text)" }}
+                    style={{ color: "var(--text-accent)" }}
                   >
                     Ürün →
                   </Link>
