@@ -24,6 +24,7 @@ import { resolveOrderTrackingUrl } from "@/lib/orders/shipping-tracking";
 import { AdminOrderCallbackHistory } from "@/components/admin/orders/AdminOrderCallbackHistory";
 import { AdminCopyableSecret } from "@/components/admin/orders/AdminCopyableSecret";
 import type { AdminOrderAccountLink } from "@/lib/admin/order-account-link";
+import { getOrderCheckoutInvoiceFields } from "@/lib/orders/checkout-invoice-display";
 
 export type { AdminOrderAccountLink } from "@/lib/admin/order-account-link";
 
@@ -86,6 +87,12 @@ type OrderRow = Record<string, unknown> & {
   shipping_label_url?: string | null;
   shipping_status?: string | null;
   shipping_created_at?: string | null;
+  invoice_type?: string | null;
+  invoice_full_name?: string | null;
+  invoice_tc_identity_no?: string | null;
+  invoice_company_name?: string | null;
+  invoice_tax_no?: string | null;
+  invoice_tax_office?: string | null;
 };
 
 const card =
@@ -252,6 +259,8 @@ export function AdminOrderDetailView({
     customerInsight && customerInsight.orderCount > 0
       ? customerInsight.lifetimeTotalTry / customerInsight.orderCount
       : null;
+
+  const checkoutInvoiceFields = getOrderCheckoutInvoiceFields(order);
 
   return (
     <div className="mx-auto w-full min-w-0 space-y-6 pb-16">
@@ -561,6 +570,17 @@ export function AdminOrderDetailView({
                 {addr.delivery_note ? <p className="mt-2 text-xs text-stone-600">{addr.delivery_note}</p> : null}
               </div>
             ) : null}
+            <div className="border-t border-[#eadfce] pt-4">
+              <p className={kicker}>Fatura bilgileri</p>
+              <dl className="mt-3 space-y-2 text-sm">
+                {checkoutInvoiceFields.map((field) => (
+                  <div key={field.label}>
+                    <dt className="text-[11px] font-medium uppercase tracking-wide text-stone-400">{field.label}</dt>
+                    <dd className="mt-0.5 text-stone-900">{field.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </InfoCard>
 
           <section className={card}>
