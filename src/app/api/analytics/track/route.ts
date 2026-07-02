@@ -1,5 +1,7 @@
 ﻿import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { canAccessAdminPanel } from "@/lib/admin/auth";
 import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
 
 const payloadSchema = z.object({
@@ -28,6 +30,14 @@ export async function POST(req: Request) {
 
   const pagePath = normalizePagePath(parsed.data.page_path);
   if (pagePath && isAnalyticsExcludedPath(pagePath)) {
+    return new Response("ok", { status: 200 });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user && canAccessAdminPanel(user.email)) {
     return new Response("ok", { status: 200 });
   }
 

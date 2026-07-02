@@ -3,6 +3,10 @@
 import { getCookieConsent } from "@/lib/cookies/consent";
 
 import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
+import {
+  bindAdminAnalyticsExclusionListener,
+  shouldExcludeStorefrontAnalytics,
+} from "@/lib/analytics/admin-session-guard";
 
 type Primitive = string | number | boolean | null | undefined;
 type EventParams = Record<
@@ -27,6 +31,13 @@ declare global {
 }
 
 const seenEvents = new Set<string>();
+let adminGuardBound = false;
+
+function ensureAdminGuardListener() {
+  if (typeof window === "undefined" || adminGuardBound) return;
+  adminGuardBound = true;
+  bindAdminAnalyticsExclusionListener();
+}
 
 function isDebug() {
   return (
@@ -99,17 +110,24 @@ export function trackEvent(
     if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
     return;
   }
-  const shouldDedupe = options?.dedupe ?? false;
-  if (shouldDedupe && shouldSkipDuplicate(name, params, options?.dedupeKey)) return;
+  ensureAdminGuardListener();
+  void (async () => {
+    if (await shouldExcludeStorefrontAnalytics()) {
+      if (isDebug()) console.info("[analytics:skipped]", name, "admin session");
+      return;
+    }
+    const shouldDedupe = options?.dedupe ?? false;
+    if (shouldDedupe && shouldSkipDuplicate(name, params, options?.dedupeKey)) return;
 
-  if (isDebug()) console.info("[analytics:event]", name, params);
-  window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push({ event: name, ...params });
+    if (isDebug()) console.info("[analytics:event]", name, params);
+    window.dataLayer = window.dataLayer ?? [];
+    window.dataLayer.push({ event: name, ...params });
 
-  if (typeof window.gtag === "function") {
-    window.gtag("event", name, params);
-  }
-  sendToBackend(name, { meta: params });
+    if (typeof window.gtag === "function") {
+      window.gtag("event", name, params);
+    }
+    sendToBackend(name, { meta: params });
+  })();
 }
 
 type Ga4Item = {
@@ -154,30 +172,37 @@ function trackEcommerceEvent(
     if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
     return;
   }
-  const shouldDedupe = options?.dedupe ?? false;
-  if (shouldDedupe && shouldSkipDuplicate(name, params as EventParams, options?.dedupeKey)) return;
+  ensureAdminGuardListener();
+  void (async () => {
+    if (await shouldExcludeStorefrontAnalytics()) {
+      if (isDebug()) console.info("[analytics:skipped]", name, "admin session");
+      return;
+    }
+    const shouldDedupe = options?.dedupe ?? false;
+    if (shouldDedupe && shouldSkipDuplicate(name, params as EventParams, options?.dedupeKey)) return;
 
-  const ga4Items = params.items.map(toGa4Item);
-  const ecommerce = {
-    currency: params.currency ?? "TRY",
-    value: params.value,
-    transaction_id: params.transaction_id,
-    item_list_name: params.item_list_name,
-    item_list_id: params.item_list_id,
-    tax: params.tax,
-    shipping: params.shipping,
-    items: ga4Items,
-  };
+    const ga4Items = params.items.map(toGa4Item);
+    const ecommerce = {
+      currency: params.currency ?? "TRY",
+      value: params.value,
+      transaction_id: params.transaction_id,
+      item_list_name: params.item_list_name,
+      item_list_id: params.item_list_id,
+      tax: params.tax,
+      shipping: params.shipping,
+      items: ga4Items,
+    };
 
-  if (isDebug()) console.info("[analytics:ecommerce]", name, ecommerce);
-  window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push({ event: name, ecommerce });
+    if (isDebug()) console.info("[analytics:ecommerce]", name, ecommerce);
+    window.dataLayer = window.dataLayer ?? [];
+    window.dataLayer.push({ event: name, ecommerce });
 
-  if (typeof window.gtag === "function") {
-    // gtag event paramlarını GA4 formatında düz geçiriyoruz.
-    window.gtag("event", name, ecommerce);
-  }
-  sendToBackend(name, { ecommerce });
+    if (typeof window.gtag === "function") {
+      // gtag event paramlarını GA4 formatında düz geçiriyoruz.
+      window.gtag("event", name, ecommerce);
+    }
+    sendToBackend(name, { ecommerce });
+  })();
 }
 
 export function trackPageView(path: string) {
