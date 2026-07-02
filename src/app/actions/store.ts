@@ -195,7 +195,61 @@ export async function clearCart() {
   revalidatePath("/sepet");
 }
 
-const checkoutSchema = z.object({
+function trimOptionalText(v: unknown, maxLen: number): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  if (!t) return undefined;
+  return t.slice(0, maxLen);
+}
+
+function digitsOnly(v: unknown, maxLen: number): string {
+  if (typeof v !== "string") return "";
+  return v.replace(/\D/g, "").slice(0, maxLen);
+}
+
+type CheckoutInvoiceType = "individual" | "sole" | "company";
+
+function resolveOrderInvoiceFields(data: {
+  invoice_type: CheckoutInvoiceType;
+  invoice_full_name?: string;
+  invoice_tc_identity_no?: string;
+  invoice_company_name?: string;
+  invoice_tax_no?: string;
+  invoice_tax_office?: string;
+}) {
+  if (data.invoice_type === "sole") {
+    return {
+      invoice_type: "sole" as const,
+      invoice_full_name: data.invoice_full_name ?? null,
+      invoice_tc_identity_no: data.invoice_tc_identity_no ?? null,
+      invoice_company_name: null,
+      invoice_tax_no: null,
+      invoice_tax_office: data.invoice_tax_office ?? null,
+    };
+  }
+  if (data.invoice_type === "company") {
+    return {
+      invoice_type: "company" as const,
+      invoice_full_name: null,
+      invoice_tc_identity_no: null,
+      invoice_company_name: data.invoice_company_name ?? null,
+      invoice_tax_no: data.invoice_tax_no ?? null,
+      invoice_tax_office: data.invoice_tax_office ?? null,
+    };
+  }
+  const tc = (data.invoice_tc_identity_no ?? "").trim();
+  return {
+    invoice_type: "individual" as const,
+    invoice_full_name: data.invoice_full_name ?? null,
+    invoice_tc_identity_no: tc.length === 11 ? tc : "11111111111",
+    invoice_company_name: null,
+    invoice_tax_no: null,
+    invoice_tax_office: null,
+  };
+}
+
+const checkoutSchema = z
+  .object({
   customer_name: z
     .string()
     .min(2, "Lütfen ad soyad bilgisi girin.")
@@ -221,7 +275,89 @@ const checkoutSchema = z.object({
     z.string().max(64),
   ),
   payment_method: z.enum(["card", "bank_transfer"]).default("card"),
-});
+  invoice_type: z.preprocess((v) => {
+    const s = String(v ?? "individual").trim().toLowerCase();
+    if (s === "sole" || s === "company") return s;
+    return "individual";
+  }, z.enum(["individual", "sole", "company"])),
+  invoice_full_name: z.preprocess(
+    (v) => {
+      const t = trimOptionalText(v, 200);
+      return t ? normalizeTurkishFullName(t) : undefined;
+    },
+    z.string().min(2).max(200).optional(),
+  ),
+  invoice_tc_identity_no: z.preprocess(
+    (v) => {
+      const d = digitsOnly(v, 11);
+      return d || undefined;
+    },
+    z.string().optional(),
+  ),
+  invoice_company_name: z.preprocess(
+    (v) => trimOptionalText(v, 200),
+    z.string().min(2).max(200).optional(),
+  ),
+  invoice_tax_no: z.preprocess(
+    (v) => {
+      const d = digitsOnly(v, 10);
+      return d || undefined;
+    },
+    z.string().optional(),
+  ),
+  invoice_tax_office: z.preprocess(
+    (v) => trimOptionalText(v, 120),
+    z.string().min(2).max(120).optional(),
+  ),
+})
+  .superRefine((data, ctx) => {
+    if (data.invoice_type === "sole") {
+      if (!data.invoice_full_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Şahıs şirketi için ad soyad gerekli.",
+          path: ["invoice_full_name"],
+        });
+      }
+      if (!/^\d{11}$/.test(data.invoice_tc_identity_no ?? "")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Lütfen geçerli bir T.C. kimlik numarası giriniz.",
+          path: ["invoice_tc_identity_no"],
+        });
+      }
+      if (!data.invoice_tax_office) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Vergi dairesi gerekli.",
+          path: ["invoice_tax_office"],
+        });
+      }
+    }
+    if (data.invoice_type === "company") {
+      if (!data.invoice_company_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Şirket ünvanı gerekli.",
+          path: ["invoice_company_name"],
+        });
+      }
+      if (!/^\d{10}$/.test(data.invoice_tax_no ?? "")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Lütfen geçerli bir vergi numarası giriniz.",
+          path: ["invoice_tax_no"],
+        });
+      }
+      if (!data.invoice_tax_office) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Vergi dairesi gerekli.",
+          path: ["invoice_tax_office"],
+        });
+      }
+    }
+  });
 
 export async function previewPromoDiscount(subtotal: number, rawCode: string) {
   return computeInstagramFollowerDiscount(subtotal, rawCode);
@@ -432,6 +568,7 @@ export async function createCheckout(formData: FormData) {
       postal_code: parsed.data.postal_code,
       delivery_note: parsed.data.delivery_note || null,
     },
+    ...resolveOrderInvoiceFields(parsed.data),
   };
   const extendedOrderInsert = {
     ...baseOrderInsert,

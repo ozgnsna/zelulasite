@@ -403,6 +403,18 @@ alter table public.orders
   add column if not exists invoice_pdf_url text;
 alter table public.orders
   add column if not exists invoice_uploaded_at timestamptz;
+alter table public.orders
+  add column if not exists invoice_type text not null default 'individual';
+alter table public.orders
+  add column if not exists invoice_full_name text;
+alter table public.orders
+  add column if not exists invoice_tc_identity_no text;
+alter table public.orders
+  add column if not exists invoice_company_name text;
+alter table public.orders
+  add column if not exists invoice_tax_no text;
+alter table public.orders
+  add column if not exists invoice_tax_office text;
 
 create table if not exists public.loyalty_points_ledger (
   id uuid primary key default gen_random_uuid(),
