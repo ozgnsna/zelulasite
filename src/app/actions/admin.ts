@@ -219,6 +219,70 @@ export async function adminProductsListBulkAction(formData: FormData) {
   redirect(`/admin/products?${base.toString()}`);
 }
 
+/**
+ * Ürün listesinde satır içi (düzenle sayfasına girmeden) stok güncelleme.
+ * Varyantlı ürünlerde stok varyanttan hesaplandığı için engellenir.
+ * trendyol_active ise fiyat/stok Trendyol'a da iletilir (site master).
+ */
+export async function updateProductStockInline(
+  productId: string,
+  nextStock: number,
+): Promise<{ ok: boolean; stock?: number; error?: string; pushed?: boolean }> {
+  const rawId = String(productId ?? "").trim();
+  if (!rawId) return { ok: false, error: "Geçersiz ürün." };
+  const stock = Math.trunc(Number(nextStock));
+  if (!Number.isFinite(stock) || stock < 0) return { ok: false, error: "Geçersiz stok değeri." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Yetkisiz." };
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) {
+    return { ok: false, error: "Yetkisiz." };
+  }
+
+  const admin = createAdminClient();
+  const { data: variantRows } = await admin
+    .from("product_variants")
+    .select("id")
+    .eq("product_id", rawId)
+    .limit(1);
+  if (variantRows && variantRows.length > 0) {
+    return { ok: false, error: "Varyantlı ürün — stok varyanttan yönetilir. Düzenle sayfasını kullanın." };
+  }
+
+  const { data: updated, error } = await admin
+    .from("products")
+    .update({ stock_quantity: stock })
+    .eq("id", rawId)
+    .select("id,trendyol_active")
+    .maybeSingle();
+  if (error || !updated) return { ok: false, error: error?.message ?? "Güncellenemedi." };
+
+  let pushed = false;
+  if (updated.trendyol_active) {
+    try {
+      await syncPriceInventoryForProducts(admin, [rawId], "admin_inline_stock", {
+        retryDelaysMs: [0, 1200],
+        requestTimeoutMs: 12_000,
+      });
+      pushed = true;
+    } catch (err) {
+      console.error("[admin/updateProductStockInline] Trendyol push failed", {
+        productId: rawId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  return { ok: true, stock, pushed };
+}
+
 /** Listelenen tüm ürünleri (son 400) mevcut senkron ile Trendyol'a gönderir — tek tık. */
 export async function sendAllProductsToTrendyolAction() {
   const admin = createAdminClient();

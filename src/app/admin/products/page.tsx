@@ -8,6 +8,7 @@ import {
 } from "@/app/actions/admin";
 import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
 import { AdminProductDeleteMenuButton } from "@/components/admin/products/AdminProductDeleteMenuButton";
+import { AdminProductInlineStock } from "@/components/admin/products/AdminProductInlineStock";
 import { AdminProductsScrollPersistence } from "@/components/admin/products/AdminProductsScrollPersistence";
 import { AdminProductsSelectionToolbar } from "@/components/admin/products/AdminProductsSelectionToolbar";
 import {
@@ -149,25 +150,31 @@ export default async function AdminProductsPage({
   const productSelect =
     "id,name,sku,price,compare_at_price,stock_quantity,is_active,category_id,trendyol_active,trendyol_category_id,trendyol_barcode,trendyol_stock_code,short_description,full_description,product_images(image_url,is_cover,sort_order)";
 
-  const [{ data: products }, { data: orderItemsSales }, { data: viewEvents }] = await Promise.all([
-    admin
-      .from("products")
-      .select(productSelect)
-      .order("created_at", { ascending: sortFilter === "oldest" })
-      .limit(400),
-    admin
-      .from("order_items")
-      .select("product_id,quantity,order:orders!inner(payment_status,order_status)")
-      .eq("order.payment_status", "paid")
-      .neq("order.order_status", "cancelled")
-      .limit(8000),
-    admin
-      .from("analytics_events")
-      .select("event_name,ecommerce")
-      .eq("event_name", "view_item")
-      .order("occurred_at", { ascending: false })
-      .limit(4000),
-  ]);
+  const [{ data: products }, { data: orderItemsSales }, { data: viewEvents }, { data: variantRows }] =
+    await Promise.all([
+      admin
+        .from("products")
+        .select(productSelect)
+        .order("created_at", { ascending: sortFilter === "oldest" })
+        .limit(400),
+      admin
+        .from("order_items")
+        .select("product_id,quantity,order:orders!inner(payment_status,order_status)")
+        .eq("order.payment_status", "paid")
+        .neq("order.order_status", "cancelled")
+        .limit(8000),
+      admin
+        .from("analytics_events")
+        .select("event_name,ecommerce")
+        .eq("event_name", "view_item")
+        .order("occurred_at", { ascending: false })
+        .limit(4000),
+      admin.from("product_variants").select("product_id"),
+    ]);
+
+  const productsWithVariants = new Set(
+    (variantRows ?? []).map((r) => String((r as { product_id?: string | null }).product_id ?? "")).filter(Boolean),
+  );
 
   const salesByProduct = new Map<string, number>();
   for (const item of orderItemsSales ?? []) {
@@ -779,6 +786,11 @@ export default async function AdminProductsPage({
                         </Link>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 self-center sm:pl-1">
+                        <AdminProductInlineStock
+                          productId={p.id}
+                          initialStock={stock}
+                          hasVariants={productsWithVariants.has(String(p.id))}
+                        />
                         <button
                           type="submit"
                           form={`sync-ty-${p.id}`}
