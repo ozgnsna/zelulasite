@@ -27,6 +27,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  if (process.env.TRENDYOL_INBOUND_CRON_PAUSED === "true") {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "TRENDYOL_INBOUND_CRON_PAUSED",
+      ran_at: new Date().toISOString(),
+    });
+  }
+
   const admin = createAdminClient();
   const ranAt = new Date().toISOString();
   try {
