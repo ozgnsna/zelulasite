@@ -10,6 +10,7 @@ import { AdminProductListThumbnail } from "@/components/admin/products/AdminProd
 import { AdminProductDeleteMenuButton } from "@/components/admin/products/AdminProductDeleteMenuButton";
 import { AdminProductInlineStock } from "@/components/admin/products/AdminProductInlineStock";
 import { AdminProductsScrollPersistence } from "@/components/admin/products/AdminProductsScrollPersistence";
+import { AdminProductsClearFiltersLink } from "@/components/admin/products/AdminProductsClearFiltersLink";
 import { AdminProductsSelectionToolbar } from "@/components/admin/products/AdminProductsSelectionToolbar";
 import {
   buildOptimizeHints,
@@ -484,7 +485,11 @@ export default async function AdminProductsPage({
               Trendyol paneli
             </Link>
           </p>
-          <form className="mt-1.5 space-y-1.5" method="get">
+          <form
+            key={[sp.q ?? "", statusFilter, trendyolFilter, stockFilter, reviewFilter, salesFilter, sortFilter, currentPage].join("|")}
+            className="mt-1.5 space-y-1.5"
+            method="get"
+          >
             <div className="flex flex-wrap items-center gap-1.5">
               <div className="min-w-[min(100%,16rem)] flex-[1.35]">
                 <label className="sr-only" htmlFor="admin-products-q">
@@ -523,12 +528,7 @@ export default async function AdminProductsPage({
               >
                 Ara
               </button>
-              <Link
-                href="/admin/products"
-                className="inline-flex h-7 shrink-0 items-center rounded-md border border-transparent px-2 text-[11px] font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-700"
-              >
-                Temizle
-              </Link>
+              <AdminProductsClearFiltersLink />
             </div>
             <details className="rounded-md border border-stone-100 bg-stone-50/50 px-2 py-1">
               <summary className="cursor-pointer list-none text-[10px] font-normal text-stone-500 [&::-webkit-details-marker]:hidden">
