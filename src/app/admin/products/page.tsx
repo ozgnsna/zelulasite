@@ -701,32 +701,33 @@ export default async function AdminProductsPage({
                           aria-label={`${p.name} ürününü seç`}
                         />
                         <AdminProductListThumbnail src={previewImageUrl || null} alt={String(p.name ?? "Ürün")} />
-                        <Link
-                          href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
-                          className="min-w-0 flex-1 rounded-md pt-0.5 outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/30"
-                        >
-                          <div className="min-w-0">
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <Link
+                            href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
+                            className="block min-w-0 rounded-md outline-none ring-stone-400/0 transition hover:ring-1 focus-visible:ring-2 focus-visible:ring-stone-400/30"
+                          >
                             <p className="truncate text-[15px] font-semibold leading-snug tracking-tight text-stone-900">{p.name}</p>
                             <p className="mt-1 font-mono text-[11px] font-normal uppercase tracking-wide text-stone-500">
                               {(p.sku || "—").toUpperCase()}
                             </p>
-                            <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                          </Link>
+                          <div className="min-w-0">
+                            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                               <span className="text-[15px] font-semibold tabular-nums tracking-tight text-stone-900">
                                 {formatPrice(Number(p.price ?? 0))}
                               </span>
-                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-stone-500">
-                                <span className={`tabular-nums ${stock === 0 ? "font-medium text-rose-700" : stockLow ? "font-medium text-amber-800" : "text-stone-500"}`}>
-                                  Stok {stock}
-                                </span>
-                                <span className="hidden h-3 w-px shrink-0 bg-stone-200/90 sm:inline" aria-hidden />
-                                <span
-                                  className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[9px] font-medium tabular-nums leading-none tracking-wide ${tyChipClass}`}
-                                  title={tyTitle}
-                                  aria-label={`Trendyol durumu: ${tyStatusShort}`}
-                                >
-                                  {tyStatusShort}
-                                </span>
-                              </div>
+                              <AdminProductInlineStock
+                                productId={p.id}
+                                initialStock={stock}
+                                hasVariants={productsWithVariants.has(String(p.id))}
+                              />
+                              <span
+                                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[9px] font-medium tabular-nums leading-none tracking-wide ${tyChipClass}`}
+                                title={tyTitle}
+                                aria-label={`Trendyol durumu: ${tyStatusShort}`}
+                              >
+                                {tyStatusShort}
+                              </span>
                             </div>
                             <details className="mt-2 group/details">
                               <summary className="cursor-pointer list-none text-[10px] font-normal text-stone-500 transition-colors duration-200 ease-out hover:text-stone-700 [&::-webkit-details-marker]:hidden">
@@ -783,14 +784,9 @@ export default async function AdminProductsPage({
                               </div>
                             </details>
                           </div>
-                        </Link>
+                        </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 self-center sm:pl-1">
-                        <AdminProductInlineStock
-                          productId={p.id}
-                          initialStock={stock}
-                          hasVariants={productsWithVariants.has(String(p.id))}
-                        />
                         <button
                           type="submit"
                           form={`sync-ty-${p.id}`}
