@@ -208,22 +208,6 @@ export default async function HomePage() {
         </section>
       </FadeIn>
 
-      <FadeIn delay={0.04}>
-        <section className="border-t border-[#ebe6df] bg-[linear-gradient(180deg,#fffdfb_0%,#faf8f5_100%)] py-14 sm:py-16">
-          <div className="container-premium mx-auto max-w-2xl text-center">
-            <p className="font-serif text-lg font-light leading-relaxed text-stone-800 sm:text-xl">
-              Zelula, sadece bir takı değil; bir hissin yansımasıdır.
-            </p>
-            <Link
-              href="/urunler"
-              className="mt-6 inline-flex min-h-11 items-center text-[11px] font-medium uppercase tracking-[0.22em] text-brand-gold-a11y underline-offset-[6px] transition hover:text-stone-800 hover:underline"
-            >
-              Ürünleri keşfet
-            </Link>
-          </div>
-        </section>
-      </FadeIn>
-
       <FadeIn delay={0.05}>
         <section className="container-premium py-14 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
