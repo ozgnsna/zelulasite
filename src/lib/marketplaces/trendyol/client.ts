@@ -224,9 +224,9 @@ export async function getActiveTrendyolIntegration(
 }
 
 export async function logMarketplaceSync(admin: SupabaseClient, params: MarketplaceLogParams) {
-  await admin.from("marketplace_sync_logs").insert({
+  const row = {
     integration_id: params.integrationId ?? null,
-    marketplace: "trendyol",
+    marketplace: "trendyol" as const,
     entity_type: params.entityType,
     entity_id: params.entityId ?? null,
     action: params.action,
@@ -236,7 +236,16 @@ export async function logMarketplaceSync(admin: SupabaseClient, params: Marketpl
     request_payload: params.requestPayload ?? null,
     response_payload: params.responsePayload ?? null,
     metadata: params.metadata ?? null,
-  });
+  };
+  let { error } = await admin.from("marketplace_sync_logs").insert(row);
+  if (error?.message?.includes("metadata")) {
+    const { metadata: _metadata, ...withoutMetadata } = row;
+    ({ error } = await admin.from("marketplace_sync_logs").insert(withoutMetadata));
+  }
+  if (error) {
+    console.error("[marketplace_sync_logs] insert failed:", error.message, params.action);
+    throw new Error(`marketplace_sync_logs insert failed: ${error.message}`);
+  }
 }
 
 type TrendyolRequest = {

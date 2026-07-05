@@ -25,10 +25,10 @@ export function AdminTrendyolImportAlert({
   tyFetched,
   tyDailySync,
   tyDailyOrders,
-  tyDailyAdjusted,
-  tyDailyPushed,
-  tyDailyDeactivated,
   tyDailyUnmatched,
+  tyDailyDuplicate,
+  tyDailyRestored,
+  tyDailyFetched,
 }: {
   tyErr?: string;
   tyWarn?: string;
@@ -41,10 +41,10 @@ export function AdminTrendyolImportAlert({
   tyFetched?: string;
   tyDailySync?: string;
   tyDailyOrders?: string;
-  tyDailyAdjusted?: string;
-  tyDailyPushed?: string;
-  tyDailyDeactivated?: string;
   tyDailyUnmatched?: string;
+  tyDailyDuplicate?: string;
+  tyDailyRestored?: string;
+  tyDailyFetched?: string;
 }) {
   const error = decodeQueryParam(tyErr);
   const warn = decodeQueryParam(tyWarn);
@@ -57,11 +57,11 @@ export function AdminTrendyolImportAlert({
   const match = parseCount(tyMatch);
   const fetched = parseCount(tyFetched);
 
-  const dailyOrders = parseCount(tyDailyOrders);
-  const dailyAdjusted = parseCount(tyDailyAdjusted);
-  const dailyPushed = parseCount(tyDailyPushed);
-  const dailyDeactivated = parseCount(tyDailyDeactivated);
+  const dailyStockUpdates = parseCount(tyDailyOrders);
   const dailyUnmatched = parseCount(tyDailyUnmatched);
+  const dailyDuplicate = parseCount(tyDailyDuplicate);
+  const dailyRestored = parseCount(tyDailyRestored);
+  const dailyFetched = parseCount(tyDailyFetched);
 
   if (!error && !warn && !isOk && !isPreview && !isDailySync) return null;
 
@@ -99,12 +99,12 @@ export function AdminTrendyolImportAlert({
   if (isDailySync) {
     return (
       <div role="status" className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-        <p className="font-medium">Günlük stok eşitleme tamamlandı</p>
+        <p className="font-medium">Sipariş senkronu tamamlandı</p>
         <p className="mt-1 text-[13px] leading-relaxed text-emerald-900">
-          Son 24 saat Trendyol siparişlerinden <span className="font-semibold">{dailyOrders ?? 0}</span> ürün stoğu
-          güncellendi. Stok uyumu: <span className="font-semibold">{dailyAdjusted ?? 0}</span> ürün, Trendyol&apos;a
-          gönderim: <span className="font-semibold">{dailyPushed ?? 0}</span> ürün
-          {(dailyDeactivated ?? 0) > 0 ? `, sitede kapatılan: ${dailyDeactivated}` : ""}
+          <span className="font-semibold">{dailyFetched ?? 0}</span> sipariş kaydı işlendi;{" "}
+          <span className="font-semibold">{dailyStockUpdates ?? 0}</span> ürün stoğu güncellendi
+          {(dailyRestored ?? 0) > 0 ? `, ${dailyRestored} iptal/iade stoğu geri yüklendi` : ""}
+          {(dailyDuplicate ?? 0) > 0 ? ` · Tekrar atlanan: ${dailyDuplicate}` : ""}
           {(dailyUnmatched ?? 0) > 0 ? ` · Eşleşmeyen sipariş satırı: ${dailyUnmatched}` : ""}.
         </p>
       </div>
@@ -127,4 +127,3 @@ export function AdminTrendyolImportAlert({
 
   return null;
 }
-

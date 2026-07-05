@@ -7,6 +7,7 @@ import {
   trendyolRequest,
   TrendyolRequestError,
 } from "@/lib/marketplaces/trendyol/client";
+import { resolveTrendyolOutboundBarcode } from "@/lib/marketplaces/trendyol/product-identifiers";
 
 type InventoryProduct = {
   id: string;
@@ -26,7 +27,7 @@ function mapPriceInventoryItem(p: InventoryProduct) {
   const salePrice = Number(p.trendyol_sale_price ?? 0);
   const listPrice = Number(p.trendyol_list_price ?? p.trendyol_sale_price ?? 0);
   return {
-    barcode: p.trendyol_barcode?.trim() || p.sku,
+    barcode: resolveTrendyolOutboundBarcode(p),
     quantity: p.stock_quantity,
     salePrice,
     listPrice,

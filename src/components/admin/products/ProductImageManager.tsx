@@ -273,9 +273,18 @@ export function ProductImageManager({
           {selectedImage && productId && setProductCoverImageAction && !selectedIsCover && !selectedPreviewIsVideo ? (
             <div className="border-t border-stone-100 bg-stone-50/80 px-3 py-2.5">
               <button
-                type="submit"
-                form={`zelula-cover-image-${selectedImage.id}`}
+                type="button"
                 className="w-full rounded-lg bg-stone-900 px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-stone-800"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const form = document.getElementById(`zelula-cover-image-${selectedImage.id}`);
+                  if (!(form instanceof HTMLFormElement)) {
+                    console.error("[ProductImageManager] kapak formu bulunamadı:", selectedImage.id);
+                    return;
+                  }
+                  form.requestSubmit();
+                }}
               >
                 Bu görseli kapak yap (anasayfa + liste)
               </button>
@@ -332,24 +341,38 @@ export function ProductImageManager({
                   </button>
                   {canSetCover ? (
                     <button
-                      type="submit"
-                      form={`zelula-cover-image-${img.id}`}
+                      type="button"
                       className="mt-0.5 w-full rounded bg-stone-900 px-1 py-1 text-[8px] font-semibold text-white hover:bg-stone-800"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const form = document.getElementById(`zelula-cover-image-${img.id}`);
+                        if (!(form instanceof HTMLFormElement)) {
+                          console.error("[ProductImageManager] kapak formu bulunamadı:", img.id);
+                          return;
+                        }
+                        form.requestSubmit();
+                      }}
                     >
                       Kapak yap
                     </button>
                   ) : null}
                   {canDelete ? (
                     <button
-                      type="submit"
-                      form={`zelula-delete-image-${img.id}`}
-                      className="absolute -right-0.5 -top-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-rose-700 shadow-md ring-1 ring-rose-200/90 opacity-90 transition hover:bg-rose-50 active:scale-95 lg:h-6 lg:w-6 lg:text-[10px] lg:opacity-0 lg:group-hover:opacity-100"
+                      type="button"
+                      className="absolute -right-0.5 -top-0.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-rose-700 shadow-md ring-1 ring-rose-200/90 opacity-90 transition hover:bg-rose-50 active:scale-95 lg:h-6 lg:w-6 lg:text-[10px] lg:opacity-0 lg:group-hover:opacity-100"
                       title="Sil"
                       aria-label="Görseli sil"
                       onClick={(e) => {
-                        if (!window.confirm("Bu görseli silmek istiyor musunuz?")) {
-                          e.preventDefault();
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!window.confirm("Bu görseli silmek istiyor musunuz?")) return;
+                        const form = document.getElementById(`zelula-delete-image-${img.id}`);
+                        if (!(form instanceof HTMLFormElement)) {
+                          console.error("[ProductImageManager] silme formu bulunamadı:", img.id);
+                          return;
                         }
+                        form.requestSubmit();
                       }}
                     >
                       ×

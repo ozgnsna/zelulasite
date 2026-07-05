@@ -45,7 +45,7 @@ import {
   type TrendyolProductPayloadInput,
   type TrendyolProductSyncOverrides,
 } from "@/lib/marketplaces/trendyol/products";
-import { reconcileDailyStockWithTrendyol } from "@/lib/marketplaces/trendyol/daily-stock-reconcile";
+import { syncTrendyolInboundOrders } from "@/lib/marketplaces/trendyol/daily-stock-reconcile";
 import { fetchTrendyolOrdersForSync } from "@/lib/marketplaces/trendyol/orders";
 import {
   buildCategoryReadinessFromCache,
@@ -350,8 +350,22 @@ export async function saveProduct(formData: FormData) {
       });
     }
   }
-  // Trendyol API kayıt sırasında bekletilmez — uzun 556/timeout yanıtları «sayfa yüklenemedi» yapıyordu.
-  // Pazaryeri güncellemesi için ürün formundaki «Trendyol'a gönder» kullanılır.
+
+  if (productId && payload.trendyol_active) {
+    try {
+      await syncPriceInventoryForProducts(supabase, [productId], "admin_product_save", {
+        retryDelaysMs: [0, 1200],
+        requestTimeoutMs: 12_000,
+      });
+    } catch (err) {
+      console.error("[admin/saveProduct] Trendyol inventory push failed", {
+        productId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Trendyol ürün batch API kayıt sırasında bekletilmez — «Trendyol'a gönder» ayrı adımdır.
   revalidatePath("/admin");
   revalidatePath("/");
   revalidateTag("storefront-home", "max");
@@ -608,7 +622,7 @@ export async function purgeAllOrdersAndResetCounterAction(formData: FormData) {
 
 export async function reconcileDailyTrendyolStockAction() {
   const admin = createAdminClient();
-  const result = await reconcileDailyStockWithTrendyol(admin, { orderLookbackDays: 1 });
+  const result = await syncTrendyolInboundOrders(admin, { orderLookbackDays: 1 });
   revalidatePath("/admin");
   revalidatePath("/admin/trendyol");
   revalidatePath("/admin/products");
@@ -616,17 +630,17 @@ export async function reconcileDailyTrendyolStockAction() {
 
   const base = "/admin/trendyol";
   if (!result.ok) {
-    redirect(`${base}?tyErr=${encodeURIComponent(normalizeTrendyolUiError(result.message, "price_inventory"))}`);
+    redirect(`${base}?tyErr=${encodeURIComponent(normalizeTrendyolUiError(result.message, "orders"))}`);
   }
   if (result.skipped) {
     redirect(
-      `${base}?tyWarn=${encodeURIComponent("Entegrasyon kapalı veya API bilgileri eksik. Günlük stok eşitlemesi yapılamadı.")}`,
+      `${base}?tyWarn=${encodeURIComponent("Entegrasyon kapalı veya API bilgileri eksik. Sipariş senkronu yapılamadı.")}`,
     );
   }
   redirect(
-    `${base}?tyDailySync=1&tyDailyOrders=${result.orderStockUpdates}&tyDailyAdjusted=${result.stockAdjusted}` +
-      `&tyDailyPushed=${result.pushedToTrendyol}&tyDailyDeactivated=${result.siteDeactivated}` +
-      `&tyDailyUnmatched=${result.orderUnmatched}&tyDailyTyRows=${result.trendyolRowsRead}`,
+    `${base}?tyDailySync=1&tyDailyOrders=${result.orderStockUpdates}` +
+      `&tyDailyUnmatched=${result.orderUnmatched}&tyDailyDuplicate=${result.duplicateSkipped}` +
+      `&tyDailyRestored=${result.restoredOrders}&tyDailyFetched=${result.ordersFetched}`,
   );
 }
 

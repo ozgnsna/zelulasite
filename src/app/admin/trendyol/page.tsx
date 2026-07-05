@@ -124,10 +124,10 @@ export default async function AdminTrendyolPage({
     tyFetched?: string;
     tyDailySync?: string;
     tyDailyOrders?: string;
-    tyDailyAdjusted?: string;
-    tyDailyPushed?: string;
-    tyDailyDeactivated?: string;
     tyDailyUnmatched?: string;
+    tyDailyDuplicate?: string;
+    tyDailyRestored?: string;
+    tyDailyFetched?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -272,10 +272,10 @@ export default async function AdminTrendyolPage({
         tyFetched={sp.tyFetched}
         tyDailySync={sp.tyDailySync}
         tyDailyOrders={sp.tyDailyOrders}
-        tyDailyAdjusted={sp.tyDailyAdjusted}
-        tyDailyPushed={sp.tyDailyPushed}
-        tyDailyDeactivated={sp.tyDailyDeactivated}
         tyDailyUnmatched={sp.tyDailyUnmatched}
+        tyDailyDuplicate={sp.tyDailyDuplicate}
+        tyDailyRestored={sp.tyDailyRestored}
+        tyDailyFetched={sp.tyDailyFetched}
       />
 
       <AdminTrendyolStatusBar

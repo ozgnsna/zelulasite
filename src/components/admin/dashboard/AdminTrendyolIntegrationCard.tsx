@@ -142,15 +142,14 @@ export function AdminTrendyolIntegrationCard({
         <p className={adminSectionSubtitle}>Her işlem tamamlandığında üstte sonuç kutusu ve altta log görünür.</p>
 
         <article className="mt-5 rounded-xl border border-[#c6a15b]/40 bg-[#faf6ef] p-4">
-          <h3 className="text-sm font-semibold text-stone-900">Günlük stok eşitleme</h3>
+          <h3 className="text-sm font-semibold text-stone-900">Sipariş senkronu (24 saat)</h3>
           <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-            Günde bir kez otomatik çalışır: son 24 saat Trendyol siparişlerini işler, site stoğunu Trendyol stoğuyla
-            birebir eşitler (Trendyol kaynak — azalır da artar da) ve Trendyol&apos;a güncel stok gönderir. Bu buton ile
-            beklemeden de elle eşitleyebilirsin.
+            Son 24 saatteki Trendyol siparişlerini çeker; eşleşen ürünlerde site stoğundan düşer (site stok master).
+            Otomatik cron her 3 saatte bir çalışır. Trendyol stoğu siteye yazılmaz.
           </p>
           <form action={reconcileDailyTrendyolStockAction} className="mt-3">
-            <AdminTrendyolSubmitButton variant="primary" pendingLabel="Eşitleniyor…">
-              Bugünkü stokları eşitle
+            <AdminTrendyolSubmitButton variant="primary" pendingLabel="Senkronize ediliyor…">
+              Siparişleri senkronize et (24s)
             </AdminTrendyolSubmitButton>
           </form>
         </article>

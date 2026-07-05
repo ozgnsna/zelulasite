@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logMarketplaceSync } from "@/lib/marketplaces/trendyol/client";
-import { reconcileDailyStockWithTrendyol } from "@/lib/marketplaces/trendyol/daily-stock-reconcile";
+import { syncTrendyolInboundOrders } from "@/lib/marketplaces/trendyol/daily-stock-reconcile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Reconcile birden çok Trendyol API çağrısı yapar; daha uzun süreye izin ver. */
 export const maxDuration = 60;
 
 /**
@@ -16,13 +15,13 @@ export const maxDuration = 60;
 function isAuthorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) {
-    console.warn("[cron] CRON_SECRET tanımlı değil; trendyol-stock-sync korumasız çalışıyor.");
+    console.warn("[cron] CRON_SECRET tanımlı değil; trendyol-orders-sync korumasız çalışıyor.");
     return true;
   }
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
-/** Günlük Trendyol → site stok eşitleme (Vercel Cron tetikler). */
+/** Trendyol siparişlerini çeker; site stoğu master kalır (TY snapshot yazılmaz). */
 export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -31,16 +30,16 @@ export async function GET(req: Request) {
   const admin = createAdminClient();
   const ranAt = new Date().toISOString();
   try {
-    const result = await reconcileDailyStockWithTrendyol(admin, { orderLookbackDays: 1 });
+    const result = await syncTrendyolInboundOrders(admin, { orderLookbackDays: 1 });
     return NextResponse.json({ ...result, ran_at: ranAt }, { status: result.ok ? 200 : 500 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown_error";
     await logMarketplaceSync(admin, {
       integrationId: null,
-      entityType: "inventory",
-      action: "daily_stock_reconcile",
+      entityType: "order",
+      action: "inbound_orders_sync",
       status: "error",
-      message: `Cron reconcile beklenmeyen hata: ${message}`,
+      message: `Cron inbound sipariş senkronu beklenmeyen hata: ${message}`,
       metadata: {
         ran_at: ranAt,
         affected_count: 0,

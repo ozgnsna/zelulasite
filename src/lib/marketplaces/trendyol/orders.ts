@@ -6,6 +6,11 @@ import {
   trendyolRequest,
 } from "@/lib/marketplaces/trendyol/client";
 import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inventory";
+import { isTrendyolPlaceholderStockCode } from "@/lib/marketplaces/trendyol/product-identifiers";
+import {
+  buildTrendyolIdentifierToProductIdMap,
+  resolveProductIdForTrendyolIdentifiers,
+} from "@/lib/marketplaces/trendyol/product-lookup";
 
 export type TrendyolOrderStub = {
   orderNumber: string;
@@ -21,6 +26,12 @@ export type TrendyolOrderStub = {
 };
 
 type StockEffect = "deduct" | "restore" | "none";
+
+export type OrderStockOutcome = {
+  applied: boolean;
+  error?: string | null;
+  unmatchedLines: number;
+};
 
 const TRENDYOL_STOCK_IMPACT_STATUSES = new Set(["created", "picking", "invoiced", "shipped", "delivered", "undelivered"]);
 const TRENDYOL_STOCK_CANCELLED_STATUSES = new Set(["cancelled", "canceled", "cancel", "returned", "refunded", "rejected", "unsupplied"]);
@@ -51,90 +62,151 @@ function readWasDeducted(raw: unknown, previousStatus: string): boolean {
   return decideStockEffect(previousStatus) === "deduct";
 }
 
-function extractLineIdentifiers(line: TrendyolOrderStub["lines"][number]) {
-  return [line.barcode, line.stockCode].map((v) => String(v ?? "").trim()).filter(Boolean);
+function lineStockCodeForMatch(stockCode: string) {
+  return isTrendyolPlaceholderStockCode(stockCode) ? "" : stockCode;
 }
+
+type ApplyStockDeltaResult = {
+  updatedProductIds: string[];
+  unmatchedUnits: number;
+  unmatchedOrderItems: number;
+  orderOutcomes: Map<string, OrderStockOutcome>;
+};
 
 async function applyTrendyolOrderStockDelta(
   admin: SupabaseClient,
   orders: TrendyolOrderStub[],
   mode: "deduct" | "restore",
-) {
+): Promise<ApplyStockDeltaResult> {
+  const orderOutcomes = new Map<string, OrderStockOutcome>();
+  for (const order of orders) {
+    orderOutcomes.set(order.orderNumber, { applied: false, unmatchedLines: 0, error: null });
+  }
+
   const allIdentifiers = new Set<string>();
   for (const order of orders) {
     for (const line of order.lines) {
-      for (const identifier of extractLineIdentifiers(line)) allIdentifiers.add(identifier);
+      const barcode = String(line.barcode ?? "").trim();
+      const stockCode = lineStockCodeForMatch(String(line.stockCode ?? "").trim());
+      if (barcode) allIdentifiers.add(barcode);
+      if (stockCode) allIdentifiers.add(stockCode);
     }
   }
   const keys = [...allIdentifiers];
   if (keys.length === 0) {
-    return { updatedProductIds: [] as string[], unmatchedUnits: 0, unmatchedOrderItems: 0 };
+    return { updatedProductIds: [], unmatchedUnits: 0, unmatchedOrderItems: 0, orderOutcomes };
   }
 
   const [byBarcode, byStockCode, bySku] = await Promise.all([
-    admin.from("products").select("id,stock_quantity,trendyol_barcode,trendyol_active,is_active").in("trendyol_barcode", keys),
-    admin.from("products").select("id,stock_quantity,trendyol_stock_code,trendyol_active,is_active").in("trendyol_stock_code", keys),
-    admin.from("products").select("id,stock_quantity,sku,trendyol_active,is_active").in("sku", keys),
+    admin.from("products").select("id,stock_quantity,trendyol_barcode,trendyol_stock_code,sku,trendyol_active,is_active").in("trendyol_barcode", keys),
+    admin.from("products").select("id,stock_quantity,trendyol_barcode,trendyol_stock_code,sku,trendyol_active,is_active").in("trendyol_stock_code", keys),
+    admin.from("products").select("id,stock_quantity,trendyol_barcode,trendyol_stock_code,sku,trendyol_active,is_active").in("sku", keys),
   ]);
 
   const merged = [...(byBarcode.data ?? []), ...(byStockCode.data ?? []), ...(bySku.data ?? [])];
-  const byIdentifier = new Map<string, string>();
-  const byId = new Map<string, { id: string; stock_quantity: number; trendyol_active: boolean; consumed: number }>();
+  const byIdentifier = buildTrendyolIdentifierToProductIdMap(
+    merged as Array<{
+      id: string;
+      trendyol_barcode: string | null;
+      trendyol_stock_code: string | null;
+      sku: string | null;
+    }>,
+  );
+  const byId = new Map<string, { id: string; stock_quantity: number; consumed: number }>();
   for (const row of merged as Array<Record<string, unknown>>) {
     const id = String(row.id ?? "").trim();
-    if (!id) continue;
-    if (!byId.has(id)) {
-      byId.set(id, {
-        id,
-        stock_quantity: Number(row.stock_quantity ?? 0),
-        trendyol_active: Boolean(row.trendyol_active),
-        consumed: 0,
-      });
-    }
-    const barcode = String(row.trendyol_barcode ?? "").trim();
-    const stockCode = String(row.trendyol_stock_code ?? "").trim();
-    const sku = String(row.sku ?? "").trim();
-    if (barcode && !byIdentifier.has(barcode)) byIdentifier.set(barcode, id);
-    if (stockCode && !byIdentifier.has(stockCode)) byIdentifier.set(stockCode, id);
-    if (sku && !byIdentifier.has(sku)) byIdentifier.set(sku, id);
+    if (!id || byId.has(id)) continue;
+    byId.set(id, {
+      id,
+      stock_quantity: Number(row.stock_quantity ?? 0),
+      consumed: 0,
+    });
   }
 
+  const productIdsByOrder = new Map<string, Set<string>>();
   let unmatchedUnits = 0;
   let unmatchedOrderItems = 0;
+
   for (const order of orders) {
+    const orderProductIds = new Set<string>();
     for (const line of order.lines) {
       const qty = Number(line.quantity ?? 0);
       if (!Number.isFinite(qty) || qty <= 0) continue;
-      const matchId = extractLineIdentifiers(line)
-        .map((identifier) => byIdentifier.get(identifier))
-        .find(Boolean);
+      const matchId = resolveProductIdForTrendyolIdentifiers(
+        byIdentifier,
+        line.barcode,
+        lineStockCodeForMatch(line.stockCode),
+      );
       if (!matchId) {
         unmatchedUnits += qty;
         unmatchedOrderItems += 1;
+        const outcome = orderOutcomes.get(order.orderNumber)!;
+        outcome.unmatchedLines += 1;
         continue;
       }
+      orderProductIds.add(matchId);
       const current = byId.get(matchId);
       if (!current) continue;
       current.consumed += qty;
     }
+    productIdsByOrder.set(order.orderNumber, orderProductIds);
   }
 
   const updatedProductIds: string[] = [];
+  const failedProductIds = new Set<string>();
+
   for (const row of byId.values()) {
     if (row.consumed <= 0) continue;
     const next = mode === "deduct" ? Math.max(0, row.stock_quantity - row.consumed) : row.stock_quantity + row.consumed;
-    await admin.from("products").update({ stock_quantity: next, is_active: next > 0 }).eq("id", row.id);
+    const { error } = await admin.from("products").update({ stock_quantity: next, is_active: next > 0 }).eq("id", row.id);
+    if (error) {
+      failedProductIds.add(row.id);
+      for (const [orderNumber, pids] of productIdsByOrder) {
+        if (!pids.has(row.id)) continue;
+        const outcome = orderOutcomes.get(orderNumber)!;
+        outcome.applied = false;
+        outcome.error = error.message;
+      }
+      continue;
+    }
     updatedProductIds.push(row.id);
   }
 
+  for (const order of orders) {
+    const outcome = orderOutcomes.get(order.orderNumber)!;
+    if (outcome.unmatchedLines > 0) {
+      outcome.applied = false;
+      if (!outcome.error) outcome.error = "Sipariş satırında ürün eşleşmedi.";
+      continue;
+    }
+    const pids = productIdsByOrder.get(order.orderNumber) ?? new Set<string>();
+    if (pids.size === 0) {
+      outcome.applied = false;
+      continue;
+    }
+    const anyFailed = [...pids].some((id) => failedProductIds.has(id));
+    if (anyFailed) {
+      outcome.applied = false;
+      continue;
+    }
+    const anyUpdated = [...pids].some((id) => updatedProductIds.includes(id));
+    outcome.applied = anyUpdated;
+    if (!anyUpdated) outcome.error = "Stok güncellemesi yapılmadı.";
+  }
+
   if (updatedProductIds.length > 0) {
-    await syncPriceInventoryForProducts(admin, updatedProductIds, mode === "deduct" ? "trendyol_order_deduct" : "trendyol_order_restore");
+    await syncPriceInventoryForProducts(
+      admin,
+      updatedProductIds,
+      mode === "deduct" ? "trendyol_order_deduct" : "trendyol_order_restore",
+    );
   }
 
   return {
     updatedProductIds,
     unmatchedUnits,
     unmatchedOrderItems,
+    orderOutcomes,
   };
 }
 
@@ -202,10 +274,22 @@ export async function fetchTrendyolOrdersForSync(admin: SupabaseClient, params?:
       })) ?? []),
       raw: row,
     }));
+
     const now = new Date().toISOString();
     const deductOrders: TrendyolOrderStub[] = [];
     const restoreOrders: TrendyolOrderStub[] = [];
     let duplicateSkipped = 0;
+
+    type PendingOrder = {
+      order: TrendyolOrderStub;
+      shouldDeduct: boolean;
+      shouldRestore: boolean;
+      prevStatus: string;
+      prevDeducted: boolean;
+      effect: StockEffect;
+    };
+    const pending: PendingOrder[] = [];
+
     for (const order of orders) {
       const prev = existingById.get(order.orderNumber);
       const prevStatus = prev?.status ?? "";
@@ -213,20 +297,67 @@ export async function fetchTrendyolOrdersForSync(admin: SupabaseClient, params?:
       const effect = decideStockEffect(order.shipmentPackageStatus);
       const shouldDeduct = effect === "deduct" && !prevDeducted;
       const shouldRestore = effect === "restore" && prevDeducted;
-      const applied = shouldDeduct ? true : shouldRestore ? false : prevDeducted;
       if (!shouldDeduct && !shouldRestore && prev) duplicateSkipped += 1;
+
+      if (shouldDeduct) deductOrders.push(order);
+      if (shouldRestore) restoreOrders.push(order);
+      pending.push({ order, shouldDeduct, shouldRestore, prevStatus, prevDeducted, effect });
+    }
+
+    const deductResult =
+      deductOrders.length > 0
+        ? await applyTrendyolOrderStockDelta(admin, deductOrders, "deduct")
+        : { updatedProductIds: [] as string[], unmatchedUnits: 0, unmatchedOrderItems: 0, orderOutcomes: new Map() };
+    const restoreResult =
+      restoreOrders.length > 0
+        ? await applyTrendyolOrderStockDelta(admin, restoreOrders, "restore")
+        : { updatedProductIds: [] as string[], unmatchedUnits: 0, unmatchedOrderItems: 0, orderOutcomes: new Map() };
+
+    for (const item of pending) {
+      const { order, shouldDeduct, shouldRestore, prevStatus, prevDeducted, effect } = item;
+      const outcome = shouldDeduct
+        ? deductResult.orderOutcomes.get(order.orderNumber)
+        : shouldRestore
+          ? restoreResult.orderOutcomes.get(order.orderNumber)
+          : undefined;
+
+      let applied = prevDeducted;
+      let lastMode: "deduct" | "restore" | "none" = "none";
+      let error: string | null = null;
+      let unmatchedLines = 0;
+
+      if (shouldDeduct && outcome) {
+        applied = outcome.applied;
+        lastMode = "deduct";
+        error = outcome.error ?? null;
+        unmatchedLines = outcome.unmatchedLines;
+      } else if (shouldRestore && outcome) {
+        applied = outcome.applied ? false : prevDeducted;
+        lastMode = "restore";
+        error = outcome.error ?? null;
+        unmatchedLines = outcome.unmatchedLines;
+      } else if (shouldRestore) {
+        applied = false;
+        lastMode = "restore";
+      } else if (effect === "deduct" && prevDeducted) {
+        applied = true;
+        lastMode = "none";
+      }
 
       const baseRaw = parseRawPayload(order.raw);
       const rawWithMarker = {
         ...baseRaw,
         stock_effect: {
           applied,
-          last_mode: shouldDeduct ? "deduct" : shouldRestore ? "restore" : "none",
+          last_mode: lastMode,
           previous_status: prevStatus || null,
           current_status: order.shipmentPackageStatus,
           updated_at: now,
+          error,
+          unmatched_lines: unmatchedLines,
         },
       };
+
       await admin.from("marketplace_orders").upsert(
         {
           integration_id: integration.id,
@@ -239,17 +370,7 @@ export async function fetchTrendyolOrdersForSync(admin: SupabaseClient, params?:
         },
         { onConflict: "marketplace,external_order_id" },
       );
-      if (shouldDeduct) deductOrders.push(order);
-      if (shouldRestore) restoreOrders.push(order);
     }
-    const deductResult =
-      deductOrders.length > 0
-        ? await applyTrendyolOrderStockDelta(admin, deductOrders, "deduct")
-        : { updatedProductIds: [] as string[], unmatchedUnits: 0, unmatchedOrderItems: 0 };
-    const restoreResult =
-      restoreOrders.length > 0
-        ? await applyTrendyolOrderStockDelta(admin, restoreOrders, "restore")
-        : { updatedProductIds: [] as string[], unmatchedUnits: 0, unmatchedOrderItems: 0 };
 
     if (deductResult.unmatchedOrderItems > 0 || restoreResult.unmatchedOrderItems > 0) {
       await logMarketplaceSync(admin, {

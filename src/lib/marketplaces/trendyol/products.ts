@@ -933,6 +933,8 @@ export async function fetchTrendyolStockByBarcodeSnapshot(
       const qty = Math.max(0, Math.trunc(extractRemoteQuantity(item)));
       const effective = isVariantOnSale(item) ? qty : 0;
       stockByBarcode.set(barcode, effective);
+      const stockCode = extractRemoteStockCode(item);
+      if (stockCode) stockByBarcode.set(stockCode, effective);
     }
     return { ok: true, stockByBarcode, fetchedCount: list.length, integrationId: integration.id };
   } catch (error) {
