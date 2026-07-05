@@ -284,6 +284,7 @@ export default async function AdminProductsPage({
   const syncFormProductIds = paginatedRows.map((p) => p.id);
 
   const activeCount = allRows.filter((p) => Boolean(p.is_active)).length;
+  const outOfStockCount = allRows.filter((p) => Number(p.stock_quantity ?? 0) === 0).length;
   const lowStockCount = allRows.filter((p) => {
     const stock = Number(p.stock_quantity ?? 0);
     return stock > 0 && stock <= 3;
@@ -434,7 +435,7 @@ export default async function AdminProductsPage({
         </div>
 
         <section className="mb-3 rounded-lg border border-stone-200/60 bg-white p-2 shadow-sm">
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             <div className="rounded-md border border-stone-100 bg-stone-50/70 px-2 py-1.5">
               <p className="text-[9px] font-medium text-stone-500">Toplam ürün</p>
               <p className="text-sm font-semibold tabular-nums text-stone-900">{allRows.length}</p>
@@ -443,6 +444,13 @@ export default async function AdminProductsPage({
               <p className="text-[9px] font-medium text-stone-500">Aktif ürün</p>
               <p className="text-sm font-semibold tabular-nums text-stone-900">{activeCount}</p>
             </div>
+            <Link
+              href={listQuery({ stock: "out", page: "1" })}
+              className="rounded-md border border-rose-100/80 bg-rose-50/40 px-2 py-1.5 transition-colors hover:bg-rose-50/70"
+            >
+              <p className="text-[9px] font-medium text-rose-900/80">Stokta yok</p>
+              <p className="text-sm font-semibold tabular-nums text-rose-950">{outOfStockCount}</p>
+            </Link>
             <div className="rounded-md border border-amber-100/80 bg-amber-50/40 px-2 py-1.5">
               <p className="text-[9px] font-medium text-amber-900/80">Trendyol eksik</p>
               <p className="text-sm font-semibold tabular-nums text-amber-950">{missingTrendyolCount}</p>
