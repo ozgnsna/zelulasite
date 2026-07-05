@@ -267,31 +267,6 @@ export default async function HomePage() {
         <HomeSocialProof />
       </FadeIn>
 
-      <FadeIn delay={0.03}>
-        <section className="container-premium py-12 sm:py-16">
-          <div className="rounded-[2rem] border border-[#e8e3da] bg-[#fdfcfa] px-6 py-10 text-center shadow-[0_20px_48px_rgba(55,48,40,0.06)] sm:px-12 sm:py-14">
-            <h2 className="font-serif text-xl font-light text-stone-900 sm:text-2xl">Hazır mısın?</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm font-light text-stone-600">
-              Seçtiğin parça bir tık uzağında; güvenli ödeme ile hemen tamamla.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-              <Link
-                href="/urunler"
-                className="inline-flex min-h-[2.85rem] min-w-[12rem] items-center justify-center rounded-full bg-stone-900 px-8 text-[12px] font-medium uppercase tracking-[0.18em] text-[#fdfbf7] shadow-[0_14px_36px_rgba(28,24,20,0.2)] transition hover:bg-[#2a2420]"
-              >
-                Şimdi alışverişe başla
-              </Link>
-              <Link
-                href="/cok-satanlar"
-                className="inline-flex min-h-[2.85rem] min-w-[12rem] items-center justify-center rounded-full border border-[#e0d5c8] bg-white px-8 text-[12px] font-medium uppercase tracking-[0.16em] text-stone-800 transition hover:border-[color:var(--brand-gold)]/45"
-              >
-                Çok satanlar
-              </Link>
-            </div>
-          </div>
-        </section>
-      </FadeIn>
-
       <Suspense fallback={<HomeInstagramSectionSkeleton />}>
         <HomeInstagramSection />
       </Suspense>
