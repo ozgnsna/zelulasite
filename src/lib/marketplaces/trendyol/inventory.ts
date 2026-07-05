@@ -16,6 +16,7 @@ type InventoryProduct = {
   trendyol_active: boolean;
   stock_quantity: number;
   price: number;
+  compare_at_price: number | null;
   trendyol_barcode: string | null;
   trendyol_stock_code: string | null;
   trendyol_sale_price: number | null;
@@ -24,8 +25,14 @@ type InventoryProduct = {
 };
 
 function mapPriceInventoryItem(p: InventoryProduct) {
-  const salePrice = Number(p.trendyol_sale_price ?? 0);
-  const listPrice = Number(p.trendyol_list_price ?? p.trendyol_sale_price ?? 0);
+  // Trendyol'a özel fiyat girilmemişse site fiyatına düş; aksi halde 0 gider ve
+  // Trendyol "fiyat girmeniz gerekmektedir" durumuna alır.
+  const salePrice = Number(p.trendyol_sale_price ?? p.price ?? 0);
+  const listCandidate = Number(
+    p.trendyol_list_price ?? p.compare_at_price ?? p.trendyol_sale_price ?? p.price ?? 0,
+  );
+  // Trendyol listPrice >= salePrice olmalı.
+  const listPrice = Math.max(listCandidate, salePrice);
   return {
     barcode: resolveTrendyolOutboundBarcode(p),
     quantity: p.stock_quantity,
@@ -51,7 +58,7 @@ export async function syncPriceInventoryForProducts(
   const { data: products } = await admin
     .from("products")
     .select(
-      "id,sku,is_active,trendyol_active,stock_quantity,price,trendyol_barcode,trendyol_stock_code,trendyol_sale_price,trendyol_list_price,trendyol_quantity",
+      "id,sku,is_active,trendyol_active,stock_quantity,price,compare_at_price,trendyol_barcode,trendyol_stock_code,trendyol_sale_price,trendyol_list_price,trendyol_quantity",
     )
     .in("id", productIds);
   const eligible = ((products ?? []) as InventoryProduct[]).filter((p) => p.trendyol_active);
