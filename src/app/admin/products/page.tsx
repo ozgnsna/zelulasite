@@ -114,6 +114,8 @@ export default async function AdminProductsPage({
     sort?: "newest" | "oldest" | "stock_desc" | "stock_asc";
     editProduct?: string;
     deleted?: string;
+    softDeleted?: string;
+    deleteFailedCount?: string;
     deleteError?: string;
     bulkOk?: string;
     bulkCount?: string;
@@ -133,6 +135,8 @@ export default async function AdminProductsPage({
     sortRaw === "oldest" || sortRaw === "stock_desc" || sortRaw === "stock_asc" ? sortRaw : "newest";
   const pageRaw = Math.max(1, parseInt(String(sp.page ?? "1").trim(), 10) || 1);
   const deletedCount = Number(sp.deleted ?? 0);
+  const softDeletedCount = Number(sp.softDeleted ?? 0);
+  const deleteFailedCount = Number(sp.deleteFailedCount ?? 0);
   const deleteError = sp.deleteError ?? "";
   const bulkOk = (sp.bulkOk ?? "").trim();
   const bulkCount = Number(sp.bulkCount ?? 0);
@@ -383,6 +387,17 @@ export default async function AdminProductsPage({
         {deletedCount > 0 ? (
           <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
             {deletedCount} ürün silindi.
+          </p>
+        ) : null}
+        {softDeletedCount > 0 ? (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {softDeletedCount} ürün siparişlerde kayıtlı olduğu için silinemedi; sipariş geçmişi korunsun diye vitrinde ve
+            Trendyol&apos;da kapatıldı (pasife alındı).
+          </p>
+        ) : null}
+        {deleteFailedCount > 0 ? (
+          <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+            {deleteFailedCount} ürün ilişkili kayıtlar nedeniyle işlenemedi. Tekrar deneyin veya ürünü pasife alın.
           </p>
         ) : null}
         {bulkOk === "trendyol" && bulkCount > 0 ? (

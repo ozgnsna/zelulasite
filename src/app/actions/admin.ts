@@ -153,15 +153,53 @@ export async function bulkDeleteProductsAction(formData: FormData) {
     redirect(`/admin/products?${base.toString()}`);
   }
 
-  const { error } = await admin.from("products").delete().in("id", uniqueIds);
-  if (error) {
-    base.set("deleteError", "delete_failed");
-    redirect(`/admin/products?${base.toString()}`);
+  // Siparişlerde geçen ürünler silinemez (sipariş geçmişi korunmalı) → pasife alınır.
+  const { data: orderRefs } = await admin
+    .from("order_items")
+    .select("product_id")
+    .in("product_id", uniqueIds);
+  const inOrders = new Set((orderRefs ?? []).map((r) => String((r as { product_id?: string | null }).product_id ?? "")));
+  const deletable = uniqueIds.filter((id) => !inOrders.has(id));
+  const blocked = uniqueIds.filter((id) => inOrders.has(id));
+
+  let deletedCount = 0;
+  let failedCount = 0;
+
+  if (deletable.length > 0) {
+    // Cascade edilmeyebilen çocuk kayıtları (görseller) önce temizle.
+    await admin.from("product_images").delete().in("product_id", deletable);
+    const { error } = await admin.from("products").delete().in("id", deletable);
+    if (error) {
+      failedCount += deletable.length;
+    } else {
+      deletedCount = deletable.length;
+    }
+  }
+
+  let deactivatedCount = 0;
+  if (blocked.length > 0) {
+    const { error } = await admin
+      .from("products")
+      .update({ is_active: false, trendyol_active: false })
+      .in("id", blocked);
+    if (error) {
+      failedCount += blocked.length;
+    } else {
+      deactivatedCount = blocked.length;
+    }
   }
 
   revalidatePath("/admin");
   revalidatePath("/admin/products");
-  base.set("deleted", String(uniqueIds.length));
+  revalidatePath("/");
+
+  if (deletedCount === 0 && deactivatedCount === 0) {
+    base.set("deleteError", "delete_failed");
+    redirect(`/admin/products?${base.toString()}`);
+  }
+  if (deletedCount > 0) base.set("deleted", String(deletedCount));
+  if (deactivatedCount > 0) base.set("softDeleted", String(deactivatedCount));
+  if (failedCount > 0) base.set("deleteFailedCount", String(failedCount));
   redirect(`/admin/products?${base.toString()}`);
 }
 
