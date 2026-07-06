@@ -28,7 +28,7 @@ export function buildAdminOrderAccountLink(input: {
       canWriteReviews: false,
       reviewStatusLabel: "Yorum kapalı",
       reviewDetail:
-        "Misafir checkout — sipariş hesaba bağlı değil. Aynı e-postayla kayıtlı hesap olsa bile müşteri yorum yazamaz.",
+        "Misafir checkout — sipariş hesaba bağlı değil. Müşteri aynı e-postayla giriş yaparsa sipariş otomatik bağlanır; bağlanmadan yorum yazılamaz.",
     };
   }
 

@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { mapAuthError } from "@/lib/account/auth-errors";
 import { normalizeEmailInput } from "@/lib/account/email-input";
 import { normalizeTurkishFullName } from "@/lib/account/turkish-full-name";
+import { linkGuestOrdersToUser } from "@/lib/account/link-guest-orders";
 import { buildAuthCallbackUrl } from "@/lib/account/site-url";
 import { getSafeReturnPath } from "@/lib/account/safe-return-path";
 
@@ -61,13 +62,18 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
 
   if (error) {
     return { ok: false, error: mapAuthError(error) };
+  }
+
+  if (data.user?.id) {
+    const admin = createAdminClient();
+    await linkGuestOrdersToUser(admin, data.user.id, parsed.data.email);
   }
 
   const destination = getSafeReturnPath(String(formData.get("next") ?? ""));
@@ -119,6 +125,9 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
       },
       { onConflict: "id" },
     );
+    if (data.session) {
+      await linkGuestOrdersToUser(admin, data.user.id, email);
+    }
   }
 
   if (!data.session) {

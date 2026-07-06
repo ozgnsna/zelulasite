@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { linkGuestOrdersToUser } from "@/lib/account/link-guest-orders";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getSafeReturnPath } from "@/lib/account/safe-return-path";
 import { getPublicSiteUrl } from "@/lib/account/site-url";
@@ -29,6 +31,14 @@ export async function GET(request: Request) {
     const forgot = new URL("/sifremi-unuttum", origin);
     forgot.searchParams.set("error", "link_expired");
     return NextResponse.redirect(forgot);
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user?.id && user.email) {
+    const admin = createAdminClient();
+    await linkGuestOrdersToUser(admin, user.id, user.email);
   }
 
   return NextResponse.redirect(`${origin}${next}`);
