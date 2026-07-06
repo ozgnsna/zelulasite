@@ -21,17 +21,23 @@ function isAuthorized(req: Request): boolean {
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
+/** Sabah cron + manuel tetikleme dışında otomatik çalışmasın; Vercel cron tanımlı olsa bile. */
+function isCronSyncEnabled(): boolean {
+  if (process.env.TRENDYOL_INBOUND_CRON_PAUSED === "true") return false;
+  return process.env.TRENDYOL_INBOUND_CRON_ENABLED === "true";
+}
+
 /** Trendyol siparişlerini çeker; site stoğu master kalır (TY snapshot yazılmaz). */
 export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  if (process.env.TRENDYOL_INBOUND_CRON_PAUSED === "true") {
+  if (!isCronSyncEnabled()) {
     return NextResponse.json({
       ok: true,
       skipped: true,
-      reason: "TRENDYOL_INBOUND_CRON_PAUSED",
+      reason: "TRENDYOL_INBOUND_CRON_DISABLED",
       ran_at: new Date().toISOString(),
     });
   }
