@@ -225,7 +225,14 @@ export default async function AdminProductsPage({
     if (trendyolFilter === "off" && isTrendyolActive) return false;
     if (trendyolFilter === "missing" && hasTyCore) return false;
     if (stockFilter === "low" && !(stock > 0 && stock <= 3)) return false;
-    if (stockFilter === "out" && stock !== 0) return false;
+    // Stok yok = satışta (aktif) ama stoğu 0; satışa kapalı ürünler ayrı filtrede.
+    if (stockFilter === "out") {
+      if (statusFilter === "passive") {
+        if (isActive || stock !== 0) return false;
+      } else if (!isActive || stock !== 0) {
+        return false;
+      }
+    }
     if (reviewFilter === "only" && !importedNeedsReview) return false;
     return true;
   });
@@ -289,10 +296,10 @@ export default async function AdminProductsPage({
   const syncFormProductIds = paginatedRows.map((p) => p.id);
 
   const activeCount = allRows.filter((p) => Boolean(p.is_active)).length;
-  const outOfStockCount = allRows.filter((p) => Number(p.stock_quantity ?? 0) === 0).length;
-  const activeOutOfStockCount = allRows.filter(
+  const stokYokCount = allRows.filter(
     (p) => Boolean(p.is_active) && Number(p.stock_quantity ?? 0) === 0,
   ).length;
+  const satisKapaliCount = allRows.filter((p) => !Boolean(p.is_active)).length;
   const lowStockCount = allRows.filter((p) => {
     const stock = Number(p.stock_quantity ?? 0);
     return stock > 0 && stock <= 3;
@@ -395,8 +402,7 @@ export default async function AdminProductsPage({
         ) : null}
         {softDeletedCount > 0 ? (
           <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            {softDeletedCount} ürün siparişlerde kayıtlı olduğu için silinemedi; sipariş geçmişi korunsun diye vitrinde ve
-            Trendyol&apos;da kapatıldı (pasife alındı).
+            {softDeletedCount} ürün siparişlerde kayıtlı olduğu için silinemedi; sipariş geçmişi korunsun diye satışa kapatıldı.
           </p>
         ) : null}
         {deleteFailedCount > 0 ? (
@@ -421,7 +427,7 @@ export default async function AdminProductsPage({
         ) : null}
         {bulkOk === "disable" && bulkCount > 0 ? (
           <p className="mb-4 rounded-lg border border-stone-300 bg-stone-100 px-3 py-2 text-xs text-stone-900">
-            {bulkCount} ürün vitrinde kapatıldı (pasif).
+            {bulkCount} ürün satışa kapatıldı.
           </p>
         ) : null}
         {bulkError === "disable_failed" ? (
@@ -454,24 +460,31 @@ export default async function AdminProductsPage({
         </div>
 
         <section className="mb-3 rounded-lg border border-stone-200/60 bg-white p-2 shadow-sm">
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
             <div className="rounded-md border border-stone-100 bg-stone-50/70 px-2 py-1.5">
               <p className="text-[9px] font-medium text-stone-500">Toplam ürün</p>
               <p className="text-sm font-semibold tabular-nums text-stone-900">{allRows.length}</p>
             </div>
-            <div className="rounded-md border border-stone-100 bg-stone-50/70 px-2 py-1.5">
-              <p className="text-[9px] font-medium text-stone-500">Aktif ürün</p>
-              <p className="text-sm font-semibold tabular-nums text-stone-900">{activeCount}</p>
-            </div>
+            <a
+              href="/admin/products?status=active"
+              className="rounded-md border border-emerald-100/80 bg-emerald-50/40 px-2 py-1.5 transition-colors hover:bg-emerald-50/70"
+            >
+              <p className="text-[9px] font-medium text-emerald-900/80">Satışta</p>
+              <p className="text-sm font-semibold tabular-nums text-emerald-950">{activeCount}</p>
+            </a>
             <a
               href="/admin/products?stock=out"
               className="rounded-md border border-rose-100/80 bg-rose-50/40 px-2 py-1.5 transition-colors hover:bg-rose-50/70"
             >
-              <p className="text-[9px] font-medium text-rose-900/80">Stokta yok</p>
-              <p className="text-sm font-semibold tabular-nums text-rose-950">{outOfStockCount}</p>
-              {activeOutOfStockCount !== outOfStockCount ? (
-                <p className="text-[8px] tabular-nums text-rose-900/60">{activeOutOfStockCount} aktif</p>
-              ) : null}
+              <p className="text-[9px] font-medium text-rose-900/80">Stok yok</p>
+              <p className="text-sm font-semibold tabular-nums text-rose-950">{stokYokCount}</p>
+            </a>
+            <a
+              href="/admin/products?status=passive"
+              className="rounded-md border border-stone-200/80 bg-stone-100/50 px-2 py-1.5 transition-colors hover:bg-stone-100/80"
+            >
+              <p className="text-[9px] font-medium text-stone-600">Satışa kapalı</p>
+              <p className="text-sm font-semibold tabular-nums text-stone-800">{satisKapaliCount}</p>
             </a>
             <div className="rounded-md border border-amber-100/80 bg-amber-50/40 px-2 py-1.5">
               <p className="text-[9px] font-medium text-amber-900/80">Trendyol eksik</p>
@@ -491,13 +504,14 @@ export default async function AdminProductsPage({
               Trendyol paneli
             </Link>
           </p>
-          {stockFilter === "out" && statusFilter === "active" && totalFiltered < outOfStockCount ? (
-            <p className="mt-1.5 rounded-md border border-amber-200/70 bg-amber-50/60 px-2 py-1.5 text-[10px] text-amber-950">
-              <span className="font-medium">Aktif</span> filtresi uygulanıyor — {totalFiltered} ürün görünüyor (toplam{" "}
-              {outOfStockCount} stoksuz).
-              <a href="/admin/products?stock=out" className="ml-1 font-semibold underline underline-offset-2 hover:text-amber-900">
-                Tüm stoksuzları göster
-              </a>
+          {stockFilter === "out" && statusFilter !== "passive" ? (
+            <p className="mt-1.5 rounded-md border border-rose-200/60 bg-rose-50/50 px-2 py-1.5 text-[10px] text-rose-950">
+              <span className="font-medium">Stok yok</span> — satışta ama stoğu bitmiş ürünler ({totalFiltered}).
+            </p>
+          ) : null}
+          {statusFilter === "passive" ? (
+            <p className="mt-1.5 rounded-md border border-stone-200/70 bg-stone-50/80 px-2 py-1.5 text-[10px] text-stone-700">
+              <span className="font-medium">Satışa kapalı</span> — vitrinde gösterilmeyen ürünler ({totalFiltered}).
             </p>
           ) : null}
           <form
@@ -521,11 +535,11 @@ export default async function AdminProductsPage({
               <select
                 name="status"
                 defaultValue={statusFilter}
-                className="h-7 min-w-[6.75rem] rounded-md border border-stone-200/80 bg-stone-50/80 px-2 text-[11px] text-stone-600"
+                className="h-7 min-w-[7.5rem] rounded-md border border-stone-200/80 bg-stone-50/80 px-2 text-[11px] text-stone-600"
               >
                 <option value="all">Durum: Tümü</option>
-                <option value="active">Aktif</option>
-                <option value="passive">Pasif</option>
+                <option value="active">Satışta</option>
+                <option value="passive">Satışa kapalı</option>
               </select>
               <select
                 name="trendyol"
@@ -557,7 +571,7 @@ export default async function AdminProductsPage({
                 >
                   <option value="all">Stok: Tümü</option>
                   <option value="low">Stok: Az (1–3)</option>
-                  <option value="out">Stok: Tükendi</option>
+                  <option value="out">Stok: Yok</option>
                 </select>
                 <select
                   name="review"
@@ -644,7 +658,7 @@ export default async function AdminProductsPage({
                   value="disable"
                   className="rounded-md border border-stone-700/20 bg-stone-800 px-2 py-1.5 text-[10px] font-semibold text-white hover:bg-stone-900"
                 >
-                  Pasifleştir
+                  Satışa kapat
                 </button>
               </div>
             </div>
@@ -715,7 +729,7 @@ export default async function AdminProductsPage({
                 const tyHintParts = [
                   ...missingTrendyolFields,
                   importedNeedsReview ? "İnceleme" : null,
-                  !isActive ? "Pasif" : null,
+                  !isActive ? "Satışa kapalı" : null,
                 ].filter(Boolean) as string[];
                 const tyTitle = tyHintParts.length ? `Trendyol: ${tyHintParts.join(", ")}` : undefined;
                 const tyChipClass = !Boolean(p.trendyol_active)
@@ -759,6 +773,15 @@ export default async function AdminProductsPage({
                                 initialStock={stock}
                                 hasVariants={productsWithVariants.has(String(p.id))}
                               />
+                              {!isActive ? (
+                                <span className="inline-flex items-center rounded-md border border-stone-300/70 bg-stone-100/80 px-1.5 py-0.5 text-[9px] font-medium leading-none text-stone-600">
+                                  Satışa kapalı
+                                </span>
+                              ) : stock === 0 ? (
+                                <span className="inline-flex items-center rounded-md border border-rose-200/70 bg-rose-50/80 px-1.5 py-0.5 text-[9px] font-medium leading-none text-rose-800">
+                                  Stok yok
+                                </span>
+                              ) : null}
                               <span
                                 className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[9px] font-medium tabular-nums leading-none tracking-wide ${tyChipClass}`}
                                 title={tyTitle}
@@ -787,10 +810,12 @@ export default async function AdminProductsPage({
                                   <span className="text-[9px] text-stone-500">{views} görüntülenme</span>
                                   <span
                                     className={`rounded border px-1 py-px text-[8px] font-medium ${
-                                      p.is_active ? "border-stone-200 bg-stone-50 text-stone-700" : "border-stone-200 bg-stone-100 text-stone-500"
+                                      p.is_active
+                                        ? "border-emerald-200/70 bg-emerald-50/60 text-emerald-900"
+                                        : "border-stone-200 bg-stone-100 text-stone-600"
                                     }`}
                                   >
-                                    {p.is_active ? "Vitrin" : "Pasif"}
+                                    {p.is_active ? "Satışta" : "Satışa kapalı"}
                                   </span>
                                 </div>
                                 {missingTrendyolFields.length > 0 ? (
