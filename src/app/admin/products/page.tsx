@@ -290,6 +290,9 @@ export default async function AdminProductsPage({
 
   const activeCount = allRows.filter((p) => Boolean(p.is_active)).length;
   const outOfStockCount = allRows.filter((p) => Number(p.stock_quantity ?? 0) === 0).length;
+  const activeOutOfStockCount = allRows.filter(
+    (p) => Boolean(p.is_active) && Number(p.stock_quantity ?? 0) === 0,
+  ).length;
   const lowStockCount = allRows.filter((p) => {
     const stock = Number(p.stock_quantity ?? 0);
     return stock > 0 && stock <= 3;
@@ -460,13 +463,16 @@ export default async function AdminProductsPage({
               <p className="text-[9px] font-medium text-stone-500">Aktif ürün</p>
               <p className="text-sm font-semibold tabular-nums text-stone-900">{activeCount}</p>
             </div>
-            <Link
-              href={listQuery({ stock: "out", page: "1" })}
+            <a
+              href="/admin/products?stock=out"
               className="rounded-md border border-rose-100/80 bg-rose-50/40 px-2 py-1.5 transition-colors hover:bg-rose-50/70"
             >
               <p className="text-[9px] font-medium text-rose-900/80">Stokta yok</p>
               <p className="text-sm font-semibold tabular-nums text-rose-950">{outOfStockCount}</p>
-            </Link>
+              {activeOutOfStockCount !== outOfStockCount ? (
+                <p className="text-[8px] tabular-nums text-rose-900/60">{activeOutOfStockCount} aktif</p>
+              ) : null}
+            </a>
             <div className="rounded-md border border-amber-100/80 bg-amber-50/40 px-2 py-1.5">
               <p className="text-[9px] font-medium text-amber-900/80">Trendyol eksik</p>
               <p className="text-sm font-semibold tabular-nums text-amber-950">{missingTrendyolCount}</p>
@@ -485,6 +491,15 @@ export default async function AdminProductsPage({
               Trendyol paneli
             </Link>
           </p>
+          {stockFilter === "out" && statusFilter === "active" && totalFiltered < outOfStockCount ? (
+            <p className="mt-1.5 rounded-md border border-amber-200/70 bg-amber-50/60 px-2 py-1.5 text-[10px] text-amber-950">
+              <span className="font-medium">Aktif</span> filtresi uygulanıyor — {totalFiltered} ürün görünüyor (toplam{" "}
+              {outOfStockCount} stoksuz).
+              <a href="/admin/products?stock=out" className="ml-1 font-semibold underline underline-offset-2 hover:text-amber-900">
+                Tüm stoksuzları göster
+              </a>
+            </p>
+          ) : null}
           <form
             key={[sp.q ?? "", statusFilter, trendyolFilter, stockFilter, reviewFilter, salesFilter, sortFilter, currentPage].join("|")}
             className="mt-1.5 space-y-1.5"
