@@ -58,7 +58,7 @@ export function resolveAnalyticsRange(params: {
 }): ResolvedAnalyticsRange {
   const rawKey = String(params.analyticsRange ?? "").trim().toLowerCase();
   const key: AnalyticsRangeKey =
-    rawKey === "today" || rawKey === "week" || rawKey === "month" || rawKey === "custom" ? rawKey : "month";
+    rawKey === "today" || rawKey === "week" || rawKey === "month" || rawKey === "custom" ? rawKey : "today";
 
   const todayYmd = istanbulYmd();
   let startYmd: string;
