@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { IMPERSONATION_COOKIE, parseImpersonationCookie } from "@/lib/admin/impersonation";
+import { IMPERSONATION_COOKIE, resolveImpersonationState } from "@/lib/admin/impersonation";
 
 export async function AdminImpersonationBanner() {
   const store = await cookies();
-  const impersonation = parseImpersonationCookie(store.get(IMPERSONATION_COOKIE)?.value);
-  if (!impersonation) return null;
-
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const sessionActive = user?.id === impersonation.targetUserId;
+  const { impersonation, sessionActive } = await resolveImpersonationState(
+    store.get(IMPERSONATION_COOKIE)?.value,
+    user?.id,
+  );
+  if (!impersonation) return null;
 
   return (
     <div

@@ -5,7 +5,7 @@ import { getCartUpsellProducts } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { HeaderShell } from "@/components/header/HeaderShell";
 import { cookies } from "next/headers";
-import { IMPERSONATION_COOKIE, parseImpersonationCookie } from "@/lib/admin/impersonation";
+import { IMPERSONATION_COOKIE, resolveImpersonationState } from "@/lib/admin/impersonation";
 
 /** Logo: `public/zelula-logo-header.svg` — transparent header mark. */
 
@@ -19,12 +19,15 @@ function greetingFirstNameFromProfile(fullName: string | null | undefined): stri
 export async function Header() {
   try {
     const cookieStore = await cookies();
-    const impersonationActive = Boolean(parseImpersonationCookie(cookieStore.get(IMPERSONATION_COOKIE)?.value));
     const supabase = await createClient();
     const [{ data: { user } }, { lines }] = await Promise.all([
       supabase.auth.getUser(),
       getDetailedCart(),
     ]);
+    const { sessionActive: impersonationActive } = await resolveImpersonationState(
+      cookieStore.get(IMPERSONATION_COOKIE)?.value,
+      user?.id,
+    );
 
     let greetingFirstName: string | null = null;
     if (user) {
