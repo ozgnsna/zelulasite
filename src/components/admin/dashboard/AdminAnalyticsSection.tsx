@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
-import type { DashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
+import type { AnalyticsEventDetails, DashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
 import {
   buildAnalyticsFilterHref,
   type AnalyticsRangeKey,
@@ -109,6 +109,125 @@ function revenuePercentTrend(current: number, previous: number, compareLabel: st
         {pct.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
       </span>
     </span>
+  );
+}
+
+function formatAnalyticsEventTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function AnalyticsEventDetailsPanel({ details }: { details: AnalyticsEventDetails }) {
+  const hasAddToCartEvents = details.addToCartEvents.length > 0;
+  const hasAnyActivity = details.funnelSteps.some(
+    (step) => step.uniqueVisitors > 0 || step.totalEvents > 0,
+  );
+  if (!hasAnyActivity) return null;
+
+  return (
+    <details className="mt-4 group/analytics-details">
+      <summary
+        className="cursor-pointer list-none text-[11px] font-medium uppercase [&::-webkit-details-marker]:hidden"
+        style={{ color: "var(--text-muted)", letterSpacing: "0.07em" }}
+      >
+        <span className="border-b border-transparent pb-px transition-[border-color,color] duration-200 ease-out hover:border-stone-300/60 group-open/analytics-details:border-stone-200/70 group-open/analytics-details:text-stone-600">
+          Olay detayları · benzersiz ziyaretçi vs toplam olay
+        </span>
+      </summary>
+
+      <div
+        className="mt-3 overflow-hidden rounded-[12px] border"
+        style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+      >
+        <table className="w-full text-left text-[11px]">
+          <thead>
+            <tr
+              className="border-b text-[10px] font-semibold uppercase"
+              style={{ borderColor: "var(--border)", color: "var(--text-muted)", letterSpacing: "0.05em" }}
+            >
+              <th className="px-3 py-2 font-semibold">Adım</th>
+              <th className="px-3 py-2 text-right font-semibold">Benzersiz ziyaretçi</th>
+              <th className="px-3 py-2 text-right font-semibold">Toplam olay</th>
+            </tr>
+          </thead>
+          <tbody>
+            {details.funnelSteps.map((step) => (
+              <tr key={step.key} className="border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
+                <td className="px-3 py-2" style={{ color: "var(--text-secondary)" }}>
+                  {step.label}
+                </td>
+                <td
+                  className="px-3 py-2 text-right font-medium tabular-nums"
+                  style={{ color: step.uniqueVisitors === 0 ? "var(--text-muted)" : "var(--text-primary)" }}
+                >
+                  {step.uniqueVisitors.toLocaleString("tr-TR")}
+                </td>
+                <td
+                  className="px-3 py-2 text-right font-medium tabular-nums"
+                  style={{ color: step.totalEvents === 0 ? "var(--text-muted)" : "var(--text-primary)" }}
+                >
+                  {step.totalEvents.toLocaleString("tr-TR")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {hasAddToCartEvents ? (
+        <div className="mt-3">
+          <p
+            className="text-[10px] font-semibold uppercase"
+            style={{ color: "var(--text-muted)", letterSpacing: "0.05em" }}
+          >
+            Sepete ekleme olayları · son {details.addToCartEvents.length}
+          </p>
+          <ul
+            className="mt-2 divide-y overflow-hidden rounded-[12px] border"
+            style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+          >
+            {details.addToCartEvents.map((row, index) => (
+              <li
+                key={`${row.occurredAt}-${row.productId ?? "unknown"}-${index}`}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-[11px]"
+              >
+                <span className="shrink-0 tabular-nums" style={{ color: "var(--text-muted)" }}>
+                  {formatAnalyticsEventTime(row.occurredAt)}
+                </span>
+                {row.productId ? (
+                  <Link
+                    href={`/admin/products/${encodeURIComponent(row.productId)}/edit`}
+                    className="min-w-0 flex-1 truncate font-medium underline-offset-2 hover:underline"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {row.productName}
+                  </Link>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-secondary)" }}>
+                    {row.productName}
+                  </span>
+                )}
+                {row.pagePath ? (
+                  <span className="truncate text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    {row.pagePath}
+                  </span>
+                ) : null}
+                <span className="shrink-0 text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                  {row.clientIdShort}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </details>
   );
 }
 
@@ -482,6 +601,7 @@ export function AdminAnalyticsSection({
   const {
     range,
     metrics,
+    eventDetails,
     revenue,
     previousRevenue,
     productImages,
@@ -635,6 +755,7 @@ export function AdminAnalyticsSection({
           <VisualConversionFunnel funnel={metrics.funnel} />
         </div>
         <FunnelWarningBox funnel={metrics.funnel} worstTransition={worstTransition} />
+        <AnalyticsEventDetailsPanel details={eventDetails} />
       </div>
 
       {metrics.topViewedProducts.length > 0 ? (

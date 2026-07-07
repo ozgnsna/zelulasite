@@ -1,6 +1,8 @@
 type AnalyticsEventRow = {
   event_name: string | null;
   client_id?: string | null;
+  occurred_at?: string | null;
+  page_path?: string | null;
   ecommerce?: unknown;
 };
 
@@ -34,6 +36,26 @@ export type DashboardAnalyticsMetrics = {
     begin_checkout: number;
     purchase: number;
   };
+};
+
+export type AnalyticsFunnelStepDetail = {
+  key: keyof DashboardAnalyticsMetrics["funnel"];
+  label: string;
+  uniqueVisitors: number;
+  totalEvents: number;
+};
+
+export type AnalyticsAddToCartDetailRow = {
+  occurredAt: string;
+  pagePath: string | null;
+  productId: string | null;
+  productName: string;
+  clientIdShort: string;
+};
+
+export type AnalyticsEventDetails = {
+  funnelSteps: AnalyticsFunnelStepDetail[];
+  addToCartEvents: AnalyticsAddToCartDetailRow[];
 };
 
 function asRecord(v: unknown): Record<string, unknown> | null {
@@ -169,4 +191,69 @@ export function buildDashboardAnalyticsMetrics(
       purchase: purchaseVisitors.size,
     },
   };
+}
+
+function shortenClientId(clientId: string): string {
+  const id = clientId.trim();
+  if (!id) return "—";
+  if (id.length <= 14) return id;
+  return `${id.slice(0, 10)}…`;
+}
+
+export function buildAnalyticsEventDetails(
+  events: AnalyticsEventRow[],
+  metrics: DashboardAnalyticsMetrics,
+): AnalyticsEventDetails {
+  const pageViewEvents = events.filter((e) => String(e.event_name ?? "") === "page_view").length;
+
+  const funnelSteps: AnalyticsFunnelStepDetail[] = [
+    {
+      key: "site_visit",
+      label: "Site ziyareti",
+      uniqueVisitors: metrics.funnel.site_visit,
+      totalEvents: pageViewEvents,
+    },
+    {
+      key: "view_item",
+      label: "Ürün görüntüleme",
+      uniqueVisitors: metrics.funnel.view_item,
+      totalEvents: metrics.productViews,
+    },
+    {
+      key: "add_to_cart",
+      label: "Sepete ekleme",
+      uniqueVisitors: metrics.funnel.add_to_cart,
+      totalEvents: metrics.addToCarts,
+    },
+    {
+      key: "begin_checkout",
+      label: "Ödeme",
+      uniqueVisitors: metrics.funnel.begin_checkout,
+      totalEvents: metrics.checkoutStarts,
+    },
+    {
+      key: "purchase",
+      label: "Satış",
+      uniqueVisitors: metrics.funnel.purchase,
+      totalEvents: metrics.purchases,
+    },
+  ];
+
+  const addToCartEvents = events
+    .filter((e) => String(e.event_name ?? "") === "add_to_cart")
+    .map((event) => {
+      const items = parseItems(event.ecommerce);
+      const first = items[0];
+      return {
+        occurredAt: String(event.occurred_at ?? ""),
+        pagePath: event.page_path ? String(event.page_path) : null,
+        productId: first?.item_id ?? null,
+        productName: first?.item_name ?? "Ürün",
+        clientIdShort: shortenClientId(String(event.client_id ?? "")),
+      };
+    })
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    .slice(0, 30);
+
+  return { funnelSteps, addToCartEvents };
 }

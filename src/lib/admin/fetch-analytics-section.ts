@@ -1,11 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildDashboardAnalyticsMetrics, type DashboardAnalyticsMetrics } from "@/lib/admin/analytics-dashboard";
+import {
+  buildAnalyticsEventDetails,
+  buildDashboardAnalyticsMetrics,
+  type AnalyticsEventDetails,
+  type DashboardAnalyticsMetrics,
+} from "@/lib/admin/analytics-dashboard";
 import type { ResolvedAnalyticsRange } from "@/lib/admin/analytics-range";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
 type AnalyticsEventRow = {
   event_name: string | null;
   client_id?: string | null;
+  occurred_at?: string | null;
+  page_path?: string | null;
   ecommerce?: unknown;
 };
 
@@ -28,7 +35,7 @@ async function fetchAnalyticsEventsInRange(
   while (true) {
     const { data, error } = await admin
       .from("analytics_events")
-      .select("event_name,client_id,ecommerce")
+      .select("event_name,client_id,occurred_at,page_path,ecommerce")
       .gte("occurred_at", start.toISOString())
       .lte("occurred_at", end.toISOString())
       .order("occurred_at", { ascending: true })
@@ -83,6 +90,7 @@ export type AnalyticsSectionData = {
   range: ResolvedAnalyticsRange;
   metrics: DashboardAnalyticsMetrics;
   previousMetrics: DashboardAnalyticsMetrics;
+  eventDetails: AnalyticsEventDetails;
   revenue: number;
   previousRevenue: number;
   averageOrderValue: number;
@@ -106,6 +114,7 @@ export async function fetchAnalyticsSectionData(
 
   const metrics = buildDashboardAnalyticsMetrics(currentEvents);
   const previousMetrics = buildDashboardAnalyticsMetrics(previousEvents);
+  const eventDetails = buildAnalyticsEventDetails(currentEvents, metrics);
 
   const revenue = sumPaidRevenue(currentOrders);
   const previousRevenue = sumPaidRevenue(previousOrders);
@@ -140,6 +149,7 @@ export async function fetchAnalyticsSectionData(
     range,
     metrics,
     previousMetrics,
+    eventDetails,
     revenue,
     previousRevenue,
     averageOrderValue,
