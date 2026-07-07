@@ -54,6 +54,11 @@ export function ProductCard({
 }: ProductCardProps) {
   const compact = density === "compact";
   const showBadges = Boolean(badges?.bestseller || badges?.new);
+  const discountPercent =
+    compareAtPrice && compareAtPrice > price
+      ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
+      : 0;
+  const hasDiscount = discountPercent > 0;
   const aspectClass =
     imageForward && imageEmphasis === "high"
       ? "aspect-square sm:aspect-[10/15] lg:aspect-[3/4]"
@@ -181,6 +186,16 @@ export function ProductCard({
               ) : null}
             </div>
           ) : null}
+          {hasDiscount ? (
+            <span
+              className={cn(
+                "pointer-events-none absolute bottom-2 left-2 z-10 rounded-md bg-rose-600 px-2 py-1 text-[11px] font-bold tabular-nums leading-none tracking-tight text-white shadow-[0_4px_14px_rgba(190,18,60,0.35)] sm:bottom-2.5 sm:left-2.5 sm:px-2.5 sm:py-1.5 sm:text-xs",
+                compact && "bottom-1.5 left-1.5 px-1.5 py-0.5 text-[10px] sm:bottom-2 sm:left-2",
+              )}
+            >
+              -%{discountPercent}
+            </span>
+          ) : null}
       </div>
       <div className={`flex flex-1 flex-col ${contentPad}`}>
         <Link href={`/urunler/${slug}`} className="block min-w-0">
@@ -188,7 +203,7 @@ export function ProductCard({
         </Link>
         <div className={`mt-auto flex items-end justify-between gap-2 pt-1.5 sm:gap-3 sm:pt-2 ${compact ? "flex-col items-stretch sm:flex-row sm:items-end" : ""}`}>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <p
                 className={cn(
                   "zl-gold-text font-bold tabular-nums tracking-tight",
@@ -197,9 +212,14 @@ export function ProductCard({
               >
                 {formatMoney(price * 100, "TRY")}
               </p>
-              {compareAtPrice ? (
+              {compareAtPrice && compareAtPrice > price ? (
                 <span className="text-sm font-medium tabular-nums text-stone-500 line-through decoration-stone-400/90">
                   {formatMoney(compareAtPrice * 100, "TRY")}
+                </span>
+              ) : null}
+              {hasDiscount ? (
+                <span className="rounded-full border border-rose-200/80 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-rose-700 sm:text-[11px]">
+                  %{discountPercent}
                 </span>
               ) : null}
             </div>
