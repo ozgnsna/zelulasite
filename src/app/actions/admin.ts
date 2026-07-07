@@ -471,14 +471,11 @@ export async function saveProduct(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/");
   revalidateTag("storefront-home", "max");
-  if (returnTo !== "/admin") revalidatePath(returnTo);
-  if (!productId || returnTo === "/admin") return;
+  revalidatePath("/admin/products");
+  if (productId) revalidatePath(`/admin/products/${productId}/edit`);
+  if (!productId) return;
 
-  if (id) {
-    redirect(withQueryParam(returnTo, "productSaved", "1"));
-  }
-  revalidatePath(`/admin/products/${productId}/edit`);
-  redirect(withQueryParam(`/admin/products/${encodeURIComponent(productId)}/edit`, "productSaved", "1"));
+  redirect(withQueryParam("/admin/products", "productSaved", "1"));
 }
 
 export async function saveTrendyolIntegrationSettings(formData: FormData) {

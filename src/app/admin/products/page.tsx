@@ -121,6 +121,7 @@ export default async function AdminProductsPage({
     bulkOk?: string;
     bulkCount?: string;
     bulkError?: string;
+    productSaved?: string;
     page?: string;
   }>;
 }) {
@@ -142,6 +143,7 @@ export default async function AdminProductsPage({
   const bulkOk = (sp.bulkOk ?? "").trim();
   const bulkCount = Number(sp.bulkCount ?? 0);
   const bulkError = (sp.bulkError ?? "").trim();
+  const productSaved = sp.productSaved === "1";
   const supabase = await createClient();
   const {
     data: { user },
@@ -398,6 +400,11 @@ export default async function AdminProductsPage({
         {deletedCount > 0 ? (
           <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
             {deletedCount} ürün silindi.
+          </p>
+        ) : null}
+        {productSaved ? (
+          <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+            Ürün kaydedildi.
           </p>
         ) : null}
         {softDeletedCount > 0 ? (
