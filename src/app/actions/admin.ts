@@ -344,6 +344,11 @@ export async function saveProduct(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const returnToRaw = String(formData.get("return_to") ?? "/admin").trim();
   const returnTo = returnToRaw.startsWith("/admin") ? returnToRaw : "/admin";
+
+  const editSuccessPath = id ? `/admin/products/${encodeURIComponent(id)}/edit` : "/admin/products/new";
+  const listSuccessPath = "/admin/products";
+
+  try {
   const rawAttributes = String(formData.get("trendyol_category_attributes") ?? "").trim();
   let categoryAttributes: unknown = [];
   if (rawAttributes.length > 0) {
@@ -453,21 +458,7 @@ export async function saveProduct(formData: FormData) {
     }
   }
 
-  if (productId && payload.trendyol_active) {
-    try {
-      await syncPriceInventoryForProducts(supabase, [productId], "admin_product_save", {
-        retryDelaysMs: [0, 1200],
-        requestTimeoutMs: 12_000,
-      });
-    } catch (err) {
-      console.error("[admin/saveProduct] Trendyol inventory push failed", {
-        productId,
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  // Trendyol ürün batch API kayıt sırasında bekletilmez — «Trendyol'a gönder» ayrı adımdır.
+  // Trendyol fiyat/stok senkronu kayıtta bekletilmez — «Trendyol'a gönder» ayrı adımdır.
   revalidatePath("/admin");
   revalidatePath("/");
   revalidateTag("storefront-home", "max");
@@ -475,7 +466,24 @@ export async function saveProduct(formData: FormData) {
   if (productId) revalidatePath(`/admin/products/${productId}/edit`);
   if (!productId) return;
 
-  redirect(withQueryParam("/admin/products", "productSaved", "1"));
+  redirect(withQueryParam(id ? editSuccessPath : listSuccessPath, "productSaved", "1"));
+  } catch (err) {
+    if (err && typeof err === "object" && "digest" in err && String((err as { digest?: string }).digest).includes("NEXT_REDIRECT")) {
+      throw err;
+    }
+    console.error("[admin/saveProduct] unexpected error", {
+      id,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    const errorPath = id ? editSuccessPath : "/admin/products/new";
+    redirect(
+      withQueryParam(
+        returnTo.startsWith("/admin/products") ? errorPath : returnTo,
+        "productSaveError",
+        err instanceof Error ? err.message : "Kayıt sırasında beklenmeyen hata.",
+      ),
+    );
+  }
 }
 
 export async function saveTrendyolIntegrationSettings(formData: FormData) {

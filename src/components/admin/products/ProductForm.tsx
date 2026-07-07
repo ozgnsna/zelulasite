@@ -9,6 +9,7 @@ import {
   SlugFromNameButton,
 } from "@/components/admin/products/ProductFormSmartActions";
 import { ProductFormSaveButton } from "@/components/admin/products/ProductFormSaveButton";
+import { ProductFormSaveOverlay } from "@/components/admin/products/ProductFormSaveOverlay";
 import { TrendyolStatusBadge, TrendyolWarningsPanel } from "@/components/admin/products/ProductFormChannelWarnings";
 import { ProductFormDraftStatus } from "@/components/admin/products/ProductFormDraftStatus";
 import { ProductFormTrendyolDetailsShell } from "@/components/admin/products/ProductFormTrendyolDetailsShell";
@@ -206,6 +207,7 @@ export function ProductForm({
         action={saveProductAction}
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(248px,280px)] lg:items-start lg:gap-7"
       >
+        <ProductFormSaveOverlay />
         {mode === "edit" && resolvedProductId ? <input type="hidden" name="id" value={resolvedProductId} /> : null}
         <input type="hidden" name="return_to" value={returnTo} />
         <input type="hidden" id="trendyol-https-image-count" value={String(trendyolHttpsImageCount)} readOnly tabIndex={-1} />
@@ -708,17 +710,11 @@ export function ProductForm({
             </div>
           </section>
         </aside>
-      </form>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/90 bg-white/95 px-3 pt-2.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] shadow-[0_-12px_28px_rgba(28,25,23,0.12)] backdrop-blur-sm lg:hidden">
-        <button
-          type="submit"
-          form="urun-formu"
-          className="pointer-events-auto flex min-h-[48px] w-full items-center justify-center rounded-xl bg-stone-900 px-5 py-3 text-[15px] font-semibold text-[#fdfcfa] shadow-[0_8px_22px_rgba(30,24,18,0.22)] active:scale-[0.99] motion-safe:transition-transform"
-        >
-          Kaydet
-        </button>
-      </div>
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/90 bg-white/95 px-3 pt-2.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] shadow-[0_-12px_28px_rgba(28,25,23,0.12)] backdrop-blur-sm lg:hidden">
+          <ProductFormSaveButton className="pointer-events-auto min-h-[48px] rounded-xl bg-stone-900 py-3 text-[15px] font-semibold text-white shadow-[0_8px_22px_rgba(30,24,18,0.22)] active:scale-[0.99] motion-safe:transition-transform" />
+        </div>
+      </form>
     </>
   );
 }
