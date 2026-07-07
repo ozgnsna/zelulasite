@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { signInAdmin } from "@/app/actions/admin";
 import { EmailField } from "@/components/account/EmailField";
@@ -39,6 +40,11 @@ export function AdminLoginForm() {
         placeholder="Şifrenizi girin"
         inputClassName={cn(adminField, "!pr-12")}
       />
+      <p className="-mt-1 text-right text-xs">
+        <Link href="/sifremi-unuttum" className="font-medium text-stone-600 underline-offset-2 hover:text-stone-900 hover:underline">
+          Şifremi unuttum
+        </Link>
+      </p>
       <p className="-mt-0.5 text-xs text-stone-500">E-posta ve şifre bilgilerinizi eksiksiz giriniz.</p>
       <button
         type="submit"
@@ -46,6 +52,13 @@ export function AdminLoginForm() {
       >
         Giriş Yap
       </button>
+      <p className="text-center text-[11px] leading-relaxed text-stone-500">
+        Sıfırlama mailinden sonra{" "}
+        <Link href="/admin/login" className="font-medium text-stone-700 underline-offset-2 hover:underline">
+          admin girişi
+        </Link>{" "}
+        ile devam edin.
+      </p>
     </form>
   );
 }
