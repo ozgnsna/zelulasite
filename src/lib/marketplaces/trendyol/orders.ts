@@ -11,6 +11,7 @@ import {
   buildTrendyolIdentifierToProductIdMap,
   resolveProductIdForTrendyolIdentifiers,
 } from "@/lib/marketplaces/trendyol/product-lookup";
+import { updateZelulaSkuSeriesFromTrendyolOrders } from "@/lib/marketplaces/trendyol/zelula-sku-cache";
 
 export type TrendyolOrderStub = {
   orderNumber: string;
@@ -420,6 +421,13 @@ export async function fetchTrendyolOrdersForSync(admin: SupabaseClient, params?:
         restoredOrders: restoreOrders.length,
       },
     });
+    try {
+      await updateZelulaSkuSeriesFromTrendyolOrders(admin, orders);
+    } catch (err) {
+      console.error("[trendyol/orders] zelula sku cache update failed", {
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
     return {
       ok: true as const,
       orders,

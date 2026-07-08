@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { saveProduct, uploadProductImage } from "@/app/actions/admin";
 import { ProductForm } from "@/components/admin/products/ProductForm";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchSuggestedZelulaSku } from "@/lib/admin/fetch-suggested-zelula-sku";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +28,10 @@ export default async function AdminNewProductPage({
   if (adminEmails.length > 0 && !adminEmails.includes(user.email ?? "")) redirect("/admin/login");
 
   const admin = createAdminClient();
-  const [categories, collections] = await Promise.all([
+  const [categories, collections, suggestedZelulaSku] = await Promise.all([
     admin.from("categories").select("*").order("name"),
     admin.from("collections").select("*").order("name"),
+    fetchSuggestedZelulaSku(admin),
   ]);
 
   return (
@@ -72,6 +74,7 @@ export default async function AdminNewProductPage({
         mode="create"
         categories={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
         collections={(collections.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
+        suggestedZelulaSku={suggestedZelulaSku}
         returnTo="/admin/products/new"
         uploadProductImageAction={uploadProductImage}
         saveProductAction={saveProduct}

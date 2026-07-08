@@ -7,6 +7,7 @@ import {
   CopySkuToTrendyolStockButton,
   SkuFromCategoryButton,
   SlugFromNameButton,
+  SuggestNextZelulaSkuButton,
 } from "@/components/admin/products/ProductFormSmartActions";
 import { ProductFormSaveButton } from "@/components/admin/products/ProductFormSaveButton";
 import { ProductFormSaveOverlay } from "@/components/admin/products/ProductFormSaveOverlay";
@@ -122,8 +123,20 @@ export function ProductForm({
   setProductCoverImageAction,
   pushTrendyolProductAndInventoryAction,
   saveProductAction,
+  suggestedZelulaSku,
 }: ProductFormProps) {
   const p = initialProduct ?? {};
+  const isCreate = mode === "create";
+  const zelulaSkuDefault =
+    isCreate && suggestedZelulaSku?.suggested ? suggestedZelulaSku.suggested : (p.sku ?? "");
+  const trendyolBarcodeDefault =
+    isCreate && suggestedZelulaSku?.suggested
+      ? suggestedZelulaSku.suggested
+      : (p.trendyol_barcode ?? "");
+  const trendyolStockCodeDefault =
+    isCreate && suggestedZelulaSku?.suggested
+      ? suggestedZelulaSku.suggested
+      : (p.trendyol_stock_code ?? "");
   const attrs = p.trendyol_category_attributes;
   const attrsJson = JSON.stringify(Array.isArray(attrs) ? attrs : [], null, 2);
   const stockQuantity = Number(p.stock_quantity ?? 0);
@@ -275,13 +288,31 @@ export function ProductForm({
                 />
               </div>
               <div>
-                <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                   <label className={cn(adminLabel, "mb-0")} htmlFor="product-sku">
                     SKU <span className="text-rose-600">*</span>
                   </label>
-                  <SkuFromCategoryButton />
+                  <div className="flex flex-wrap items-center justify-end gap-1">
+                    {isCreate && suggestedZelulaSku?.suggested ? (
+                      <SuggestNextZelulaSkuButton nextSku={suggestedZelulaSku.suggested} />
+                    ) : null}
+                    <SkuFromCategoryButton label={isCreate ? "İsimden SKU" : "SKU oluştur"} />
+                  </div>
                 </div>
-                <input id="product-sku" name="sku" defaultValue={p.sku ?? ""} required className={cn(adminField, "py-2")} />
+                <input id="product-sku" name="sku" defaultValue={zelulaSkuDefault} required className={cn(adminField, "py-2")} />
+                {isCreate && suggestedZelulaSku ? (
+                  <p className="mt-1.5 text-[10px] leading-relaxed text-stone-500">
+                    Önerilen sıradaki SKU:{" "}
+                    <span className="font-medium tabular-nums text-stone-700">{suggestedZelulaSku.suggested}</span>
+                    {" "}
+                    (site max {suggestedZelulaSku.siteMax}, Trendyol sipariş max {suggestedZelulaSku.ordersMax}
+                    {suggestedZelulaSku.catalogMax > 0 ? `, katalog max ${suggestedZelulaSku.catalogMax}` : ""}
+                    {suggestedZelulaSku.lastOrderNumber
+                      ? `; son sipariş #${suggestedZelulaSku.lastOrderNumber}`
+                      : ""}
+                    ).
+                  </p>
+                ) : null}
               </div>
               <OptionalDetails defaultOpen summary="SEO: slug ve yardımcılar">
                 <div className="space-y-3">
@@ -452,7 +483,7 @@ export function ProductForm({
                     <label className={adminLabel} htmlFor="trendyol_barcode">
                       Barkod
                     </label>
-                    <input id="trendyol_barcode" name="trendyol_barcode" defaultValue={p.trendyol_barcode ?? ""} className={adminField} />
+                    <input id="trendyol_barcode" name="trendyol_barcode" defaultValue={trendyolBarcodeDefault} className={adminField} />
                   </div>
                   <div>
                     <label className={adminLabel} htmlFor="trendyol_stock_code">
@@ -460,7 +491,7 @@ export function ProductForm({
                     </label>
                     <div className="space-y-1">
                       <CopySkuToTrendyolStockButton />
-                      <input id="trendyol_stock_code" name="trendyol_stock_code" defaultValue={p.trendyol_stock_code ?? ""} className={adminField} />
+                      <input id="trendyol_stock_code" name="trendyol_stock_code" defaultValue={trendyolStockCodeDefault} className={adminField} />
                     </div>
                   </div>
                   <div className="md:col-span-2 flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-lg border border-[#e7ded2]/55 bg-[#faf9f7]/90 px-3 py-2.5 text-[11px] text-stone-600">

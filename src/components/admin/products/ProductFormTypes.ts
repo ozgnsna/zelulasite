@@ -51,6 +51,17 @@ export type ProductFormTrendyolReadiness = {
   missingFields: string[];
 };
 
+export type ProductFormSuggestedZelulaSku = {
+  suggested: string;
+  siteMax: number;
+  ordersMax: number;
+  catalogMax: number;
+  effectiveMax: number;
+  lastOrderNumber: string | null;
+  ordersScannedAt: string | null;
+  lastOrderLineSample: string[];
+};
+
 export type ProductFormProps = {
   mode: "create" | "edit";
   initialProduct?: ProductFormInitialProduct | null;
@@ -67,6 +78,8 @@ export type ProductFormProps = {
   /** Sunucudan gelen kategori özellik şeması — personel JSON yazmadan seçim listesi. */
   trendyolCategoryAttributePickerRows?: TrendyolCategoryAttributePickerRow[];
   openTrendyolByDefault?: boolean;
+  /** Yeni ürün formunda otomatik Zelula serisi önerisi (örn. Zelula360). */
+  suggestedZelulaSku?: ProductFormSuggestedZelulaSku | null;
   returnTo: string;
   uploadProductImageAction?: (formData: FormData) => Promise<void>;
   deleteProductImageAction?: (formData: FormData) => Promise<void>;

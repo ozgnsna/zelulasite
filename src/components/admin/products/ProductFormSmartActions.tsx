@@ -14,6 +14,7 @@ const IDS = {
   slug: "product-slug",
   category: "product-category",
   sku: "product-sku",
+  trendyolBarcode: "trendyol_barcode",
   price: "product-price",
   compare: "product-compare",
   stock: "product-stock",
@@ -248,7 +249,7 @@ export function SlugFromNameButton() {
   );
 }
 
-export function SkuFromCategoryButton() {
+export function SkuFromCategoryButton({ label = "SKU oluştur" }: { label?: string }) {
   const [feedback, setFeedbackMsg] = useState("");
   return (
     <button
@@ -273,7 +274,29 @@ export function SkuFromCategoryButton() {
         setFeedback(setFeedbackMsg, "SKU oluşturuldu");
       }}
     >
-      {feedback || "SKU oluştur"}
+      {feedback || label}
+    </button>
+  );
+}
+
+export function SuggestNextZelulaSkuButton({ nextSku }: { nextSku: string }) {
+  const [feedback, setFeedbackMsg] = useState("");
+  return (
+    <button
+      type="button"
+      className={microCompact}
+      onClick={() => {
+        const current = inputVal(IDS.sku).trim();
+        if (current && current !== nextSku) {
+          if (typeof window !== "undefined" && !window.confirm("Mevcut SKU değiştirilsin mi?")) return;
+        }
+        setInputValue(IDS.sku, nextSku);
+        setInputValue(IDS.trendyolBarcode, nextSku);
+        setInputValue(IDS.trendyolStock, nextSku);
+        setFeedback(setFeedbackMsg, "Uygulandı");
+      }}
+    >
+      {feedback || "Sıradaki Zelula SKU"}
     </button>
   );
 }

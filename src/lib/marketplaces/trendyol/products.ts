@@ -7,6 +7,7 @@ import {
   trendyolRequest,
 } from "@/lib/marketplaces/trendyol/client";
 import { parseTrendyolPositiveIntId } from "@/lib/marketplaces/trendyol/int-ids";
+import { updateZelulaSkuSeriesFromCatalogIdentifiers } from "@/lib/marketplaces/trendyol/zelula-sku-cache";
 
 /** DB row shape used to build the Trendyol v2/products POST body (single item in `items`). */
 export type TrendyolProductPayloadInput = {
@@ -875,6 +876,20 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
           if (!deactivateError) deactivated += 1;
         }
       }
+    }
+    const catalogIdentifiers: string[] = [];
+    for (const item of list) {
+      const barcode = extractRemoteBarcode(item);
+      const stockCode = extractRemoteStockCode(item);
+      if (barcode) catalogIdentifiers.push(barcode);
+      if (stockCode) catalogIdentifiers.push(stockCode);
+    }
+    try {
+      await updateZelulaSkuSeriesFromCatalogIdentifiers(admin, catalogIdentifiers);
+    } catch (err) {
+      console.error("[trendyol/products] zelula sku catalog cache update failed", {
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
     await logMarketplaceSync(admin, {
       integrationId: integration.id,
