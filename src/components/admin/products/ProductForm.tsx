@@ -218,6 +218,7 @@ export function ProductForm({
       <form
         id="urun-formu"
         action={saveProductAction}
+        encType={isCreate ? "multipart/form-data" : undefined}
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(248px,280px)] lg:items-start lg:gap-7"
       >
         <ProductFormSaveOverlay />
@@ -365,6 +366,7 @@ export function ProductForm({
             images={productImages}
             productId={resolvedProductId}
             returnTo={returnTo}
+            stagingMode={isCreate}
             uploadFormId={resolvedProductId && uploadProductImageAction ? imageUploadFormId : undefined}
             uploadProductImageAction={uploadProductImageAction}
             deleteProductImageAction={deleteProductImageAction}

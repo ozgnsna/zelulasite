@@ -346,7 +346,6 @@ export async function saveProduct(formData: FormData) {
   const returnTo = returnToRaw.startsWith("/admin") ? returnToRaw : "/admin";
 
   const editSuccessPath = id ? `/admin/products/${encodeURIComponent(id)}/edit` : "/admin/products/new";
-  const listSuccessPath = "/admin/products";
 
   try {
   const rawAttributes = String(formData.get("trendyol_category_attributes") ?? "").trim();
@@ -458,6 +457,17 @@ export async function saveProduct(formData: FormData) {
     }
   }
 
+  if (productId && !id) {
+    try {
+      await uploadPendingProductImagesFromForm(supabase, productId, formData);
+    } catch (err) {
+      console.error("[admin/saveProduct] pending images failed", {
+        productId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // Trendyol fiyat/stok senkronu kayıtta bekletilmez — «Trendyol'a gönder» ayrı adımdır.
   revalidatePath("/admin");
   revalidatePath("/");
@@ -466,7 +476,8 @@ export async function saveProduct(formData: FormData) {
   if (productId) revalidatePath(`/admin/products/${productId}/edit`);
   if (!productId) return;
 
-  redirect(withQueryParam(id ? editSuccessPath : listSuccessPath, "productSaved", "1"));
+  const newProductSuccessPath = `/admin/products/${encodeURIComponent(productId)}/edit`;
+  redirect(withQueryParam(id ? editSuccessPath : newProductSuccessPath, "productSaved", "1"));
   } catch (err) {
     if (err && typeof err === "object" && "digest" in err && String((err as { digest?: string }).digest).includes("NEXT_REDIRECT")) {
       throw err;
@@ -1272,6 +1283,85 @@ function storageObjectPathFromPublicUrl(publicUrl: string, bucket: string): stri
   return path && path.length > 0 ? path : null;
 }
 
+async function persistProductMediaFileToDb(
+  supabase: ReturnType<typeof createAdminClient>,
+  productId: string,
+  file: File,
+  opts?: { forceCover?: boolean },
+): Promise<string | null> {
+  if (!productId || !file || file.size === 0) return "Ürün veya dosya bulunamadı.";
+  if (!isAllowedProductImageFile(file)) {
+    return "Yalnızca görsel (JPG, PNG, WebP) veya video (MP4, WebM, MOV) yükleyin.";
+  }
+  const isVideo = isProductVideoFile(file);
+  const maxBytes = isVideo ? PRODUCT_VIDEO_MAX_BYTES : PRODUCT_IMAGE_MAX_BYTES;
+  if (file.size > maxBytes) {
+    return isVideo
+      ? `Video çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~${Math.round(PRODUCT_VIDEO_MAX_BYTES / 1024 / 1024)} MB yükleyin.`
+      : `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`;
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? (isVideo ? "mp4" : "jpg");
+  const path = `products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const bytes = await file.arrayBuffer();
+  const contentType = isVideo ? productVideoMimeType(file) : file.type || "application/octet-stream";
+
+  const { error: uploadError } = await supabase.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .upload(path, bytes, { contentType, upsert: false });
+  if (uploadError) {
+    return uploadError.message || "Depolama yüklemesi başarısız (kota, izin veya dosya boyutu).";
+  }
+
+  const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
+
+  const { data: existingRows } = await supabase
+    .from("product_images")
+    .select("sort_order,is_cover")
+    .eq("product_id", productId);
+  const existing = existingRows ?? [];
+  const maxSort = existing.reduce((m, r) => Math.max(m, Number(r.sort_order ?? 0)), 0);
+  const wantsCover = opts?.forceCover || existing.length === 0;
+  const setAsCover = wantsCover && !isVideo;
+  if (setAsCover && existing.length > 0) {
+    await supabase.from("product_images").update({ is_cover: false }).eq("product_id", productId);
+  }
+
+  const { error: insertError } = await supabase.from("product_images").insert({
+    product_id: productId,
+    image_url: data.publicUrl,
+    is_cover: setAsCover,
+    sort_order: maxSort + 1,
+  });
+  if (insertError) {
+    return insertError.message || "Veritabanına kayıt eklenemedi.";
+  }
+  return null;
+}
+
+async function uploadPendingProductImagesFromForm(
+  supabase: ReturnType<typeof createAdminClient>,
+  productId: string,
+  formData: FormData,
+): Promise<void> {
+  const pendingRaw = formData.getAll("pending_images");
+  const pendingFiles = pendingRaw.filter((f): f is File => f instanceof File && f.size > 0);
+  if (pendingFiles.length === 0) return;
+
+  const pendingSetAsCover = formData.get("pending_set_as_cover") === "1";
+  let coverAssigned = false;
+  for (const file of pendingFiles) {
+    const forceCover = pendingSetAsCover && !coverAssigned && !isProductVideoFile(file);
+    const err = await persistProductMediaFileToDb(supabase, productId, file, { forceCover });
+    if (err) {
+      console.error("[admin/saveProduct] pending image upload failed", { productId, message: err });
+      continue;
+    }
+    if (forceCover) coverAssigned = true;
+  }
+  await revalidateAfterProductImageChange(supabase, productId);
+}
+
 export async function uploadProductImage(formData: FormData) {
   const supabase = createAdminClient();
   const productId = String(formData.get("product_id") ?? "");
@@ -1282,69 +1372,10 @@ export async function uploadProductImage(formData: FormData) {
     if (!productId || !file || file.size === 0) {
       redirect(withQueryParam(returnTo, "imageUploadError", "Ürün veya dosya bulunamadı."));
     }
-    if (!isAllowedProductImageFile(file)) {
-      redirect(
-        withQueryParam(
-          returnTo,
-          "imageUploadError",
-          "Yalnızca görsel (JPG, PNG, WebP) veya video (MP4, WebM, MOV) yükleyin.",
-        ),
-      );
-    }
-    const isVideo = isProductVideoFile(file);
-    const maxBytes = isVideo ? PRODUCT_VIDEO_MAX_BYTES : PRODUCT_IMAGE_MAX_BYTES;
-    if (file.size > maxBytes) {
-      redirect(
-        withQueryParam(
-          returnTo,
-          "imageUploadError",
-          isVideo
-            ? `Video çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~${Math.round(PRODUCT_VIDEO_MAX_BYTES / 1024 / 1024)} MB yükleyin.`
-            : `Dosya çok büyük (${Math.round(file.size / 1024 / 1024)} MB). En fazla ~3,5 MB görsel yükleyin.`,
-        ),
-      );
-    }
-
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? (isVideo ? "mp4" : "jpg");
-    const path = `products/${productId}/${Date.now()}.${ext}`;
-    const bytes = await file.arrayBuffer();
-    const contentType = isVideo ? productVideoMimeType(file) : file.type || "application/octet-stream";
-
-    const { error: uploadError } = await supabase.storage
-      .from(PRODUCT_IMAGES_BUCKET)
-      .upload(path, bytes, { contentType, upsert: false });
-    if (uploadError) {
-      redirect(
-        withQueryParam(
-          returnTo,
-          "imageUploadError",
-          uploadError.message || "Depolama yüklemesi başarısız (kota, izin veya dosya boyutu).",
-        ),
-      );
-    }
-
-    const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
-
-    const { data: existingRows } = await supabase
-      .from("product_images")
-      .select("sort_order,is_cover")
-      .eq("product_id", productId);
-    const existing = existingRows ?? [];
-    const maxSort = existing.reduce((m, r) => Math.max(m, Number(r.sort_order ?? 0)), 0);
-    const wantsCover = formData.get("set_as_cover") === "1" || existing.length === 0;
-    const setAsCover = wantsCover && !isVideo;
-    if (setAsCover && existing.length > 0) {
-      await supabase.from("product_images").update({ is_cover: false }).eq("product_id", productId);
-    }
-
-    const { error: insertError } = await supabase.from("product_images").insert({
-      product_id: productId,
-      image_url: data.publicUrl,
-      is_cover: setAsCover,
-      sort_order: maxSort + 1,
-    });
-    if (insertError) {
-      redirect(withQueryParam(returnTo, "imageUploadError", insertError.message || "Veritabanına kayıt eklenemedi."));
+    const wantsCover = formData.get("set_as_cover") === "1";
+    const err = await persistProductMediaFileToDb(supabase, productId, file, { forceCover: wantsCover });
+    if (err) {
+      redirect(withQueryParam(returnTo, "imageUploadError", err));
     }
 
     await revalidateAfterProductImageChange(supabase, productId);

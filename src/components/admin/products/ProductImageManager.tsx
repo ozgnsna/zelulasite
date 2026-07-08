@@ -18,6 +18,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type Img = { id: string; image_url: string; is_cover?: boolean | null; sort_order?: number | null };
 
+type PendingMedia = { id: string; file: File; previewUrl: string; isVideo: boolean };
+
+function syncPendingFilesInput(input: HTMLInputElement | null, files: File[]) {
+  if (!input) return;
+  const dt = new DataTransfer();
+  for (const file of files) dt.items.add(file);
+  input.files = dt.files;
+}
+
 function isLikelyImageUrl(v: string): boolean {
   return /^https?:\/\/.+/i.test(v.trim());
 }
@@ -70,6 +79,7 @@ export function ProductImageManager({
   uploadProductImageAction,
   deleteProductImageAction,
   setProductCoverImageAction,
+  stagingMode = false,
 }: {
   title?: string;
   images: Img[];
@@ -79,36 +89,128 @@ export function ProductImageManager({
   uploadProductImageAction?: (formData: FormData) => Promise<void>;
   deleteProductImageAction?: (formData: FormData) => Promise<void>;
   setProductCoverImageAction?: (formData: FormData) => Promise<void>;
+  /** Yeni ürün formu: görseller kayıt sırasında yüklensin. */
+  stagingMode?: boolean;
 }) {
   const [selectedUrl, setSelectedUrl] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [clientError, setClientError] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [setUploadAsCover, setSetUploadAsCover] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const uploadEnabled = Boolean(productId && uploadProductImageAction);
-  const useExternalUploadForm = Boolean(uploadFormId && uploadEnabled);
+  const pendingInputRef = useRef<HTMLInputElement | null>(null);
+  const serverUploadEnabled = Boolean(productId && uploadProductImageAction);
+  const uploadEnabled = serverUploadEnabled || stagingMode;
+  const useExternalUploadForm = Boolean(uploadFormId && serverUploadEnabled);
   const sortedImages = useMemo(() => sortImages(images), [images]);
-  const coverImage = sortedImages.find((img) => Boolean(img.is_cover)) ?? sortedImages[0];
+  const displayImages = useMemo(() => {
+    const pendingRows: Img[] = pendingMedia.map((item, index) => ({
+      id: item.id,
+      image_url: item.previewUrl,
+      is_cover:
+        sortedImages.length === 0 &&
+        index === 0 &&
+        setUploadAsCover &&
+        !item.isVideo
+          ? true
+          : null,
+      sort_order: sortedImages.length + index,
+    }));
+    return [...sortedImages, ...pendingRows];
+  }, [pendingMedia, setUploadAsCover, sortedImages]);
+  const coverImage = displayImages.find((img) => Boolean(img.is_cover)) ?? displayImages[0];
   const selectedPreview = isLikelyImageUrl(selectedUrl) ? selectedUrl.trim() : (coverImage?.image_url ?? "");
-  const selectedImage = sortedImages.find((img) => img.image_url === selectedPreview);
+  const selectedImage = displayImages.find((img) => img.image_url === selectedPreview);
   const selectedIsCover = Boolean(selectedImage?.is_cover);
 
   useEffect(() => {
-    setSetUploadAsCover(sortedImages.length === 0);
-  }, [sortedImages.length]);
-  const selectedPreviewIsVideo = isLikelyVideoUrl(selectedPreview);
-  const noImageExists = sortedImages.length === 0;
+    setSetUploadAsCover(displayImages.length === 0);
+  }, [displayImages.length]);
+
+  useEffect(() => {
+    syncPendingFilesInput(
+      pendingInputRef.current,
+      pendingMedia.map((item) => item.file),
+    );
+  }, [pendingMedia]);
+
+  useEffect(() => {
+    return () => {
+      for (const item of pendingMedia) URL.revokeObjectURL(item.previewUrl);
+    };
+  }, [pendingMedia]);
+  const selectedPending = pendingMedia.find((item) => item.previewUrl === selectedPreview);
+  const selectedPreviewIsVideo = selectedPending ? selectedPending.isVideo : isLikelyVideoUrl(selectedPreview);
+  const noImageExists = displayImages.length === 0;
   const canDelete = Boolean(productId && deleteProductImageAction);
 
+  const removePendingMedia = (id: string) => {
+    setPendingMedia((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const stageFile = async (file: File) => {
+    const isVideo = isProductVideoFile(file);
+    let uploadFile: File = file;
+    if (!isVideo) {
+      try {
+        uploadFile = await prepareProductImageForUpload(file, {
+          flattenBackground: false,
+          flattenFn: async (f) => f,
+        });
+      } catch {
+        setClientError(
+          `Görsel işlenemedi (${Math.round(file.size / 1024 / 1024)} MB). Daha küçük bir dosya deneyin.`,
+        );
+        return;
+      }
+      if (uploadFile.size > PRODUCT_IMAGE_MAX_BYTES) {
+        setClientError("Sıkıştırma sonrası dosya hâlâ çok büyük; daha küçük bir kaynak görsel seçin.");
+        return;
+      }
+    } else if (file.size > PRODUCT_VIDEO_MAX_BYTES) {
+      setClientError(`Video çok büyük; en fazla ~${Math.round(PRODUCT_VIDEO_MAX_BYTES / 1024 / 1024)} MB yükleyebilirsiniz.`);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(uploadFile);
+    setPendingMedia((prev) => [
+      ...prev,
+      {
+        id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        file: uploadFile,
+        previewUrl,
+        isVideo,
+      },
+    ]);
+    setSelectedUrl(previewUrl);
+  };
+
   const submitFiles = async (files: FileList | null) => {
-    if (!uploadEnabled || !productId || !uploadProductImageAction || !fileInputRef.current) return;
+    if (!uploadEnabled || !fileInputRef.current) return;
     setClientError("");
     const file = pickFirstMediaFile(files);
     if (!file) {
       setClientError("Yalnızca görsel (JPG, PNG, WebP) veya video (MP4, WebM, MOV) seçin.");
       return;
     }
+
+    if (stagingMode && !productId) {
+      setUploadBusy(true);
+      try {
+        await stageFile(file);
+      } finally {
+        setUploadBusy(false);
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    if (!serverUploadEnabled || !productId || !uploadProductImageAction) return;
     const isVideo = isProductVideoFile(file);
     setUploadBusy(true);
     try {
@@ -169,6 +271,9 @@ export function ProductImageManager({
           <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">{title}</h2>
           <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
             Fotoğraf veya video ekleyin. Kapak yalnızca fotoğraf olabilir (liste, SEO, Trendyol). Videolar ürün sayfası galerisinde oynatılır.
+            {stagingMode && !productId ? (
+              <span className="mt-1 block text-stone-600">Seçilen görseller ürünü kaydettiğinizde otomatik yüklenir.</span>
+            ) : null}
           </p>
           <div className="mt-2">
             <label className="flex cursor-pointer items-center gap-2 text-[11px] text-stone-700">
@@ -189,10 +294,24 @@ export function ProductImageManager({
               <input type="hidden" name="return_to" form={uploadFormId} value={returnTo ?? ""} />
             </>
           ) : null}
+          {stagingMode && !productId ? (
+            <>
+              <input
+                ref={pendingInputRef}
+                type="file"
+                name="pending_images"
+                multiple
+                className="hidden"
+                tabIndex={-1}
+                aria-hidden
+              />
+              <input type="hidden" name="pending_set_as_cover" value={setUploadAsCover ? "1" : "0"} />
+            </>
+          ) : null}
           <input
             ref={fileInputRef}
             type="file"
-            name="image"
+            name={stagingMode && !productId ? undefined : "image"}
             form={useExternalUploadForm ? uploadFormId : undefined}
             accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,video/mp4,video/webm,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.heic,.mp4,.webm,.mov"
             className="hidden"
@@ -205,7 +324,7 @@ export function ProductImageManager({
             disabled={!uploadEnabled || uploadBusy}
             onClick={() => fileInputRef.current?.click()}
             className="min-h-[44px] rounded-lg border border-stone-300/90 bg-stone-900 px-3.5 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 sm:py-1.5"
-            title={uploadEnabled ? "Dosya seç" : "Önce ürünü kaydedin"}
+            title={uploadEnabled ? (stagingMode && !productId ? "Dosya seç (kayıt ile yüklenecek)" : "Dosya seç") : "Önce ürünü kaydedin"}
           >
             Dosya seç
           </button>
@@ -267,7 +386,11 @@ export function ProductImageManager({
                 <ImageIcon className="h-7 w-7" />
               </div>
               <p className="text-xs font-medium text-stone-600">Görsel bırakın veya tıklayın</p>
-              <p className="max-w-[14rem] text-[10px] leading-snug text-stone-500">PNG, JPG veya video. Yüklemeden önce ürünü kaydedin.</p>
+              <p className="max-w-[14rem] text-[10px] leading-snug text-stone-500">
+                {stagingMode && !productId
+                  ? "PNG, JPG veya video. Ürünü kaydettiğinizde yüklenir."
+                  : "PNG, JPG veya video. Yüklemeden önce ürünü kaydedin."}
+              </p>
             </button>
           )}
           {selectedImage && productId && setProductCoverImageAction && !selectedIsCover && !selectedPreviewIsVideo ? (
@@ -298,7 +421,7 @@ export function ProductImageManager({
 
         <div className="flex w-full min-w-0 flex-col gap-1.5 lg:w-[11.5rem] lg:shrink-0">
           <p className="hidden text-[9px] font-semibold uppercase tracking-wide text-stone-400 lg:block">Küçük önizleme</p>
-          {sortedImages.length > 0 ? (
+          {displayImages.length > 0 ? (
             <p className="pl-0.5 text-[9px] text-stone-400 lg:hidden">Kaydırarak tüm görselleri görün</p>
           ) : null}
           <div
@@ -307,9 +430,14 @@ export function ProductImageManager({
               "[&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300/80",
             )}
           >
-            {sortedImages.map((img) => {
+            {displayImages.map((img) => {
+              const isPending = img.id.startsWith("pending-");
+              const pendingItem = isPending ? pendingMedia.find((item) => item.id === img.id) : null;
+              const imgIsVideo = pendingItem ? pendingItem.isVideo : isLikelyVideoUrl(img.image_url);
               const isCover = Boolean(img.is_cover);
-              const canSetCover = Boolean(productId && setProductCoverImageAction && !isCover && !isLikelyVideoUrl(img.image_url));
+              const canSetCover = Boolean(
+                productId && setProductCoverImageAction && !isCover && !imgIsVideo && !isPending,
+              );
               return (
                 <div key={img.id} className="group relative w-[4.25rem] shrink-0 snap-start sm:w-[4.5rem] lg:w-full lg:shrink">
                   <button
@@ -321,9 +449,9 @@ export function ProductImageManager({
                         ? "border-stone-800/40 ring-2 ring-stone-900/15"
                         : "border-stone-200/90 hover:border-stone-400",
                     )}
-                    title={isLikelyVideoUrl(img.image_url) ? "Video" : isCover ? "Kapak görseli" : "Önizle — Kapak yap ile vitrine alın"}
+                    title={imgIsVideo ? "Video" : isCover ? "Kapak görseli" : "Önizle — Kapak yap ile vitrine alın"}
                   >
-                    {isLikelyVideoUrl(img.image_url) ? (
+                    {imgIsVideo ? (
                       <>
                         <video src={img.image_url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                         <span className="absolute bottom-0.5 right-0.5 rounded bg-black/55 px-1 py-px text-[7px] font-medium text-white">
@@ -357,7 +485,7 @@ export function ProductImageManager({
                       Kapak yap
                     </button>
                   ) : null}
-                  {canDelete ? (
+                  {canDelete && !isPending ? (
                     <button
                       type="button"
                       className="absolute -right-0.5 -top-0.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-rose-700 shadow-md ring-1 ring-rose-200/90 opacity-90 transition hover:bg-rose-50 active:scale-95 lg:h-6 lg:w-6 lg:text-[10px] lg:opacity-0 lg:group-hover:opacity-100"
@@ -377,11 +505,25 @@ export function ProductImageManager({
                     >
                       ×
                     </button>
+                  ) : isPending ? (
+                    <button
+                      type="button"
+                      className="absolute -right-0.5 -top-0.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-rose-700 shadow-md ring-1 ring-rose-200/90 opacity-90 transition hover:bg-rose-50 active:scale-95 lg:h-6 lg:w-6 lg:text-[10px]"
+                      title="Kaldır"
+                      aria-label="Seçilen görseli kaldır"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removePendingMedia(img.id);
+                      }}
+                    >
+                      ×
+                    </button>
                   ) : null}
                 </div>
               );
             })}
-            {sortedImages.length === 0 ? null : (
+            {displayImages.length === 0 ? null : (
               <button
                 type="button"
                 disabled={!uploadEnabled}
