@@ -311,7 +311,11 @@ export default async function ProductPage({ params, searchParams }: Props) {
             </h2>
             <div className="mt-5 space-y-4 text-[15px] leading-[1.75] text-stone-700">
               {storyParagraphs.length > 0 ? (
-                storyParagraphs.map((para, i) => <p key={i}>{para}</p>)
+                storyParagraphs.map((para, i) => (
+                  <p key={i} className="whitespace-pre-line">
+                    {para}
+                  </p>
+                ))
               ) : (
                 <p className="text-stone-600">Ürün detayları yakında eklenecek.</p>
               )}
