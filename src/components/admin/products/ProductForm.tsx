@@ -10,6 +10,7 @@ import {
   SuggestNextZelulaSkuButton,
 } from "@/components/admin/products/ProductFormSmartActions";
 import { ProductFormSaveButton } from "@/components/admin/products/ProductFormSaveButton";
+import { ProductCreateFormSubmit } from "@/components/admin/products/ProductCreateFormSubmit";
 import { ProductFormSaveOverlay } from "@/components/admin/products/ProductFormSaveOverlay";
 import { TrendyolStatusBadge, TrendyolWarningsPanel } from "@/components/admin/products/ProductFormChannelWarnings";
 import { ProductFormDraftStatus } from "@/components/admin/products/ProductFormDraftStatus";
@@ -155,6 +156,7 @@ export function ProductForm({
   return (
     <>
       <ProductFormUnsavedGuard formId="urun-formu" />
+      {isCreate ? <ProductCreateFormSubmit formId="urun-formu" enabled /> : null}
       {resolvedProductId && uploadProductImageAction ? (
         <form
           id={imageUploadFormId}
@@ -217,11 +219,15 @@ export function ProductForm({
         : null}
       <form
         id="urun-formu"
-        action={saveProductAction}
+        action={
+          isCreate
+            ? undefined
+            : (saveProductAction as (formData: FormData) => void | Promise<void>)
+        }
         encType={isCreate ? "multipart/form-data" : undefined}
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(248px,280px)] lg:items-start lg:gap-7"
       >
-        <ProductFormSaveOverlay />
+        {!isCreate ? <ProductFormSaveOverlay /> : null}
         {mode === "edit" && resolvedProductId ? <input type="hidden" name="id" value={resolvedProductId} /> : null}
         <input type="hidden" name="return_to" value={returnTo} />
         <input type="hidden" id="trendyol-https-image-count" value={String(trendyolHttpsImageCount)} readOnly tabIndex={-1} />
@@ -739,13 +745,19 @@ export function ProductForm({
             </div>
 
             <div className="border-t border-stone-100/90 pt-2">
-              <ProductFormSaveButton className="min-h-[48px] w-full rounded-xl bg-stone-900 py-3 text-[15px] font-semibold text-white shadow-[0_6px_20px_rgba(28,25,23,0.18)] ring-1 ring-stone-900/10 transition hover:bg-stone-800" />
+              <ProductFormSaveButton
+                label={isCreate ? "Ürünü kaydet" : undefined}
+                className="min-h-[48px] w-full rounded-xl bg-stone-900 py-3 text-[15px] font-semibold text-white shadow-[0_6px_20px_rgba(28,25,23,0.18)] ring-1 ring-stone-900/10 transition hover:bg-stone-800"
+              />
             </div>
           </section>
         </aside>
 
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/90 bg-white/95 px-3 pt-2.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] shadow-[0_-12px_28px_rgba(28,25,23,0.12)] backdrop-blur-sm lg:hidden">
-          <ProductFormSaveButton className="pointer-events-auto min-h-[48px] rounded-xl bg-stone-900 py-3 text-[15px] font-semibold text-white shadow-[0_8px_22px_rgba(30,24,18,0.22)] active:scale-[0.99] motion-safe:transition-transform" />
+          <ProductFormSaveButton
+            label={isCreate ? "Ürünü kaydet" : undefined}
+            className="pointer-events-auto min-h-[48px] rounded-xl bg-stone-900 py-3 text-[15px] font-semibold text-white shadow-[0_8px_22px_rgba(30,24,18,0.22)] active:scale-[0.99] motion-safe:transition-transform"
+          />
         </div>
       </form>
     </>

@@ -2,6 +2,7 @@ import type {
   CategoryAttributeDefinition,
   TrendyolCategoryAttributePickerRow,
 } from "@/lib/marketplaces/trendyol/categories";
+import type { SaveProductResult } from "@/app/actions/admin";
 
 export type ProductFormInitialProduct = {
   id?: string;
@@ -86,5 +87,5 @@ export type ProductFormProps = {
   setProductCoverImageAction?: (formData: FormData) => Promise<void>;
   /** Edit sayfasında: kayıtlı ürünü Trendyol ürün + fiyat/stok API’lerine iter. */
   pushTrendyolProductAndInventoryAction?: (formData: FormData) => Promise<void>;
-  saveProductAction: (formData: FormData) => Promise<void>;
+  saveProductAction: (formData: FormData) => Promise<void | SaveProductResult>;
 };

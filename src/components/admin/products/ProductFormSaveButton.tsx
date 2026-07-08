@@ -3,9 +3,15 @@
 import { cn } from "@/lib/utils";
 import { useFormStatus } from "react-dom";
 
-export function ProductFormSaveButton({ className }: { className?: string }) {
+export function ProductFormSaveButton({
+  className,
+  label,
+}: {
+  className?: string;
+  label?: string;
+}) {
   const { pending } = useFormStatus();
-  const label = pending ? "Kaydediliyor..." : "Değişiklikleri kaydet";
+  const buttonLabel = pending ? "Kaydediliyor..." : (label ?? "Değişiklikleri kaydet");
 
   return (
     <button
@@ -18,7 +24,7 @@ export function ProductFormSaveButton({ className }: { className?: string }) {
     >
       <span className="inline-flex items-center gap-1.5">
         {pending ? null : <span className="text-[0.72em]">💾</span>}
-        {label}
+        {buttonLabel}
       </span>
     </button>
   );

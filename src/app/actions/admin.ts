@@ -339,13 +339,23 @@ export async function sendAllProductsToTrendyolAction() {
   );
 }
 
-export async function saveProduct(formData: FormData) {
+export type SaveProductResult = { ok: true; redirectTo: string } | { ok: false; error: string };
+
+export async function saveProduct(formData: FormData): Promise<SaveProductResult | void> {
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "");
+  const createNav = !id && formData.get("_create_nav") === "1";
   const returnToRaw = String(formData.get("return_to") ?? "/admin").trim();
   const returnTo = returnToRaw.startsWith("/admin") ? returnToRaw : "/admin";
 
   const editSuccessPath = id ? `/admin/products/${encodeURIComponent(id)}/edit` : "/admin/products/new";
+  const newProductFormPath = "/admin/products/new";
+
+  const failSave = (errorPath: string, message: string): SaveProductResult => {
+    if (createNav) return { ok: false, error: message };
+    redirect(withQueryParam(errorPath, "productSaveError", message));
+    throw new Error("unreachable");
+  };
 
   try {
   const rawAttributes = String(formData.get("trendyol_category_attributes") ?? "").trim();
@@ -354,11 +364,15 @@ export async function saveProduct(formData: FormData) {
     try {
       categoryAttributes = JSON.parse(rawAttributes);
     } catch {
+      if (createNav) return { ok: false, error: "Trendyol kategori özellikleri geçerli bir JSON dizisi olmalı." };
       redirect(
         `${returnTo}?productJsonError=invalid_json${id ? `&editProduct=${encodeURIComponent(id)}` : ""}#urun-formu`,
       );
     }
     if (categoryAttributes !== null && !Array.isArray(categoryAttributes)) {
+      if (createNav) {
+        return { ok: false, error: "Trendyol kategori özellikleri yalnızca köşeli parantezli bir dizi ([...]) olmalıdır." };
+      }
       redirect(
         `${returnTo}?productJsonError=invalid_type${id ? `&editProduct=${encodeURIComponent(id)}` : ""}#urun-formu`,
       );
@@ -368,16 +382,9 @@ export async function saveProduct(formData: FormData) {
   }
   const categoryId = String(formData.get("category_id") ?? "").trim();
   if (!categoryId) {
-    redirect(
-      withQueryParam(
-        returnTo === "/admin"
-          ? id
-            ? `/admin/products/${encodeURIComponent(id)}/edit`
-            : "/admin/products/new"
-          : returnTo,
-        "productSaveError",
-        "Lütfen bir kategori seçin. Ürün kategorisiz kaydedilemez.",
-      ),
+    return failSave(
+      returnTo === "/admin" ? (id ? editSuccessPath : newProductFormPath) : returnTo,
+      "Lütfen bir kategori seçin. Ürün kategorisiz kaydedilemez.",
     );
   }
   const variantsFieldPresent = formData.has("variants_json");
@@ -435,12 +442,9 @@ export async function saveProduct(formData: FormData) {
       .maybeSingle();
     if (insertError) {
       console.error("[admin/saveProduct] insert failed", { message: insertError.message });
-      redirect(
-        withQueryParam(
-          returnTo === "/admin" ? "/admin/products/new" : returnTo,
-          "productSaveError",
-          friendlyProductSaveError(insertError, "Ürün eklenemedi."),
-        ),
+      return failSave(
+        returnTo === "/admin" ? newProductFormPath : returnTo,
+        friendlyProductSaveError(insertError, "Ürün eklenemedi."),
       );
     }
     productId = inserted?.id ?? "";
@@ -474,10 +478,14 @@ export async function saveProduct(formData: FormData) {
   revalidateTag("storefront-home", "max");
   revalidatePath("/admin/products");
   if (productId) revalidatePath(`/admin/products/${productId}/edit`);
-  if (!productId) return;
+  if (!productId) {
+    return failSave(newProductFormPath, "Ürün kaydı tamamlanamadı. Lütfen tekrar deneyin.");
+  }
 
   const newProductSuccessPath = `/admin/products/${encodeURIComponent(productId)}/edit`;
-  redirect(withQueryParam(id ? editSuccessPath : newProductSuccessPath, "productSaved", "1"));
+  const successPath = withQueryParam(id ? editSuccessPath : newProductSuccessPath, "productSaved", "1");
+  if (createNav) return { ok: true, redirectTo: successPath };
+  redirect(successPath);
   } catch (err) {
     if (err && typeof err === "object" && "digest" in err && String((err as { digest?: string }).digest).includes("NEXT_REDIRECT")) {
       throw err;
@@ -486,13 +494,10 @@ export async function saveProduct(formData: FormData) {
       id,
       message: err instanceof Error ? err.message : String(err),
     });
-    const errorPath = id ? editSuccessPath : "/admin/products/new";
-    redirect(
-      withQueryParam(
-        returnTo.startsWith("/admin/products") ? errorPath : returnTo,
-        "productSaveError",
-        err instanceof Error ? err.message : "Kayıt sırasında beklenmeyen hata.",
-      ),
+    const errorPath = id ? editSuccessPath : newProductFormPath;
+    return failSave(
+      returnTo.startsWith("/admin/products") ? errorPath : returnTo,
+      err instanceof Error ? err.message : "Kayıt sırasında beklenmeyen hata.",
     );
   }
 }
