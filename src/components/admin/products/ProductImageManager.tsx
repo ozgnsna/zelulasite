@@ -11,6 +11,7 @@ import {
   prepareProductImageForUpload,
   PRODUCT_IMAGE_MAX_BYTES,
 } from "@/lib/images/product-image-upload";
+import { isTrendyolHttpsProductPhotoUrl } from "@/lib/marketplaces/trendyol/int-ids";
 import { sortProductImages } from "@/lib/products/cover-image";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/components/product/ProductImage";
@@ -70,6 +71,28 @@ function sortImages(images: Img[]): Img[] {
   return sortProductImages(list);
 }
 
+function countTrendyolHttpsPhotosForPanel(
+  savedImages: Img[],
+  pendingMedia: PendingMedia[],
+  includePending: boolean,
+): number {
+  let count = savedImages.filter((img) => isTrendyolHttpsProductPhotoUrl(img.image_url)).length;
+  if (includePending) {
+    count += pendingMedia.filter((item) => !item.isVideo).length;
+  }
+  return count;
+}
+
+function syncTrendyolHttpsImageCount(count: number) {
+  const el = document.getElementById("trendyol-https-image-count");
+  if (!(el instanceof HTMLInputElement)) return;
+  const next = String(Math.max(0, count));
+  if (el.value === next) return;
+  el.value = next;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 export function ProductImageManager({
   title = "Görseller",
   images,
@@ -127,6 +150,13 @@ export function ProductImageManager({
   useEffect(() => {
     setSetUploadAsCover(displayImages.length === 0);
   }, [displayImages.length]);
+
+  useEffect(() => {
+    const includePending = stagingMode && !productId;
+    syncTrendyolHttpsImageCount(
+      countTrendyolHttpsPhotosForPanel(sortedImages, pendingMedia, includePending),
+    );
+  }, [sortedImages, pendingMedia, stagingMode, productId]);
 
   useEffect(() => {
     syncPendingFilesInput(
