@@ -727,16 +727,22 @@ export default async function AdminProductsPage({
                   priority,
                 });
                 const tyStatusShort = !Boolean(p.trendyol_active)
-                  ? "Kapalı"
+                  ? "TY kapalı"
                   : listed
-                    ? "Tamam"
-                    : "Eksik";
+                    ? "Alanlar tam"
+                    : "Alan eksik";
                 const tyHintParts = [
                   ...missingTrendyolFields,
                   importedNeedsReview ? "İnceleme" : null,
                   !isActive ? "Satışa kapalı" : null,
                 ].filter(Boolean) as string[];
-                const tyTitle = tyHintParts.length ? `Trendyol: ${tyHintParts.join(", ")}` : undefined;
+                const tyTitle = tyHintParts.length
+                  ? `Trendyol: ${tyHintParts.join(", ")}`
+                  : listed
+                    ? "SKU, barkod, kategori ve stok kodu dolu — Trendyol'a gönderim düzenleme sayfasından"
+                    : !Boolean(p.trendyol_active)
+                      ? "Trendyol kanalı kapalı"
+                      : "Zorunlu Trendyol alanları eksik";
                 const tyChipClass = !Boolean(p.trendyol_active)
                   ? "border-stone-200/70 bg-stone-50/90 text-stone-600"
                   : listed
