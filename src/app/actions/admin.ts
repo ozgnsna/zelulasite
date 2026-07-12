@@ -518,13 +518,6 @@ export async function saveTrendyolIntegrationSettings(formData: FormData) {
   revalidatePath("/admin");
 }
 
-export async function syncTrendyolProductNow(formData: FormData) {
-  const productId = String(formData.get("product_id") ?? "");
-  if (!productId) return;
-  const admin = createAdminClient();
-  await syncProductToTrendyol(admin, productId);
-  revalidatePath("/admin");
-}
 
 export async function syncTrendyolPriceInventoryNow(formData: FormData) {
   const productId = String(formData.get("product_id") ?? "");

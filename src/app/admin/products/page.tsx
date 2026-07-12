@@ -4,7 +4,6 @@ import {
   adminProductsListBulkAction,
   bulkDeleteProductsAction,
   sendAllProductsToTrendyolAction,
-  syncTrendyolProductNow,
 } from "@/app/actions/admin";
 import { AdminProductListThumbnail } from "@/components/admin/products/AdminProductListThumbnail";
 import { AdminProductDeleteMenuButton } from "@/components/admin/products/AdminProductDeleteMenuButton";
@@ -295,7 +294,6 @@ export default async function AdminProductsPage({
     pageNums.push(i);
   }
 
-  const syncFormProductIds = paginatedRows.map((p) => p.id);
 
   const activeCount = allRows.filter((p) => Boolean(p.is_active)).length;
   const stokYokCount = allRows.filter(
@@ -857,13 +855,6 @@ export default async function AdminProductsPage({
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 self-center sm:pl-1">
-                        <button
-                          type="submit"
-                          form={`sync-ty-${p.id}`}
-                          className="-mr-0.5 rounded px-1 py-0.5 text-[9px] font-normal text-stone-400 transition-colors duration-150 hover:text-stone-600"
-                        >
-                          TY gönder
-                        </button>
                         <Link
                           href={`/admin/products/${encodeURIComponent(p.id)}/edit`}
                           className="rounded-md border border-stone-800 bg-stone-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-stone-800"
@@ -924,19 +915,6 @@ export default async function AdminProductsPage({
               </div>
             ) : null}
           </form>
-
-          {syncFormProductIds.map((id) => (
-            <form
-              key={`sync-ty-${id}`}
-              id={`sync-ty-${id}`}
-              action={syncTrendyolProductNow}
-              className="sr-only"
-              aria-hidden
-              data-save-scroll-on-submit="true"
-            >
-              <input type="hidden" name="product_id" value={id} />
-            </form>
-          ))}
 
           {paginatedRows.map((p) => (
             <form
