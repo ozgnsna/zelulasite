@@ -65,15 +65,23 @@ export function childrenOf(parentId: string): CategoryTaxon[] {
   return CATEGORY_TAXONOMY.filter((t) => t.parentId === parentId);
 }
 
-/** Desktop üst şerit: yaprak takılar + setler (sıra sabit) */
-export const HEADER_PRIMARY_LEAF_SLUGS = [
+/** Üst şerit: Setler'den önce (Erkek ayrı render edilir) */
+export const HEADER_NAV_BEFORE_ERKEK_SLUGS = [
   "kolye",
   "kupe",
   "bileklik",
   "bilezik",
   "yuzuk",
   "setler",
-  "hediye-karti",
+] as const;
+
+/** Üst şerit: Erkek'ten sonra */
+export const HEADER_NAV_AFTER_ERKEK_SLUGS = ["hediye-karti"] as const;
+
+/** Desktop üst şerit: yaprak takılar + hediye kartı (Erkek hariç) */
+export const HEADER_PRIMARY_LEAF_SLUGS = [
+  ...HEADER_NAV_BEFORE_ERKEK_SLUGS,
+  ...HEADER_NAV_AFTER_ERKEK_SLUGS,
 ] as const;
 
 /** Mega menü grupları (üst başlık + çocuk slug’lar) */

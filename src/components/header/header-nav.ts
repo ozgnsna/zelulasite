@@ -2,6 +2,8 @@
 export {
   categoryHref,
   getTaxonBySlug,
+  HEADER_NAV_AFTER_ERKEK_SLUGS,
+  HEADER_NAV_BEFORE_ERKEK_SLUGS,
   HEADER_PRIMARY_LEAF_SLUGS,
   MEGA_MENU_GROUPS,
 } from "@/lib/categories/taxonomy";

@@ -9,7 +9,8 @@ const IMPERSONATION_EXIT_HREF = "/api/admin/impersonate/exit";
 import {
   categoryHref,
   getTaxonBySlug,
-  HEADER_PRIMARY_LEAF_SLUGS,
+  HEADER_NAV_AFTER_ERKEK_SLUGS,
+  HEADER_NAV_BEFORE_ERKEK_SLUGS,
   MEGA_MENU_GROUPS,
 } from "@/lib/categories/taxonomy";
 import {
@@ -24,6 +25,22 @@ import { TUM_URUNLER_HREF } from "@/components/header/header-nav";
 
 const AUTH_NEXT = encodeURIComponent("/hesabim");
 const GIRIS_HREF = `/giris?next=${AUTH_NEXT}`;
+
+const NAV_LINK_CLASS =
+  "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs";
+
+function NavVerticalDivider() {
+  return (
+    <span
+      className="mx-2 hidden h-4 w-px shrink-0 self-center bg-[#e8dfd3] md:inline-block lg:mx-2.5 xl:mx-3"
+      aria-hidden
+    />
+  );
+}
+
+function NavHorizontalDivider() {
+  return <div className="my-3 border-t border-[#ebe6df]" aria-hidden />;
+}
 
 function useClickOutsideRef<T extends HTMLElement>(onOutside: () => void) {
   const ref = useRef<T | null>(null);
@@ -101,19 +118,16 @@ export function HeaderShell({
             className="relative flex max-w-full flex-nowrap items-center justify-center gap-x-0.5 overflow-visible lg:gap-1 xl:gap-1.5"
             aria-label="Kategoriler"
           >
-            {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
+            {HEADER_NAV_BEFORE_ERKEK_SLUGS.map((slug) => {
               const t = getTaxonBySlug(slug);
               if (!t) return null;
               return (
-                <Link
-                  key={slug}
-                  href={categoryHref(slug)}
-                  className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs"
-                >
+                <Link key={slug} href={categoryHref(slug)} className={NAV_LINK_CLASS}>
                   {t.name}
                 </Link>
               );
             })}
+            <NavVerticalDivider />
             <div
               ref={erkekWrapRef}
               className="relative shrink-0"
@@ -124,7 +138,7 @@ export function HeaderShell({
                 href={ERKEK_HUB_HREF}
                 aria-expanded={erkekOpen}
                 aria-haspopup="menu"
-                className="inline-flex min-h-11 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs"
+                className={cn(NAV_LINK_CLASS, "gap-0.5")}
                 onFocus={() => setErkekOpen(true)}
                 onBlur={(e) => {
                   if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
@@ -169,6 +183,15 @@ export function HeaderShell({
                 </div>
               ) : null}
             </div>
+            {HEADER_NAV_AFTER_ERKEK_SLUGS.map((slug) => {
+              const t = getTaxonBySlug(slug);
+              if (!t) return null;
+              return (
+                <Link key={slug} href={categoryHref(slug)} className={NAV_LINK_CLASS}>
+                  {t.name}
+                </Link>
+              );
+            })}
             <Link
               href="/cok-satanlar"
               className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-[#f4f0ea] hover:ring-[color:var(--brand-gold)]/50 lg:px-2.5 lg:text-[11px] xl:text-xs"
@@ -382,7 +405,45 @@ export function HeaderShell({
             <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Kategoriler ve hesap">
               <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-600">Takılar</p>
               <ul className="mt-2 space-y-0.5">
-                {HEADER_PRIMARY_LEAF_SLUGS.map((slug) => {
+                {HEADER_NAV_BEFORE_ERKEK_SLUGS.map((slug) => {
+                  const t = getTaxonBySlug(slug);
+                  if (!t) return null;
+                  return (
+                    <li key={slug}>
+                      <Link
+                        href={categoryHref(slug)}
+                        className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        {t.name}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              <NavHorizontalDivider />
+              <ul className="space-y-0.5">
+                <li>
+                  <Link
+                    href={ERKEK_HUB_HREF}
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Erkek
+                  </Link>
+                </li>
+                {ERKEK_CATEGORY_SLUGS.map((slug) => (
+                  <li key={slug}>
+                    <Link
+                      href={erkekCategoryHref(slug)}
+                      className="flex min-h-11 items-center rounded-lg py-2.5 pl-6 pr-3 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {erkekCategoryLabel(slug)}
+                    </Link>
+                  </li>
+                ))}
+                {HEADER_NAV_AFTER_ERKEK_SLUGS.map((slug) => {
                   const t = getTaxonBySlug(slug);
                   if (!t) return null;
                   return (
@@ -415,29 +476,6 @@ export function HeaderShell({
                     </li>
                   );
                 })}
-              </ul>
-              <p className="mt-5 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-600">Erkek</p>
-              <ul className="mt-2 space-y-0.5">
-                <li>
-                  <Link
-                    href={ERKEK_HUB_HREF}
-                    className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    Tüm erkek ürünleri
-                  </Link>
-                </li>
-                {ERKEK_CATEGORY_SLUGS.map((slug) => (
-                  <li key={slug}>
-                    <Link
-                      href={erkekCategoryHref(slug)}
-                      className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      {erkekCategoryLabel(slug)}
-                    </Link>
-                  </li>
-                ))}
               </ul>
               <ul className="mt-4 space-y-0.5 border-t border-[#ebe6df] pt-4">
                 <li>
