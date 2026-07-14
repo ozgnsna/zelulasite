@@ -424,7 +424,7 @@ export function HeaderShell({
       </div>
 
       {mobileOpen && !desktopNav ? (
-        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menü">
+        <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Menü">
           <button
             type="button"
             className="absolute inset-0 bg-black/25"

@@ -148,7 +148,7 @@ export function CartDrawer({
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[70] bg-black/30" onClick={() => setOpen(false)}>
           <aside
             onClick={(e) => e.stopPropagation()}
             className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[#e8dece] bg-[#fffdfb] p-5 shadow-2xl"
