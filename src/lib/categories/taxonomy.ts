@@ -84,12 +84,9 @@ export const HEADER_PRIMARY_LEAF_SLUGS = [
   ...HEADER_NAV_AFTER_ERKEK_SLUGS,
 ] as const;
 
-/** Mega menü grupları (üst başlık + çocuk slug’lar) */
+/** Mega menü: üst şeritte olmayan kategoriler (header zaten çekirdek takıları gösterir) */
 export const MEGA_MENU_GROUPS: { title: string; slugs: readonly string[] }[] = [
-  {
-    title: "Takılar",
-    slugs: ["kolye", "kupe", "bileklik", "bilezik", "halhal", "sahmeran", "yuzuk", "setler", "hediye-karti"],
-  },
+  { title: "Diğer takılar", slugs: ["halhal", "sahmeran"] },
   { title: "Aksesuar", slugs: ["bros", "sapka", "anahtarlik"] },
 ];
 

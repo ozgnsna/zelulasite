@@ -120,7 +120,7 @@ export function HeaderShell({
           </Link>
         </div>
 
-        <div className="hidden min-w-0 overflow-x-clip lg:flex lg:justify-start lg:pl-2 xl:pl-4">
+        <div className="hidden min-w-0 lg:flex lg:justify-start lg:overflow-visible lg:pl-2 xl:pl-4">
           <nav
             className="relative flex w-max max-w-full flex-nowrap items-center justify-start gap-x-0.5 lg:gap-1 xl:gap-1.5"
             aria-label="Kategoriler"
@@ -224,7 +224,7 @@ export function HeaderShell({
               {megaOpen ? (
                 <div
                   role="menu"
-                  className="absolute left-1/2 top-full z-[60] min-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 pt-1"
+                  className="absolute right-0 top-full z-[60] min-w-[14rem] pt-1"
                 >
                   <div className="rounded-2xl border border-[#e8dfd3] bg-[#fffdfb] p-5 shadow-[0_16px_48px_rgba(55,48,40,0.12)]">
                     <div className="grid grid-cols-2 gap-6">
@@ -275,7 +275,7 @@ export function HeaderShell({
 
           <button
             type="button"
-            className="touch-target shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 lg:hidden"
+            className="touch-target inline-flex shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 max-lg:inline-flex lg:hidden"
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
             onClick={() => setMobileOpen((o) => !o)}
