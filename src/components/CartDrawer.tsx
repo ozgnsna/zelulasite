@@ -139,7 +139,7 @@ export function CartDrawer({
         aria-label={count > 0 ? `Sepet, ${count} ürün` : "Sepet"}
       >
         <ShoppingBag className="h-4 w-4 shrink-0 text-stone-600" strokeWidth={1.75} aria-hidden />
-        <span className="hidden sm:inline">Sepet</span>
+        <span className="hidden xl:inline">Sepet</span>
         {count > 0 ? (
           <span className="grid min-h-[1.125rem] min-w-[1.125rem] place-content-center rounded-full bg-[#4a4034] px-1 text-[10px] font-semibold text-white sm:min-h-[1.25rem] sm:min-w-[1.25rem] sm:text-[11px]">
             {count > 99 ? "99+" : count}

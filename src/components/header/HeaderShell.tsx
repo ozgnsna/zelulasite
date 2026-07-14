@@ -29,6 +29,11 @@ const GIRIS_HREF = `/giris?next=${AUTH_NEXT}`;
 const NAV_LINK_CLASS =
   "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-1.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2 lg:text-[11px] xl:px-2.5 xl:text-xs";
 
+function desktopNavLabel(slug: string, name: string): string {
+  if (slug === "hediye-karti") return "Hediye";
+  return name;
+}
+
 function NavVerticalDivider() {
   return (
     <span
@@ -96,8 +101,8 @@ export function HeaderShell({
 
   return (
     <>
-      <div className="container-premium relative z-[41] flex h-14 min-h-14 items-center gap-2 py-0 md:gap-4 lg:gap-6">
-        <div className="relative z-[42] shrink-0 md:min-w-[11rem] lg:min-w-[13.75rem]">
+      <div className="container-premium relative z-[41] grid h-14 min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 py-0 md:gap-x-4 lg:gap-x-6">
+        <div className="relative z-[42] shrink-0 md:min-w-[10rem] lg:min-w-[12rem]">
           <Link
             href="/"
             className="header-logo-link flex h-8 max-w-[min(168px,46vw)] shrink-0 items-center py-1 sm:h-9 sm:max-w-[min(200px,40vw)] md:h-10 md:max-w-[220px]"
@@ -115,9 +120,9 @@ export function HeaderShell({
           </Link>
         </div>
 
-        <div className="hidden min-w-0 flex-1 justify-start md:flex md:overflow-visible md:pl-2 lg:pl-4">
+        <div className="hidden min-w-0 overflow-x-clip lg:flex lg:justify-start lg:pl-2 xl:pl-4">
           <nav
-            className="relative flex max-w-full flex-nowrap items-center justify-start gap-x-0.5 overflow-visible lg:gap-1 xl:gap-1.5"
+            className="relative flex w-max max-w-full flex-nowrap items-center justify-start gap-x-0.5 lg:gap-1 xl:gap-1.5"
             aria-label="Kategoriler"
           >
             {HEADER_NAV_BEFORE_ERKEK_SLUGS.map((slug) => {
@@ -125,7 +130,7 @@ export function HeaderShell({
               if (!t) return null;
               return (
                 <Link key={slug} href={categoryHref(slug)} className={NAV_LINK_CLASS}>
-                  {t.name}
+                  {desktopNavLabel(slug, t.name)}
                 </Link>
               );
             })}
@@ -190,7 +195,7 @@ export function HeaderShell({
               if (!t) return null;
               return (
                 <Link key={slug} href={categoryHref(slug)} className={NAV_LINK_CLASS}>
-                  {t.name}
+                  {desktopNavLabel(slug, t.name)}
                 </Link>
               );
             })}
@@ -204,6 +209,7 @@ export function HeaderShell({
                 href={TUM_URUNLER_HREF}
                 aria-expanded={megaOpen}
                 aria-haspopup="menu"
+                aria-label="Tüm Ürünler"
                 className="inline-flex min-h-11 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2 lg:text-[11px] xl:px-2.5 xl:text-xs"
                 onFocus={() => setMegaOpen(true)}
                 onBlur={(e) => {
@@ -212,7 +218,7 @@ export function HeaderShell({
                   }
                 }}
               >
-                Tüm Ürünler
+                Ürünler
                 <ChevronDown className={cn("h-3 w-3 opacity-50 transition", megaOpen && "rotate-180")} aria-hidden />
               </Link>
               {megaOpen ? (
@@ -264,12 +270,12 @@ export function HeaderShell({
           </nav>
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 sm:gap-2 md:pl-4 lg:pl-6">
+        <div className="relative z-[43] flex shrink-0 items-center justify-end gap-1 bg-[#fffdfb] pl-2 sm:gap-1.5 lg:gap-2">
           <HeaderSearch />
 
           <button
             type="button"
-            className="touch-target shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 md:hidden"
+            className="touch-target shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 lg:hidden"
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
             onClick={() => setMobileOpen((o) => !o)}
@@ -277,7 +283,7 @@ export function HeaderShell({
             {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
 
-          <div className="relative hidden md:block" ref={accountWrapRef}>
+          <div className="relative hidden lg:block" ref={accountWrapRef}>
             {isLoggedIn ? (
               <>
                 <button
@@ -288,7 +294,16 @@ export function HeaderShell({
                   className="inline-flex min-h-11 max-w-[11rem] items-center gap-1 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-2 text-xs font-medium text-stone-800 shadow-sm transition hover:border-[color:var(--brand-gold)]/35 hover:text-stone-900"
                 >
                   <UserRound className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                  <span className="truncate">{accountLabel}</span>
+                  <span className="truncate">
+                    {greetingFirstName ? (
+                      <>
+                        <span className="hidden xl:inline">Merhaba, </span>
+                        {greetingFirstName}
+                      </>
+                    ) : (
+                      accountLabel
+                    )}
+                  </span>
                   <ChevronDown
                     className={cn("h-3.5 w-3.5 shrink-0 opacity-50 transition", accountOpen && "rotate-180")}
                     aria-hidden
@@ -379,7 +394,7 @@ export function HeaderShell({
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menü">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menü">
           <button
             type="button"
             className="absolute inset-0 bg-black/25"
