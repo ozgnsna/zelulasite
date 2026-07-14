@@ -65,6 +65,20 @@ function useClickOutsideRef<T extends HTMLElement>(onOutside: () => void) {
   return ref;
 }
 
+const DESKTOP_NAV_MQ = "(min-width: 1024px)";
+
+function useDesktopNav(): boolean {
+  const [desktopNav, setDesktopNav] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_NAV_MQ);
+    const sync = () => setDesktopNav(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return desktopNav;
+}
+
 export function HeaderShell({
   isLoggedIn,
   greetingFirstName,
@@ -80,18 +94,32 @@ export function HeaderShell({
   const [accountOpen, setAccountOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [erkekOpen, setErkekOpen] = useState(false);
+  const desktopNav = useDesktopNav();
   const accountWrapRef = useClickOutsideRef<HTMLDivElement>(() => setAccountOpen(false));
   const megaWrapRef = useClickOutsideRef<HTMLDivElement>(() => setMegaOpen(false));
   const erkekWrapRef = useClickOutsideRef<HTMLDivElement>(() => setErkekOpen(false));
 
   useEffect(() => {
-    if (!mobileOpen) return;
+    if (desktopNav) setMobileOpen(false);
+  }, [desktopNav]);
+
+  useEffect(() => {
+    if (!mobileOpen || desktopNav) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [mobileOpen]);
+  }, [mobileOpen, desktopNav]);
+
+  useEffect(() => {
+    if (!mobileOpen || desktopNav) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen, desktopNav]);
 
   const accountLabel = isLoggedIn
     ? greetingFirstName
@@ -273,15 +301,17 @@ export function HeaderShell({
         <div className="relative z-[43] flex shrink-0 items-center justify-end gap-1 bg-[#fffdfb] pl-2 sm:gap-1.5 lg:gap-2">
           <HeaderSearch />
 
-          <button
-            type="button"
-            className="touch-target inline-flex shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300 max-lg:inline-flex lg:hidden"
-            aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
-            onClick={() => setMobileOpen((o) => !o)}
-          >
-            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
+          {!desktopNav ? (
+            <button
+              type="button"
+              className="touch-target inline-flex shrink-0 rounded-full border border-[#e5dcd0]/90 bg-white/90 text-stone-800 shadow-sm transition hover:border-stone-300"
+              aria-expanded={mobileOpen}
+              aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
+              onClick={() => setMobileOpen((o) => !o)}
+            >
+              {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+          ) : null}
 
           <div className="relative hidden lg:block" ref={accountWrapRef}>
             {isLoggedIn ? (
@@ -393,8 +423,8 @@ export function HeaderShell({
         </div>
       </div>
 
-      {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menü">
+      {mobileOpen && !desktopNav ? (
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menü">
           <button
             type="button"
             className="absolute inset-0 bg-black/25"
