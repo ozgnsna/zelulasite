@@ -27,12 +27,12 @@ const AUTH_NEXT = encodeURIComponent("/hesabim");
 const GIRIS_HREF = `/giris?next=${AUTH_NEXT}`;
 
 const NAV_LINK_CLASS =
-  "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs";
+  "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-1.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2 lg:text-[11px] xl:px-2.5 xl:text-xs";
 
 function NavVerticalDivider() {
   return (
     <span
-      className="mx-2 hidden h-4 w-px shrink-0 self-center bg-[#e8dfd3] md:inline-block lg:mx-2.5 xl:mx-3"
+      className="mx-1.5 hidden h-4 w-px shrink-0 self-center bg-[#e8dfd3] md:inline-block lg:mx-2 xl:mx-2.5"
       aria-hidden
     />
   );
@@ -96,26 +96,28 @@ export function HeaderShell({
 
   return (
     <>
-      <div className="container-premium relative z-[41] flex h-14 min-h-14 items-center gap-2 py-0 md:gap-3 lg:gap-4">
-        <Link
-          href="/"
-          className="header-logo-link flex h-8 max-w-[min(168px,46vw)] shrink-0 items-center py-1 sm:h-9 sm:max-w-[min(200px,40vw)] md:h-10 md:max-w-[220px]"
-          aria-label="Zelula — Ana sayfa"
-        >
-          <Image
-            src="/zelula-logo-header.svg"
-            alt="Zelula"
-            width={220}
-            height={42}
-            className="header-logo-img h-full w-auto object-contain object-left"
-            sizes="(max-width: 768px) 168px, 220px"
-            fetchPriority="low"
-          />
-        </Link>
+      <div className="container-premium relative z-[41] flex h-14 min-h-14 items-center gap-2 py-0 md:gap-4 lg:gap-6">
+        <div className="relative z-[42] shrink-0 md:min-w-[11rem] lg:min-w-[13.75rem]">
+          <Link
+            href="/"
+            className="header-logo-link flex h-8 max-w-[min(168px,46vw)] shrink-0 items-center py-1 sm:h-9 sm:max-w-[min(200px,40vw)] md:h-10 md:max-w-[220px]"
+            aria-label="Zelula — Ana sayfa"
+          >
+            <Image
+              src="/zelula-logo-header.svg"
+              alt="Zelula"
+              width={220}
+              height={42}
+              className="header-logo-img h-full w-auto object-contain object-left"
+              sizes="(max-width: 768px) 168px, 220px"
+              fetchPriority="low"
+            />
+          </Link>
+        </div>
 
-        <div className="hidden min-w-0 flex-1 justify-center md:flex md:overflow-visible md:px-1 lg:px-2">
+        <div className="hidden min-w-0 flex-1 justify-start md:flex md:overflow-visible md:pl-2 lg:pl-4">
           <nav
-            className="relative flex max-w-full flex-nowrap items-center justify-center gap-x-0.5 overflow-visible lg:gap-1 xl:gap-1.5"
+            className="relative flex max-w-full flex-nowrap items-center justify-start gap-x-0.5 overflow-visible lg:gap-1 xl:gap-1.5"
             aria-label="Kategoriler"
           >
             {HEADER_NAV_BEFORE_ERKEK_SLUGS.map((slug) => {
@@ -194,7 +196,7 @@ export function HeaderShell({
             })}
             <Link
               href="/cok-satanlar"
-              className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-[#f4f0ea] hover:ring-[color:var(--brand-gold)]/50 lg:px-2.5 lg:text-[11px] xl:text-xs"
+              className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-1.5 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-[#f4f0ea] hover:ring-[color:var(--brand-gold)]/50 lg:px-2 lg:text-[11px] xl:px-2.5 xl:text-xs"
             >
               Çok Satanlar
             </Link>
@@ -208,7 +210,7 @@ export function HeaderShell({
                 href={TUM_URUNLER_HREF}
                 aria-expanded={megaOpen}
                 aria-haspopup="menu"
-                className="inline-flex min-h-11 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs"
+                className="inline-flex min-h-11 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2 lg:text-[11px] xl:px-2.5 xl:text-xs"
                 onFocus={() => setMegaOpen(true)}
                 onBlur={(e) => {
                   if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
