@@ -194,12 +194,6 @@ export function HeaderShell({
                 </Link>
               );
             })}
-            <Link
-              href="/cok-satanlar"
-              className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-1.5 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-[#f4f0ea] hover:ring-[color:var(--brand-gold)]/50 lg:px-2 lg:text-[11px] xl:px-2.5 xl:text-xs"
-            >
-              Çok Satanlar
-            </Link>
             <div
               ref={megaWrapRef}
               className="relative shrink-0"
@@ -480,15 +474,6 @@ export function HeaderShell({
                 })}
               </ul>
               <ul className="mt-4 space-y-0.5 border-t border-[#ebe6df] pt-4">
-                <li>
-                  <Link
-                    href="/cok-satanlar"
-                    className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-[#7a5f38] transition hover:bg-[#faf6ef]"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    Çok Satanlar
-                  </Link>
-                </li>
                 <li>
                   <Link
                     href="/urunler"
