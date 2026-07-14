@@ -8,6 +8,13 @@ import {
   TAKILAR_PRODUCT_DB_SLUGS,
   type CategoryTaxon,
 } from "@/lib/categories/taxonomy";
+import {
+  audienceMatchValues,
+  ERKEK_CATEGORY_SLUGS,
+  erkekCategoryLabel,
+  type ErkekCategorySlug,
+  type TargetAudience,
+} from "@/lib/products/audience";
 
 function createStorefrontReadClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -103,6 +110,8 @@ export async function getProducts(params: {
   /** Birden fazla DB kategori slug’ı (ör. takılar hub) */
   categorySlugs?: string[];
   collection?: string;
+  /** Kadın / erkek vitrin filtresi; verilmezse tüm hedef kitleler */
+  audience?: TargetAudience;
   sort?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
   min?: number;
   max?: number;
@@ -144,6 +153,9 @@ export async function getProducts(params: {
       query = query.eq("category_id", categoryId);
     }
     if (collectionId) query = query.eq("collection_id", collectionId);
+    if (params.audience) {
+      query = query.in("target_audience", audienceMatchValues(params.audience));
+    }
     if (params.featuredOnly) query = query.eq("featured", true);
     if (params.min) query = query.gte("price", params.min);
     if (params.max) query = query.lte("price", params.max);
@@ -230,6 +242,7 @@ export async function getCategoryPageData(
     if (taxon.slug === "takilar") {
       const r = await getProducts({
         categorySlugs: [...TAKILAR_PRODUCT_DB_SLUGS],
+        audience: "kadin",
         sort: options.sort ?? "newest",
         collection: options.collection,
         min: options.min,
@@ -247,6 +260,7 @@ export async function getCategoryPageData(
     if (taxon.slug === "aksesuar") {
       const r = await getProducts({
         categorySlugs: ["bros", "sapka", "anahtarlik", "aksesuar"],
+        audience: "kadin",
         sort: options.sort ?? "newest",
         collection: options.collection,
         min: options.min,
@@ -267,6 +281,7 @@ export async function getCategoryPageData(
   if (taxon.slug === "setler") {
     const r = await getProducts({
       sort: options.sort ?? "featured",
+      audience: "kadin",
       featuredOnly: true,
       collection: options.collection,
       min: options.min,
@@ -285,6 +300,7 @@ export async function getCategoryPageData(
   if (taxon.dbCategorySlug) {
     const r = await getProducts({
       category: taxon.dbCategorySlug,
+      audience: "kadin",
       sort: options.sort ?? "newest",
       collection: options.collection,
       min: options.min,
@@ -300,6 +316,66 @@ export async function getCategoryPageData(
   }
 
   return null;
+}
+
+export type ErkekPageData =
+  | {
+      mode: "hub";
+      products: Product[];
+      categories: Category[];
+      collections: Collection[];
+      children: Array<{ slug: ErkekCategorySlug; name: string }>;
+    }
+  | {
+      mode: "list";
+      slug: ErkekCategorySlug;
+      name: string;
+      products: Product[];
+      categories: Category[];
+      collections: Collection[];
+    };
+
+export async function getErkekPageData(
+  slug?: string,
+  options: CategoryListingOptions = {},
+): Promise<ErkekPageData | null> {
+  if (slug && !ERKEK_CATEGORY_SLUGS.includes(slug as ErkekCategorySlug)) return null;
+
+  if (!slug) {
+    const r = await getProducts({
+      audience: "erkek",
+      categorySlugs: [...ERKEK_CATEGORY_SLUGS],
+      sort: options.sort ?? "newest",
+      collection: options.collection,
+      min: options.min,
+      max: options.max,
+    });
+    return {
+      mode: "hub",
+      products: r.products,
+      categories: r.categories,
+      collections: r.collections,
+      children: ERKEK_CATEGORY_SLUGS.map((s) => ({ slug: s, name: erkekCategoryLabel(s) })),
+    };
+  }
+
+  const erkekSlug = slug as ErkekCategorySlug;
+  const r = await getProducts({
+    audience: "erkek",
+    category: erkekSlug,
+    sort: options.sort ?? "newest",
+    collection: options.collection,
+    min: options.min,
+    max: options.max,
+  });
+  return {
+    mode: "list",
+    slug: erkekSlug,
+    name: erkekCategoryLabel(erkekSlug),
+    products: r.products,
+    categories: r.categories,
+    collections: r.collections,
+  };
 }
 
 type CartUpsellContextItem = {

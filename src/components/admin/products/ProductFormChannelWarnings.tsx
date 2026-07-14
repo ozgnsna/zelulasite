@@ -77,6 +77,11 @@ const TRENDYOL_PUSH_FIELD_IDS = [
 function copyLiveTrendyolFieldsIntoPushForm(mainFormId: string, pushFormId: string) {
   const push = document.getElementById(pushFormId);
   if (!(push instanceof HTMLFormElement)) return;
+  const activeSrc = document.getElementById("trendyol_active");
+  const activeDst = push.elements.namedItem("trendyol_active");
+  if (activeSrc instanceof HTMLInputElement && activeDst instanceof HTMLInputElement) {
+    activeDst.value = activeSrc.checked ? "on" : "";
+  }
   for (const id of TRENDYOL_PUSH_FIELD_IDS) {
     const src = document.getElementById(id);
     const dst = push.elements.namedItem(id);
@@ -264,7 +269,7 @@ export function TrendyolWarningsPanel({
             Trendyol’a gönder
           </button>
           <p className="text-[10px] leading-relaxed text-stone-500">
-            Bu gönderim <strong>şu an formda yazan</strong> marka, kategori, özellik ve Trendyol fiyat alanlarını kullanır (kaydetmeden de deneyebilirsiniz). Kalıcı
+            Bu gönderim <strong>şu an formda yazan</strong> kanal anahtarı, marka, kategori, özellik ve Trendyol fiyat alanlarını kullanır (kaydetmeden deneme mümkün). Kalıcı
             olması için sonra «Değişiklikleri kaydet». Gri düğme = kanal kapalı veya eksik alan.
           </p>
         </>

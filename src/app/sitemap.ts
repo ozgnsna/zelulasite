@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { CATEGORY_TAXONOMY } from "@/lib/categories/taxonomy";
+import { ERKEK_CATEGORY_SLUGS, ERKEK_HUB_HREF, erkekCategoryHref } from "@/lib/products/audience";
 import { getSiteOrigin } from "@/lib/seo/site";
 import { getProducts } from "@/lib/storefront";
 
@@ -37,5 +38,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: p.created_at ? new Date(p.created_at) : undefined,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+  const erkekRoutes: MetadataRoute.Sitemap = [
+    {
+      url: `${siteUrl}${ERKEK_HUB_HREF}`,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    ...ERKEK_CATEGORY_SLUGS.map((slug) => ({
+      url: `${siteUrl}${erkekCategoryHref(slug)}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.75,
+    })),
+  ];
+
+  return [...staticRoutes, ...categoryRoutes, ...erkekRoutes, ...productRoutes];
 }

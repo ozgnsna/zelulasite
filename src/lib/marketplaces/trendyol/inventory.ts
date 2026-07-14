@@ -8,6 +8,11 @@ import {
   TrendyolRequestError,
 } from "@/lib/marketplaces/trendyol/client";
 import { resolveTrendyolOutboundBarcode } from "@/lib/marketplaces/trendyol/product-identifiers";
+import {
+  expandTrendyolVariantRows,
+  shouldExpandTrendyolVariants,
+} from "@/lib/marketplaces/trendyol/product-variants";
+import { fetchVariantsForProducts } from "@/lib/products/variants";
 
 type InventoryProduct = {
   id: string;
@@ -24,7 +29,7 @@ type InventoryProduct = {
   trendyol_quantity: number | null;
 };
 
-function mapPriceInventoryItem(p: InventoryProduct) {
+function mapPriceInventoryItem(p: InventoryProduct, opts?: { barcode?: string; quantity?: number }) {
   // Trendyol'a özel fiyat girilmemişse site fiyatına düş; aksi halde 0 gider ve
   // Trendyol "fiyat girmeniz gerekmektedir" durumuna alır.
   const salePrice = Number(p.trendyol_sale_price ?? p.price ?? 0);
@@ -34,11 +39,30 @@ function mapPriceInventoryItem(p: InventoryProduct) {
   // Trendyol listPrice >= salePrice olmalı.
   const listPrice = Math.max(listCandidate, salePrice);
   return {
-    barcode: resolveTrendyolOutboundBarcode(p),
-    quantity: p.stock_quantity,
+    barcode: opts?.barcode ?? resolveTrendyolOutboundBarcode(p),
+    quantity: opts?.quantity ?? p.stock_quantity,
     salePrice,
     listPrice,
   };
+}
+
+async function buildPriceInventoryItems(admin: SupabaseClient, eligible: InventoryProduct[]) {
+  const variantsByProduct = await fetchVariantsForProducts(
+    admin,
+    eligible.map((p) => p.id),
+  );
+  const items: ReturnType<typeof mapPriceInventoryItem>[] = [];
+  for (const p of eligible) {
+    const variants = variantsByProduct.get(p.id) ?? [];
+    if (!shouldExpandTrendyolVariants(variants)) {
+      items.push(mapPriceInventoryItem(p));
+      continue;
+    }
+    for (const row of expandTrendyolVariantRows(p, variants)) {
+      items.push(mapPriceInventoryItem(p, { barcode: row.barcode, quantity: row.quantity }));
+    }
+  }
+  return items;
 }
 
 export type SyncPriceInventoryOptions = {
@@ -85,7 +109,7 @@ export async function syncPriceInventoryForProducts(
   }
 
   const payload = {
-    items: eligible.map(mapPriceInventoryItem),
+    items: await buildPriceInventoryItems(admin, eligible),
   };
   const requestTimeoutMs = opts?.requestTimeoutMs ?? 14_000;
   const sellerId = integration.seller_id;
@@ -146,7 +170,7 @@ export async function syncPriceInventoryForProducts(
       entityType: "inventory",
       action: "price_inventory_sync",
       status: "pending",
-      message: `${eligible.length} ürün için fiyat/stok batch gönderildi.`,
+      message: `${payload.items.length} barkod için fiyat/stok batch gönderildi (${eligible.length} ürün).`,
       batchRequestId: response.batchRequestId ?? null,
       requestPayload: { reason, count: eligible.length },
       responsePayload: response,

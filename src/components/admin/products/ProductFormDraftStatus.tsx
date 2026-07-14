@@ -16,13 +16,21 @@ function formatTr(iso: string) {
 export function ProductFormDraftStatus({
   formId,
   serverUpdatedAt,
+  baselineKey,
 }: {
   formId: string;
   /** Sunucudaki `products.updated_at` (ISO). */
   serverUpdatedAt?: string | null;
+  /** Kayıt sonrası taslak göstergesini sıfırlamak için (UnsavedGuard ile aynı anahtar). */
+  baselineKey?: string;
 }) {
   const [dirty, setDirty] = useState(false);
   const [lastEdit, setLastEdit] = useState<number | null>(null);
+
+  useEffect(() => {
+    setDirty(false);
+    setLastEdit(null);
+  }, [baselineKey]);
 
   useEffect(() => {
     const form = document.getElementById(formId);
@@ -31,11 +39,17 @@ export function ProductFormDraftStatus({
       setDirty(true);
       setLastEdit(Date.now());
     };
+    const onSubmit = () => {
+      setDirty(false);
+      setLastEdit(null);
+    };
     form.addEventListener("input", mark);
     form.addEventListener("change", mark);
+    form.addEventListener("submit", onSubmit, true);
     return () => {
       form.removeEventListener("input", mark);
       form.removeEventListener("change", mark);
+      form.removeEventListener("submit", onSubmit, true);
     };
   }, [formId]);
 

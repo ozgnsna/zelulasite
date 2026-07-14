@@ -9,9 +9,12 @@ import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inven
 import { isTrendyolPlaceholderStockCode } from "@/lib/marketplaces/trendyol/product-identifiers";
 import {
   buildTrendyolIdentifierToProductIdMap,
+  enrichTrendyolMapWithVariantBarcodes,
   resolveProductIdForTrendyolIdentifiers,
 } from "@/lib/marketplaces/trendyol/product-lookup";
+import { parseTrendyolVariantBarcode } from "@/lib/marketplaces/trendyol/product-variants";
 import { updateZelulaSkuSeriesFromTrendyolOrders } from "@/lib/marketplaces/trendyol/zelula-sku-cache";
+import { fetchVariantsForProducts } from "@/lib/products/variants";
 
 export type TrendyolOrderStub = {
   orderNumber: string;
@@ -113,7 +116,31 @@ async function applyTrendyolOrderStockDelta(
       sku: string | null;
     }>,
   );
+  const productIds = [...new Set(merged.map((row) => String((row as { id?: string }).id ?? "").trim()).filter(Boolean))];
+  const variantsByProduct = await fetchVariantsForProducts(admin, productIds);
+  enrichTrendyolMapWithVariantBarcodes(
+    byIdentifier,
+    merged as Array<{
+      id: string;
+      trendyol_barcode: string | null;
+      trendyol_stock_code: string | null;
+      sku: string | null;
+    }>,
+    variantsByProduct,
+  );
   const byId = new Map<string, { id: string; stock_quantity: number; consumed: number }>();
+  const variantById = new Map<string, { id: string; product_id: string; stock_quantity: number; label: string }>();
+  for (const list of variantsByProduct.values()) {
+    for (const v of list) {
+      variantById.set(v.id, {
+        id: v.id,
+        product_id: v.product_id,
+        stock_quantity: v.stock_quantity,
+        label: v.label,
+      });
+    }
+  }
+  const variantConsumed = new Map<string, number>();
   for (const row of merged as Array<Record<string, unknown>>) {
     const id = String(row.id ?? "").trim();
     if (!id || byId.has(id)) continue;
@@ -149,6 +176,17 @@ async function applyTrendyolOrderStockDelta(
       const current = byId.get(matchId);
       if (!current) continue;
       current.consumed += qty;
+
+      const parsedVariant = parseTrendyolVariantBarcode(String(line.barcode ?? ""), byIdentifier.keys());
+      if (parsedVariant) {
+        const variants = variantsByProduct.get(matchId) ?? [];
+        const variant = variants.find(
+          (v) => v.label.trim().toLowerCase() === parsedVariant.sizeLabel.trim().toLowerCase(),
+        );
+        if (variant?.id) {
+          variantConsumed.set(variant.id, (variantConsumed.get(variant.id) ?? 0) + qty);
+        }
+      }
     }
     productIdsByOrder.set(order.orderNumber, orderProductIds);
   }
@@ -156,9 +194,31 @@ async function applyTrendyolOrderStockDelta(
   const updatedProductIds: string[] = [];
   const failedProductIds = new Set<string>();
 
+  for (const [variantId, consumed] of variantConsumed) {
+    if (consumed <= 0) continue;
+    const row = variantById.get(variantId);
+    if (!row) continue;
+    const next =
+      mode === "deduct"
+        ? Math.max(0, row.stock_quantity - consumed)
+        : row.stock_quantity + consumed;
+    const { error } = await admin.from("product_variants").update({ stock_quantity: next }).eq("id", variantId);
+    if (error) {
+      failedProductIds.add(row.product_id);
+      continue;
+    }
+    row.stock_quantity = next;
+  }
+
   for (const row of byId.values()) {
     if (row.consumed <= 0) continue;
-    const next = mode === "deduct" ? Math.max(0, row.stock_quantity - row.consumed) : row.stock_quantity + row.consumed;
+    const variants = variantsByProduct.get(row.id) ?? [];
+    const next =
+      variants.length > 0
+        ? variants.reduce((sum, v) => sum + Math.max(0, Number(variantById.get(v.id)?.stock_quantity ?? v.stock_quantity ?? 0)), 0)
+        : mode === "deduct"
+          ? Math.max(0, row.stock_quantity - row.consumed)
+          : row.stock_quantity + row.consumed;
     const { error } = await admin.from("products").update({ stock_quantity: next, is_active: next > 0 }).eq("id", row.id);
     if (error) {
       failedProductIds.add(row.id);

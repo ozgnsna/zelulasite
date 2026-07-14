@@ -67,7 +67,7 @@ export function ProductVariantEditor({
           <h3 className="text-[13px] font-semibold tracking-tight text-stone-900">Ölçü / varyant (yüzük)</h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
             Her ölçünün kendi stoğu olur. Müşteri üründe ölçü seçer; stok ona göre düşer. Toplam ürün stoğu
-            ölçülerin toplamı olur ({totalStock} adet).
+            ölçülerin toplamı olur ({totalStock} adet). Trendyol’a gönderimde her ölçü ayrı barkod olur (ör. Zelula361-10).
           </p>
         </div>
       </div>

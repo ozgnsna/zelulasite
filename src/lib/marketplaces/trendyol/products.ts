@@ -7,7 +7,15 @@ import {
   trendyolRequest,
 } from "@/lib/marketplaces/trendyol/client";
 import { parseTrendyolPositiveIntId } from "@/lib/marketplaces/trendyol/int-ids";
+import {
+  expandTrendyolVariantRows,
+  resolveTrendyolProductMainId,
+  shouldExpandTrendyolVariants,
+  withTrendyolRingSizeAttribute,
+} from "@/lib/marketplaces/trendyol/product-variants";
 import { updateZelulaSkuSeriesFromCatalogIdentifiers } from "@/lib/marketplaces/trendyol/zelula-sku-cache";
+import { fetchProductVariants } from "@/lib/products/variants";
+import type { ProductVariant } from "@/lib/types";
 
 /** DB row shape used to build the Trendyol v2/products POST body (single item in `items`). */
 export type TrendyolProductPayloadInput = {
@@ -56,21 +64,31 @@ function buildTrendyolImageItems(p: TrendyolProductRow): { url: string }[] {
 export const TRENDYOL_IMPORTED_REVIEW_NOTE = "Trendyol'dan içe aktarılan ürün.";
 
 /** Trendyol v2 create gövdesi (önizleme: eksik ID’ler 0, görseller boş olabilir — analyze yakalar). */
-function buildProductPayloadItem(p: TrendyolProductRow): Record<string, unknown> {
-  const barcode = p.trendyol_barcode?.trim() || p.sku;
-  const stockCode = p.trendyol_stock_code?.trim() || p.sku;
+function buildProductPayloadItem(
+  p: TrendyolProductRow,
+  opts?: { barcode?: string; stockCode?: string; quantity?: number; attributes?: unknown },
+): Record<string, unknown> {
+  const barcode = opts?.barcode ?? (p.trendyol_barcode?.trim() || p.sku);
+  const mainId = resolveTrendyolProductMainId(p);
+  const stockCode = opts?.stockCode ?? (p.trendyol_stock_code?.trim() || p.sku);
   const salePrice = Number(p.trendyol_sale_price ?? 0);
   const listPrice = Number(p.trendyol_list_price ?? p.trendyol_sale_price ?? 0);
   const brandId = parseTrendyolPositiveIntId(p.trendyol_brand) ?? 0;
   const categoryId = parseTrendyolPositiveIntId(p.trendyol_category_id) ?? 0;
   const images = buildTrendyolImageItems(p);
+  const attributes =
+    opts?.attributes !== undefined
+      ? opts.attributes
+      : Array.isArray(p.trendyol_category_attributes)
+        ? p.trendyol_category_attributes
+        : [];
   return {
     barcode,
     title: p.name,
-    productMainId: stockCode,
+    productMainId: mainId,
     brandId,
     categoryId,
-    quantity: p.stock_quantity,
+    quantity: opts?.quantity ?? p.stock_quantity,
     stockCode,
     dimensionalWeight: Number(p.trendyol_dimensional_weight ?? 1),
     description: p.name,
@@ -79,13 +97,33 @@ function buildProductPayloadItem(p: TrendyolProductRow): Record<string, unknown>
     salePrice,
     vatRate: Number(p.trendyol_vat_rate ?? 20),
     images,
-    attributes: Array.isArray(p.trendyol_category_attributes) ? p.trendyol_category_attributes : [],
+    attributes,
   };
 }
 
+function buildProductPayloadItems(p: TrendyolProductRow, variants: ProductVariant[] = []): Record<string, unknown>[] {
+  if (!shouldExpandTrendyolVariants(variants)) {
+    return [buildProductPayloadItem(p)];
+  }
+  const baseAttrs = Array.isArray(p.trendyol_category_attributes) ? p.trendyol_category_attributes : [];
+  return expandTrendyolVariantRows(p, variants).map((row) =>
+    buildProductPayloadItem(p, {
+      barcode: row.barcode,
+      stockCode: row.stockCode,
+      quantity: row.quantity,
+      attributes: withTrendyolRingSizeAttribute(baseAttrs, row.sizeLabel),
+    }),
+  );
+}
+
 /** Same mapping as `syncProductToTrendyol` — no HTTP, no DB writes. */
-export function buildTrendyolProductPayload(product: TrendyolProductPayloadInput) {
-  return { items: [buildProductPayloadItem(product as TrendyolProductRow)] };
+export async function buildTrendyolProductPayload(
+  product: TrendyolProductPayloadInput,
+  admin?: SupabaseClient,
+) {
+  const variants =
+    admin && product.id ? await fetchProductVariants(admin, product.id) : [];
+  return { items: buildProductPayloadItems(product as TrendyolProductRow, variants) };
 }
 
 export type TrendyolPayloadPreviewIssue = {
@@ -99,130 +137,134 @@ function nonEmptyString(v: unknown): boolean {
 }
 
 /** Dry-run checks on the outbound JSON (admin preview). */
-export function analyzeTrendyolProductPayloadIssues(
-  body: ReturnType<typeof buildTrendyolProductPayload>,
-): TrendyolPayloadPreviewIssue[] {
+export function analyzeTrendyolProductPayloadIssues(body: {
+  items?: Record<string, unknown>[];
+}): TrendyolPayloadPreviewIssue[] {
   const issues: TrendyolPayloadPreviewIssue[] = [];
-  const item = body.items?.[0];
-  if (!item) {
+  const items = body.items ?? [];
+  if (items.length === 0) {
     issues.push({ path: "items", message: "Gönderilecek ürün yok (items boş).", level: "error" });
     return issues;
   }
 
-  if (!nonEmptyString(item.title)) {
-    issues.push({ path: "items[0].title", message: "Başlık (title) boş.", level: "error" });
-  }
-  if (!nonEmptyString(item.barcode)) {
-    issues.push({ path: "items[0].barcode", message: "Barkod (barcode) boş.", level: "error" });
-  }
-  if (!nonEmptyString(item.stockCode)) {
-    issues.push({ path: "items[0].stockCode", message: "Stok kodu (stockCode) boş.", level: "error" });
-  }
-  if (!nonEmptyString(item.productMainId)) {
-    issues.push({ path: "items[0].productMainId", message: "productMainId boş.", level: "error" });
-  }
-  const row = item as Record<string, unknown>;
-  const brandId = Number(row.brandId);
-  if (!Number.isFinite(brandId) || brandId <= 0) {
-    issues.push({
-      path: "items[0].brandId",
-      message:
-        "Trendyol marka ID (tam sayı) zorunludur. Marka alanına marka adı değil, Trendyol marka listesindeki sayısal ID’yi yazın.",
-      level: "error",
-    });
-  }
-
-  const categoryId = Number(row.categoryId);
-  if (!Number.isFinite(categoryId) || categoryId <= 0) {
-    issues.push({
-      path: "items[0].categoryId",
-      message: "Trendyol kategori ID geçersiz veya eksik (0 olmamalı).",
-      level: "error",
-    });
-  }
-
-  const imgs = row.images;
-  if (!Array.isArray(imgs) || imgs.length === 0) {
-    issues.push({
-      path: "items[0].images",
-      message:
-        "Trendyol ürün oluşturma en az bir https görsel URL’si ister. Görselleri yükleyin (Supabase public https URL).",
-      level: "error",
-    });
-  }
-
-  const qty = Number(item.quantity);
-  if (!Number.isFinite(qty)) {
-    issues.push({ path: "items[0].quantity", message: "Adet (quantity) sayı değil.", level: "error" });
-  } else if (qty < 0) {
-    issues.push({ path: "items[0].quantity", message: "Adet (quantity) negatif.", level: "warning" });
-  }
-
-  for (const key of ["listPrice", "salePrice"] as const) {
-    const n = Number(item[key]);
-    if (!Number.isFinite(n) || n <= 0) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const prefix = `items[${i}]`;
+    if (!nonEmptyString(item.title)) {
+      issues.push({ path: `${prefix}.title`, message: "Başlık (title) boş.", level: "error" });
+    }
+    if (!nonEmptyString(item.barcode)) {
+      issues.push({ path: `${prefix}.barcode`, message: "Barkod (barcode) boş.", level: "error" });
+    }
+    if (!nonEmptyString(item.stockCode)) {
+      issues.push({ path: `${prefix}.stockCode`, message: "Stok kodu (stockCode) boş.", level: "error" });
+    }
+    if (!nonEmptyString(item.productMainId)) {
+      issues.push({ path: `${prefix}.productMainId`, message: "productMainId boş.", level: "error" });
+    }
+    const row = item as Record<string, unknown>;
+    const brandId = Number(row.brandId);
+    if (!Number.isFinite(brandId) || brandId <= 0) {
       issues.push({
-        path: `items[0].${key}`,
-        message: `${key} geçerli pozitif bir sayı olmalı.`,
+        path: `${prefix}.brandId`,
+        message:
+          "Trendyol marka ID (tam sayı) zorunludur. Marka alanına marka adı değil, Trendyol marka listesindeki sayısal ID’yi yazın.",
         level: "error",
       });
     }
-  }
 
-  const vat = Number(item.vatRate);
-  if (!Number.isFinite(vat)) {
-    issues.push({ path: "items[0].vatRate", message: "KDV oranı (vatRate) geçersiz.", level: "warning" });
-  }
-
-  const dw = Number(item.dimensionalWeight);
-  if (!Number.isFinite(dw) || dw <= 0) {
-    issues.push({
-      path: "items[0].dimensionalWeight",
-      message: "Desi (dimensionalWeight) pozitif bir sayı olmalı.",
-      level: "warning",
-    });
-  }
-
-  if (!nonEmptyString(item.description)) {
-    issues.push({ path: "items[0].description", message: "Açıklama (description) boş.", level: "warning" });
-  }
-
-  const attrs = item.attributes;
-  if (!Array.isArray(attrs)) {
-    issues.push({
-      path: "items[0].attributes",
-      message: "Özellikler (attributes) bir JSON dizisi olmalı.",
-      level: "error",
-    });
-  } else {
-    if (attrs.length === 0) {
+    const categoryId = Number(row.categoryId);
+    if (!Number.isFinite(categoryId) || categoryId <= 0) {
       issues.push({
-        path: "items[0].attributes",
-        message: "Özellik dizisi boş — kategori zorunlu alanlar eksik kalabilir.",
+        path: `${prefix}.categoryId`,
+        message: "Trendyol kategori ID geçersiz veya eksik (0 olmamalı).",
+        level: "error",
+      });
+    }
+
+    const imgs = row.images;
+    if (!Array.isArray(imgs) || imgs.length === 0) {
+      issues.push({
+        path: `${prefix}.images`,
+        message:
+          "Trendyol ürün oluşturma en az bir https görsel URL’si ister. Görselleri yükleyin (Supabase public https URL).",
+        level: "error",
+      });
+    }
+
+    const qty = Number(item.quantity);
+    if (!Number.isFinite(qty)) {
+      issues.push({ path: `${prefix}.quantity`, message: "Adet (quantity) sayı değil.", level: "error" });
+    } else if (qty < 0) {
+      issues.push({ path: `${prefix}.quantity`, message: "Adet (quantity) negatif.", level: "warning" });
+    }
+
+    for (const key of ["listPrice", "salePrice"] as const) {
+      const n = Number(item[key]);
+      if (!Number.isFinite(n) || n <= 0) {
+        issues.push({
+          path: `${prefix}.${key}`,
+          message: `${key} geçerli pozitif bir sayı olmalı.`,
+          level: "error",
+        });
+      }
+    }
+
+    const vat = Number(item.vatRate);
+    if (!Number.isFinite(vat)) {
+      issues.push({ path: `${prefix}.vatRate`, message: "KDV oranı (vatRate) geçersiz.", level: "warning" });
+    }
+
+    const dw = Number(item.dimensionalWeight);
+    if (!Number.isFinite(dw) || dw <= 0) {
+      issues.push({
+        path: `${prefix}.dimensionalWeight`,
+        message: "Desi (dimensionalWeight) pozitif bir sayı olmalı.",
         level: "warning",
       });
     }
-    attrs.forEach((raw, i) => {
-      if (!raw || typeof raw !== "object") {
+
+    if (!nonEmptyString(item.description)) {
+      issues.push({ path: `${prefix}.description`, message: "Açıklama (description) boş.", level: "warning" });
+    }
+
+    const attrs = item.attributes;
+    if (!Array.isArray(attrs)) {
+      issues.push({
+        path: `${prefix}.attributes`,
+        message: "Özellikler (attributes) bir JSON dizisi olmalı.",
+        level: "error",
+      });
+    } else {
+      if (attrs.length === 0) {
         issues.push({
-          path: `items[0].attributes[${i}]`,
-          message: `Özellik #${i + 1}: geçersiz nesne.`,
+          path: `${prefix}.attributes`,
+          message: "Özellik dizisi boş — kategori zorunlu alanlar eksik kalabilir.",
           level: "warning",
         });
-        return;
       }
-      const o = raw as Record<string, unknown>;
-      const hasValueId = o.attributeValueId != null && String(o.attributeValueId).trim() !== "";
-      const hasCustom =
-        o.customAttributeValue != null && String(o.customAttributeValue).trim() !== "";
-      if (!hasValueId && !hasCustom) {
-        issues.push({
-          path: `items[0].attributes[${i}]`,
-          message: `Özellik #${i + 1}: attributeValueId veya customAttributeValue dolu olmalı.`,
-          level: "warning",
-        });
-      }
-    });
+      attrs.forEach((raw, ai) => {
+        if (!raw || typeof raw !== "object") {
+          issues.push({
+            path: `${prefix}.attributes[${ai}]`,
+            message: `Özellik #${ai + 1}: geçersiz nesne.`,
+            level: "warning",
+          });
+          return;
+        }
+        const o = raw as Record<string, unknown>;
+        const hasValueId = o.attributeValueId != null && String(o.attributeValueId).trim() !== "";
+        const hasCustom =
+          o.customAttributeValue != null && String(o.customAttributeValue).trim() !== "";
+        if (!hasValueId && !hasCustom) {
+          issues.push({
+            path: `${prefix}.attributes[${ai}]`,
+            message: `Özellik #${ai + 1}: attributeValueId veya customAttributeValue dolu olmalı.`,
+            level: "warning",
+          });
+        }
+      });
+    }
   }
 
   return issues;
@@ -314,7 +356,8 @@ export async function syncProductToTrendyol(
     };
   }
 
-  const payload = buildTrendyolProductPayload(product);
+  const payload = await buildTrendyolProductPayload(product, admin);
+  const variantCount = payload.items.length;
 
   try {
     const response = await trendyolRequest<{ batchRequestId?: string }>({
@@ -346,7 +389,10 @@ export async function syncProductToTrendyol(
       entityId: productId,
       action: "product_sync",
       status: "pending",
-      message: "Product create/update batch sent.",
+      message:
+        variantCount > 1
+          ? `Product batch sent (${variantCount} ölçü/varyant satırı).`
+          : "Product create/update batch sent.",
       batchRequestId,
       requestPayload: payload,
       responsePayload: response,

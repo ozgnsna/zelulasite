@@ -268,6 +268,7 @@ export default async function AdminEditProductPage({
         mode="edit"
         initialProduct={{ ...(product as Record<string, unknown>), id }}
         productUpdatedAt={String((product as { updated_at?: string }).updated_at ?? "") || null}
+        productJustSaved={productSaved}
         importedNeedsReview={importedNeedsReview}
         categories={(categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
         collections={(collections ?? []).map((c) => ({ id: c.id, name: c.name }))}

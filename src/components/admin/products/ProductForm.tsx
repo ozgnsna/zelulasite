@@ -22,6 +22,7 @@ import type { ProductFormProps } from "@/components/admin/products/ProductFormTy
 import { adminCheckbox, adminField, adminJsonField, adminLabel } from "@/components/admin/products/adminFieldClasses";
 import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
+import { TARGET_AUDIENCE_LABELS, TARGET_AUDIENCES } from "@/lib/products/audience";
 import { cn } from "@/lib/utils";
 
 /** Sunucudan gelen id bazen string dışında tipte gelebilir; medya yükleme için tek forma indirger. */
@@ -111,6 +112,7 @@ export function ProductForm({
   mode,
   initialProduct,
   productUpdatedAt,
+  productJustSaved = false,
   importedNeedsReview,
   categories,
   collections,
@@ -128,6 +130,7 @@ export function ProductForm({
 }: ProductFormProps) {
   const p = initialProduct ?? {};
   const isCreate = mode === "create";
+  const formBaselineKey = `${productUpdatedAt ?? ""}|${productJustSaved ? "saved" : ""}`;
   const zelulaSkuDefault =
     isCreate && suggestedZelulaSku?.suggested ? suggestedZelulaSku.suggested : (p.sku ?? "");
   const trendyolBarcodeDefault =
@@ -155,7 +158,7 @@ export function ProductForm({
 
   return (
     <>
-      <ProductFormUnsavedGuard formId="urun-formu" />
+      <ProductFormUnsavedGuard formId="urun-formu" baselineKey={formBaselineKey} />
       {isCreate ? <ProductCreateFormSubmit formId="urun-formu" enabled /> : null}
       {resolvedProductId && uploadProductImageAction ? (
         <form
@@ -181,6 +184,7 @@ export function ProductForm({
           <input type="hidden" name="trendyol_sale_price" defaultValue="" />
           <input type="hidden" name="trendyol_quantity" defaultValue="" />
           <input type="hidden" name="trendyol_dimensional_weight" defaultValue="" />
+          <input type="hidden" name="trendyol_active" defaultValue="" />
         </form>
       ) : null}
       {resolvedProductId && deleteProductImageAction
@@ -246,7 +250,11 @@ export function ProductForm({
                 </span>
               ) : null}
             </div>
-            <ProductFormDraftStatus formId="urun-formu" serverUpdatedAt={productUpdatedAt ?? null} />
+            <ProductFormDraftStatus
+              formId="urun-formu"
+              serverUpdatedAt={productUpdatedAt ?? null}
+              baselineKey={formBaselineKey}
+            />
           </div>
 
           {importedNeedsReview ? (
@@ -380,26 +388,45 @@ export function ProductForm({
           />
 
           <FormSection id="product-section-catalog" title="Kategori" description="Site kataloğundaki yerleşim.">
-            <div>
-              <label className={adminLabel} htmlFor="product-category">
-                Kategori <span className="text-rose-600">*</span>
-              </label>
-              <select
-                id="product-category"
-                name="category_id"
-                defaultValue={p.category_id ?? ""}
-                required
-                className={cn(adminField, "py-2")}
-              >
-                <option value="" disabled>
-                  Kategori seçin
-                </option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className={adminLabel} htmlFor="product-category">
+                  Kategori <span className="text-rose-600">*</span>
+                </label>
+                <select
+                  id="product-category"
+                  name="category_id"
+                  defaultValue={p.category_id ?? ""}
+                  required
+                  className={cn(adminField, "py-2")}
+                >
+                  <option value="" disabled>
+                    Kategori seçin
                   </option>
-                ))}
-              </select>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={adminLabel} htmlFor="product-target-audience">
+                  Hedef kitle
+                </label>
+                <select
+                  id="product-target-audience"
+                  name="target_audience"
+                  defaultValue={p.target_audience ?? "kadin"}
+                  className={cn(adminField, "py-2")}
+                >
+                  {TARGET_AUDIENCES.map((value) => (
+                    <option key={value} value={value}>
+                      {TARGET_AUDIENCE_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             {isCategoryMissing ? (
               <p className="mt-3 text-[10px] leading-relaxed text-rose-700">

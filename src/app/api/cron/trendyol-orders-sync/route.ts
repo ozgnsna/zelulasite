@@ -21,10 +21,11 @@ function isAuthorized(req: Request): boolean {
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
-/** Sabah cron + manuel tetikleme dışında otomatik çalışmasın; Vercel cron tanımlı olsa bile. */
+/** Varsayılan açık; TRENDYOL_INBOUND_CRON_PAUSED=true veya ENABLED=false ile kapatılır. */
 function isCronSyncEnabled(): boolean {
   if (process.env.TRENDYOL_INBOUND_CRON_PAUSED === "true") return false;
-  return process.env.TRENDYOL_INBOUND_CRON_ENABLED === "true";
+  if (process.env.TRENDYOL_INBOUND_CRON_ENABLED === "false") return false;
+  return true;
 }
 
 /** Trendyol siparişlerini çeker; site stoğu master kalır (TY snapshot yazılmaz). */
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       skipped: true,
-      reason: "TRENDYOL_INBOUND_CRON_DISABLED",
+      reason: "TRENDYOL_INBOUND_CRON_PAUSED_OR_DISABLED",
       ran_at: new Date().toISOString(),
     });
   }
@@ -45,7 +46,7 @@ export async function GET(req: Request) {
   const admin = createAdminClient();
   const ranAt = new Date().toISOString();
   try {
-    const result = await syncTrendyolInboundOrders(admin, { orderLookbackDays: 1 });
+    const result = await syncTrendyolInboundOrders(admin, { orderLookbackDays: 2 });
     return NextResponse.json({ ...result, ran_at: ranAt }, { status: result.ok ? 200 : 500 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown_error";

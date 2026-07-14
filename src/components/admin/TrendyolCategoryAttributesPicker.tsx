@@ -77,9 +77,20 @@ function buildJsonPayload(
   return JSON.stringify([...extra, ...picked], null, 2);
 }
 
+function normalizeAttrsJsonForCompare(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw || "[]");
+    if (!Array.isArray(parsed)) return raw;
+    return JSON.stringify(parsed);
+  } catch {
+    return raw;
+  }
+}
+
 function writeTextareaValue(json: string) {
   const ta = document.getElementById("trendyol_category_attributes");
   if (!(ta instanceof HTMLTextAreaElement)) return;
+  if (normalizeAttrsJsonForCompare(ta.value) === normalizeAttrsJsonForCompare(json)) return;
   ta.value = json;
   ta.dispatchEvent(new Event("input", { bubbles: true }));
   ta.dispatchEvent(new Event("change", { bubbles: true }));

@@ -12,6 +12,12 @@ import {
   HEADER_PRIMARY_LEAF_SLUGS,
   MEGA_MENU_GROUPS,
 } from "@/lib/categories/taxonomy";
+import {
+  ERKEK_CATEGORY_SLUGS,
+  ERKEK_HUB_HREF,
+  erkekCategoryHref,
+  erkekCategoryLabel,
+} from "@/lib/products/audience";
 import { cn } from "@/lib/utils";
 import { HeaderSearch } from "@/components/header/HeaderSearch";
 import { TUM_URUNLER_HREF } from "@/components/header/header-nav";
@@ -51,8 +57,10 @@ export function HeaderShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
+  const [erkekOpen, setErkekOpen] = useState(false);
   const accountWrapRef = useClickOutsideRef<HTMLDivElement>(() => setAccountOpen(false));
   const megaWrapRef = useClickOutsideRef<HTMLDivElement>(() => setMegaOpen(false));
+  const erkekWrapRef = useClickOutsideRef<HTMLDivElement>(() => setErkekOpen(false));
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -106,6 +114,61 @@ export function HeaderShell({
                 </Link>
               );
             })}
+            <div
+              ref={erkekWrapRef}
+              className="relative shrink-0"
+              onMouseEnter={() => setErkekOpen(true)}
+              onMouseLeave={() => setErkekOpen(false)}
+            >
+              <Link
+                href={ERKEK_HUB_HREF}
+                aria-expanded={erkekOpen}
+                aria-haspopup="menu"
+                className="inline-flex min-h-11 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-stone-700 transition hover:bg-[#f4f0ea] hover:text-stone-900 lg:px-2.5 lg:text-[11px] xl:text-xs"
+                onFocus={() => setErkekOpen(true)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
+                    setErkekOpen(false);
+                  }
+                }}
+              >
+                Erkek
+                <ChevronDown className={cn("h-3 w-3 opacity-50 transition", erkekOpen && "rotate-180")} aria-hidden />
+              </Link>
+              {erkekOpen ? (
+                <div
+                  role="menu"
+                  className="absolute left-0 top-full z-[60] min-w-[10rem] pt-1"
+                >
+                  <div className="rounded-xl border border-[#e8dfd3] bg-[#fffdfb] py-1.5 shadow-[0_12px_32px_rgba(55,48,40,0.12)]">
+                    <ul>
+                      {ERKEK_CATEGORY_SLUGS.map((slug) => (
+                        <li key={slug}>
+                          <Link
+                            role="menuitem"
+                            href={erkekCategoryHref(slug)}
+                            className="block px-4 py-2 text-sm text-stone-800 transition hover:bg-[#faf6ef]"
+                            onClick={() => setErkekOpen(false)}
+                          >
+                            {erkekCategoryLabel(slug)}
+                          </Link>
+                        </li>
+                      ))}
+                      <li className="mt-1 border-t border-[#ebe6df] pt-1">
+                        <Link
+                          role="menuitem"
+                          href={ERKEK_HUB_HREF}
+                          className="block px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-gold-a11y transition hover:bg-[#faf6ef]"
+                          onClick={() => setErkekOpen(false)}
+                        >
+                          Tümü
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              ) : null}
+            </div>
             <Link
               href="/cok-satanlar"
               className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-medium tracking-wide text-[#7a5f38] ring-1 ring-[color:var(--brand-gold)]/35 transition hover:bg-[#f4f0ea] hover:ring-[color:var(--brand-gold)]/50 lg:px-2.5 lg:text-[11px] xl:text-xs"
@@ -352,6 +415,29 @@ export function HeaderShell({
                     </li>
                   );
                 })}
+              </ul>
+              <p className="mt-5 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-600">Erkek</p>
+              <ul className="mt-2 space-y-0.5">
+                <li>
+                  <Link
+                    href={ERKEK_HUB_HREF}
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Tüm erkek ürünleri
+                  </Link>
+                </li>
+                {ERKEK_CATEGORY_SLUGS.map((slug) => (
+                  <li key={slug}>
+                    <Link
+                      href={erkekCategoryHref(slug)}
+                      className="flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium text-stone-800 transition hover:bg-[#faf6ef]"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {erkekCategoryLabel(slug)}
+                    </Link>
+                  </li>
+                ))}
               </ul>
               <ul className="mt-4 space-y-0.5 border-t border-[#ebe6df] pt-4">
                 <li>

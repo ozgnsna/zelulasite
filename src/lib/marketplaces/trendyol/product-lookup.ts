@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  expandTrendyolVariantRows,
+  parseTrendyolVariantBarcode,
+} from "@/lib/marketplaces/trendyol/product-variants";
+import type { ProductVariant } from "@/lib/types";
 
 type ProductMatchRow = {
   id: string;
@@ -30,7 +35,7 @@ export function buildTrendyolIdentifierToProductIdMap(rows: ProductMatchRow[]): 
   return m;
 }
 
-/** Prefer barcode match, then stockCode. */
+/** Prefer barcode match, then stockCode; ölçü barkodu (Zelula361-10) ana ürüne düşer. */
 export function resolveProductIdForTrendyolIdentifiers(
   map: Map<string, string>,
   barcode: string | null,
@@ -40,7 +45,26 @@ export function resolveProductIdForTrendyolIdentifiers(
   const s = stockCode?.trim() || "";
   if (b && map.has(b)) return map.get(b);
   if (s && map.has(s)) return map.get(s);
+  if (b) {
+    const parsed = parseTrendyolVariantBarcode(b, map.keys());
+    if (parsed && map.has(parsed.baseBarcode)) return map.get(parsed.baseBarcode);
+  }
   return undefined;
+}
+
+/** Ölçü barkodlarını (Zelula361-10) ana ürün id’sine bağlar. */
+export function enrichTrendyolMapWithVariantBarcodes(
+  map: Map<string, string>,
+  rows: ProductMatchRow[],
+  variantsByProduct: Map<string, ProductVariant[]>,
+): void {
+  for (const r of rows) {
+    const variants = variantsByProduct.get(r.id) ?? [];
+    for (const row of expandTrendyolVariantRows(r, variants)) {
+      if (!map.has(row.barcode)) map.set(row.barcode, r.id);
+      if (!map.has(row.stockCode)) map.set(row.stockCode, r.id);
+    }
+  }
 }
 
 export async function buildTrendyolIdentifierToProductIdMapFromIdentifiers(

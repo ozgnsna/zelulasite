@@ -23,9 +23,23 @@ function serializeForm(form: HTMLFormElement): string {
   return parts.join("\x1f");
 }
 
-export function ProductFormUnsavedGuard({ formId }: { formId: string }) {
+export function ProductFormUnsavedGuard({
+  formId,
+  /** Kayıt sonrası veya sunucu snapshot değişince baseline yenilenir (ör. updated_at + productSaved). */
+  baselineKey,
+}: {
+  formId: string;
+  baselineKey?: string;
+}) {
   const initialRef = useRef<string | null>(null);
   const dirtyRef = useRef(false);
+
+  const captureBaseline = useCallback(() => {
+    const form = document.getElementById(formId);
+    if (!(form instanceof HTMLFormElement)) return;
+    initialRef.current = serializeForm(form);
+    dirtyRef.current = false;
+  }, [formId]);
 
   const syncDirty = useCallback(() => {
     const form = document.getElementById(formId);
@@ -37,15 +51,16 @@ export function ProductFormUnsavedGuard({ formId }: { formId: string }) {
     const form = document.getElementById(formId);
     if (!(form instanceof HTMLFormElement)) return;
 
-    initialRef.current = serializeForm(form);
-    dirtyRef.current = false;
+    // Özellik seçici / görsel sayacı mount sonrası formu güncelleyebilir — baseline'ı ertele.
+    const t0 = window.setTimeout(captureBaseline, 0);
+    const t1 = window.setTimeout(captureBaseline, 120);
 
     const onField = () => {
       syncDirty();
     };
 
     const onSubmitCapture = () => {
-      dirtyRef.current = false;
+      captureBaseline();
     };
 
     form.addEventListener("input", onField);
@@ -91,13 +106,15 @@ export function ProductFormUnsavedGuard({ formId }: { formId: string }) {
     document.addEventListener("click", onDocumentClickCapture, true);
 
     return () => {
+      window.clearTimeout(t0);
+      window.clearTimeout(t1);
       form.removeEventListener("input", onField);
       form.removeEventListener("change", onField);
       form.removeEventListener("submit", onSubmitCapture, true);
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("click", onDocumentClickCapture, true);
     };
-  }, [formId, syncDirty]);
+  }, [formId, baselineKey, captureBaseline, syncDirty]);
 
   return null;
 }

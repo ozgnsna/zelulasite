@@ -32,6 +32,8 @@ export type Product = {
   material: string | null;
   color: string | null;
   is_active: boolean;
+  /** Hedef kitle — vitrin filtreleri (kadın / erkek / unisex). */
+  target_audience?: "kadin" | "erkek" | "unisex";
   product_kind?: "physical" | "gift_card";
   trendyol_barcode?: string | null;
   trendyol_stock_code?: string | null;

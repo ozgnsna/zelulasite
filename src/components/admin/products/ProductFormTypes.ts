@@ -15,6 +15,7 @@ export type ProductFormInitialProduct = {
   sku?: string | null;
   stock_quantity?: number | null;
   category_id?: string | null;
+  target_audience?: "kadin" | "erkek" | "unisex" | null;
   collection_id?: string | null;
   material?: string | null;
   color?: string | null;
@@ -68,6 +69,8 @@ export type ProductFormProps = {
   initialProduct?: ProductFormInitialProduct | null;
   /** ISO; ürün düzenle sayfasında son kayıt göstergesi için */
   productUpdatedAt?: string | null;
+  /** Kayıt başarı bandı gösterildiğinde form guard baseline'ı yenilenir */
+  productJustSaved?: boolean;
   importedNeedsReview?: boolean;
   categories: ProductFormCategoryOption[];
   collections: ProductFormCollectionOption[];

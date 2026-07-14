@@ -53,6 +53,7 @@ import {
   fetchTrendyolCategoryAttributesCached,
   type TrendyolCategoryAttributePickerRow,
 } from "@/lib/marketplaces/trendyol/categories";
+import { parseTargetAudience } from "@/lib/products/audience";
 import {
   fetchTrendyolCategoryTreeCached,
   searchTrendyolCategoryLeaves,
@@ -404,6 +405,7 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
     featured: formData.get("featured") === "on",
     new_arrival: id ? formData.get("new_arrival") === "on" : true,
     category_id: categoryId,
+    target_audience: parseTargetAudience(formData.get("target_audience")),
     collection_id: String(formData.get("collection_id") ?? "") || null,
     material: String(formData.get("material") ?? "") || null,
     color: String(formData.get("color") ?? "") || null,
@@ -477,6 +479,8 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
   revalidatePath("/");
   revalidateTag("storefront-home", "max");
   revalidatePath("/admin/products");
+  revalidatePath("/urunler");
+  revalidatePath("/erkek");
   if (productId) revalidatePath(`/admin/products/${productId}/edit`);
   if (!productId) {
     return failSave(newProductFormPath, "Ürün kaydı tamamlanamadı. Lütfen tekrar deneyin.");
@@ -553,6 +557,9 @@ function buildTrendyolPushOverridesFromForm(formData: FormData): TrendyolProduct
   if (tq !== "" && !Number.isNaN(Number(tq))) o.trendyol_quantity = Number(tq);
   const dw = String(formData.get("trendyol_dimensional_weight") ?? "").trim();
   if (dw !== "" && !Number.isNaN(Number(dw))) o.trendyol_dimensional_weight = Number(dw);
+  if (formData.has("trendyol_active")) {
+    o.trendyol_active = formData.get("trendyol_active") === "on";
+  }
   return o;
 }
 
@@ -743,6 +750,7 @@ export async function reconcileDailyTrendyolStockAction() {
   revalidatePath("/admin/trendyol");
   revalidatePath("/admin/products");
   revalidatePath("/urunler");
+  revalidatePath("/erkek");
 
   const base = "/admin/trendyol";
   if (!result.ok) {
@@ -873,7 +881,7 @@ export async function getTrendyolProductPayloadPreviewAction(productId: string) 
   }
 
   const product = data as TrendyolProductPayloadInput;
-  const payload = buildTrendyolProductPayload(product);
+  const payload = await buildTrendyolProductPayload(product, admin);
   const issues = analyzeTrendyolProductPayloadIssues(payload);
   return { ok: true as const, payload, issues };
 }
@@ -1161,6 +1169,7 @@ async function revalidateAfterProductImageChange(
   if (slug && row?.is_active) {
     revalidatePath(`/urunler/${slug}`);
     revalidatePath("/urunler");
+  revalidatePath("/erkek");
     revalidatePath("/cok-satanlar");
   }
 }

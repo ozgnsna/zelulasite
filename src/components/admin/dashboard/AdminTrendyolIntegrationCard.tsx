@@ -145,7 +145,7 @@ export function AdminTrendyolIntegrationCard({
           <h3 className="text-sm font-semibold text-stone-900">Sipariş senkronu (24 saat)</h3>
           <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
             Son 24 saatteki Trendyol siparişlerini çeker; eşleşen ürünlerde site stoğundan düşer (site stok master).
-            Otomatik sabah cron şu an kapalı; yalnızca aşağıdaki butonla manuel çalıştırın. Trendyol stoğu siteye yazılmaz.
+            Her gün ~08:00 (TR) Vercel cron da aynı işlemi çalıştırır. Trendyol stoğu siteye yazılmaz.
           </p>
           <form action={reconcileDailyTrendyolStockAction} className="mt-3">
             <AdminTrendyolSubmitButton variant="primary" pendingLabel="Senkronize ediliyor…">
