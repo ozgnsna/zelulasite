@@ -50,6 +50,7 @@ const WANTED = [
   { name: "Şahmeran", slug: "sahmeran" },
   { name: "Broş", slug: "bros" },
   { name: "Şapka", slug: "sapka" },
+  { name: "Setler", slug: "setler" },
 ];
 
 const { data: existing, error } = await supabase.from("categories").select("id,name,slug").order("name");

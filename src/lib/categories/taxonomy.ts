@@ -10,7 +10,7 @@ export type CategoryTaxon = {
   slug: string;
   parentId: string | null;
   /**
-   * Supabase `categories.slug` ile eşleşme; null = özel liste (ör. setler → öne çıkanlar).
+   * Supabase `categories.slug` ile eşleşme; null = özel liste (ör. setler hub yok).
    */
   dbCategorySlug: string | null;
   /** `takilar` / `aksesuar` gibi üst düğümler */
@@ -28,7 +28,7 @@ export const CATEGORY_TAXONOMY: CategoryTaxon[] = [
   { id: "halhal", name: "Halhal", slug: "halhal", parentId: "takilar", dbCategorySlug: "halhal", kind: "leaf" },
   { id: "sahmeran", name: "Şahmeran", slug: "sahmeran", parentId: "takilar", dbCategorySlug: "sahmeran", kind: "leaf" },
   { id: "yuzuk", name: "Yüzük", slug: "yuzuk", parentId: "takilar", dbCategorySlug: "yuzuk", kind: "leaf" },
-  { id: "setler", name: "Setler", slug: "setler", parentId: "takilar", dbCategorySlug: null, kind: "leaf" },
+  { id: "setler", name: "Setler", slug: "setler", parentId: "takilar", dbCategorySlug: "setler", kind: "leaf" },
 
   { id: "bros", name: "Broş", slug: "bros", parentId: "aksesuar", dbCategorySlug: "bros", kind: "leaf" },
   { id: "sapka", name: "Şapka", slug: "sapka", parentId: "aksesuar", dbCategorySlug: "sapka", kind: "leaf" },

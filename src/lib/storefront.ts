@@ -278,25 +278,6 @@ export async function getCategoryPageData(
     return null;
   }
 
-  if (taxon.slug === "setler") {
-    const r = await getProducts({
-      sort: options.sort ?? "featured",
-      audience: "kadin",
-      featuredOnly: true,
-      collection: options.collection,
-      min: options.min,
-      max: options.max,
-    });
-    return {
-      mode: "list",
-      taxon,
-      products: r.products,
-      categories: r.categories,
-      collections: r.collections,
-      listCaption: "Öne çıkan seçkiler — koleksiyonlarını tamamlayan parçalar.",
-    };
-  }
-
   if (taxon.dbCategorySlug) {
     const r = await getProducts({
       category: taxon.dbCategorySlug,
@@ -306,12 +287,15 @@ export async function getCategoryPageData(
       min: options.min,
       max: options.max,
     });
+    const listCaption =
+      taxon.slug === "setler" ? "Kolye, küpe, bileklik ve kombin takı setleri." : undefined;
     return {
       mode: "list",
       taxon,
       products: r.products,
       categories: r.categories,
       collections: r.collections,
+      listCaption,
     };
   }
 
