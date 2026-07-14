@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ProductImage } from "@/components/product/ProductImage";
 import { useRouter } from "next/navigation";
@@ -98,6 +99,7 @@ export function CartDrawer({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
   const [pendingUpsellId, setPendingUpsellId] = useState<string | null>(null);
   const [holdSecondsLeft, setHoldSecondsLeft] = useState(CART_HOLD_SECONDS);
   const [, start] = useTransition();
@@ -120,6 +122,10 @@ export function CartDrawer({
   }, [holdSecondsLeft]);
 
   useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
     if (!open || lines.length === 0 || holdSecondsLeft <= 0) return;
     const interval = window.setInterval(() => {
       setHoldSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
@@ -127,32 +133,32 @@ export function CartDrawer({
     return () => window.clearInterval(interval);
   }, [open, lines.length, holdSecondsLeft]);
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setHoldSecondsLeft(CART_HOLD_SECONDS);
-          setOpen(true);
-        }}
-        className="relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-2 text-xs font-medium text-stone-800 shadow-sm transition hover:border-stone-300 sm:min-w-0 sm:text-sm"
-        aria-label={count > 0 ? `Sepet, ${count} ürün` : "Sepet"}
-      >
-        <ShoppingBag className="h-4 w-4 shrink-0 text-stone-600" strokeWidth={1.75} aria-hidden />
-        <span className="hidden xl:inline">Sepet</span>
-        {count > 0 ? (
-          <span className="grid min-h-[1.125rem] min-w-[1.125rem] place-content-center rounded-full bg-[#4a4034] px-1 text-[10px] font-semibold text-white sm:min-h-[1.25rem] sm:min-w-[1.25rem] sm:text-[11px]">
-            {count > 99 ? "99+" : count}
-          </span>
-        ) : null}
-      </button>
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
-      {open ? (
-        <div className="fixed inset-0 z-[70] bg-black/30" onClick={() => setOpen(false)}>
-          <aside
-            onClick={(e) => e.stopPropagation()}
-            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[#e8dece] bg-[#fffdfb] p-5 shadow-2xl"
-          >
+  const drawerOverlay = open ? (
+    <div
+      className="fixed inset-0 z-[90] bg-black/30"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Sepetim"
+      onClick={() => setOpen(false)}
+    >
+      <aside
+        onClick={(e) => e.stopPropagation()}
+        className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[#e8dece] bg-[#fffdfb] p-5 shadow-2xl"
+      >
             <div className="flex items-center justify-between">
               <h2 className="font-serif text-2xl">Sepetim</h2>
               <button
@@ -262,8 +268,30 @@ export function CartDrawer({
               </div>
             </div>
           </aside>
-        </div>
-      ) : null}
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setHoldSecondsLeft(CART_HOLD_SECONDS);
+          setOpen(true);
+        }}
+        className="relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-[#e5dcd0]/90 bg-white/90 px-3 py-2 text-xs font-medium text-stone-800 shadow-sm transition hover:border-stone-300 sm:min-w-0 sm:text-sm"
+        aria-label={count > 0 ? `Sepet, ${count} ürün` : "Sepet"}
+      >
+        <ShoppingBag className="h-4 w-4 shrink-0 text-stone-600" strokeWidth={1.75} aria-hidden />
+        <span className="hidden xl:inline">Sepet</span>
+        {count > 0 ? (
+          <span className="grid min-h-[1.125rem] min-w-[1.125rem] place-content-center rounded-full bg-[#4a4034] px-1 text-[10px] font-semibold text-white sm:min-h-[1.25rem] sm:min-w-[1.25rem] sm:text-[11px]">
+            {count > 99 ? "99+" : count}
+          </span>
+        ) : null}
+      </button>
+
+      {portalReady && drawerOverlay ? createPortal(drawerOverlay, document.body) : null}
     </>
   );
 }
