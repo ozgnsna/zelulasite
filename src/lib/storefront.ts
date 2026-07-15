@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import type { Category, Collection, Product } from "@/lib/types";
 import {
   childrenOf,
@@ -69,68 +68,6 @@ export async function getHomeData() {
     return await getHomeDataCached();
   } catch {
     return { categories: [], collections: [], bestSellers: [], newArrivals: [] as Product[] };
-  }
-}
-
-const BIKINI_CHARM_SKUS = ["ZL-CANDY-BİKİNİ", "ZL-DENIZ-BİKİNİ", "ZL-NAZAR-CHARM"] as const;
-
-export type HomeBikiniCharmSlide = {
-  id: string;
-  title: string;
-  subtitle: string;
-  href: string;
-  imageUrl: string;
-};
-
-async function fetchBikiniCharmSlidesFromDb(): Promise<HomeBikiniCharmSlide[]> {
-  const supabase = createStorefrontReadClient();
-  if (!supabase) return [];
-
-  const { data } = await supabase
-    .from("products")
-    .select("id,sku,slug,name,short_description,product_images(image_url,is_cover,sort_order)")
-    .in("sku", [...BIKINI_CHARM_SKUS])
-    .eq("is_active", true)
-    .gt("stock_quantity", 0);
-
-  const bySku = new Map((data ?? []).map((row) => [String(row.sku ?? ""), row]));
-  const fallbackImage = "https://images.pexels.com/photos/5370707/pexels-photo-5370707.jpeg?auto=compress&cs=tinysrgb&w=1200";
-
-  return BIKINI_CHARM_SKUS.flatMap((sku) => {
-    const row = bySku.get(sku);
-    if (!row) return [];
-    const slug = String(row.slug ?? "").trim();
-    if (!slug) return [];
-    const short = String(row.short_description ?? "").trim();
-    return [
-      {
-        id: String(row.id),
-        title: String(row.name ?? "Bikini charm zinciri"),
-        subtitle:
-          short.length > 0
-            ? short.length > 120
-              ? `${short.slice(0, 117)}…`
-              : short
-            : "Altın kaplama bikini charm zinciri — plaj ve festival stiline özel.",
-        href: `/urunler/${slug}`,
-        imageUrl: pickProductCoverImageUrl(row.product_images, fallbackImage),
-      },
-    ];
-  });
-}
-
-const getBikiniCharmSlidesCached = unstable_cache(
-  fetchBikiniCharmSlidesFromDb,
-  ["storefront-bikini-charm-slides"],
-  { revalidate: 60, tags: ["storefront-home"] },
-);
-
-/** Ana sayfa bikini charm banner slaytları. */
-export async function getHomeBikiniCharmSlides(): Promise<HomeBikiniCharmSlide[]> {
-  try {
-    return await getBikiniCharmSlidesCached();
-  } catch {
-    return [];
   }
 }
 

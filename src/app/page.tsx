@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
-import { getHomeBikiniCharmSlides, getHomeData, getProductPageHrefByName } from "@/lib/storefront";
+import { getHomeData, getProductPageHrefByName } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
@@ -37,6 +37,15 @@ const HERO_BANNER_DEFS: HeroBannerDef[] = [
     alt: "Zelula — Balığın Işıltısı; Zelula Artisan Fish Küpe",
     href: "/urunler/zelula-artisan-fish-kupe",
     objectPosition: "left center",
+  },
+  {
+    id: "bikini-charm",
+    imageSrc: "/hero-banner-bikini-charm.webp",
+    width: 1024,
+    height: 682,
+    alt: "Zelula — Bikini Charm Koleksiyonu; yengeç, dondurma ve balık charm zincirleri",
+    href: "/kategori/aksesuar",
+    objectPosition: "center center",
   },
   {
     id: "gold",
@@ -77,23 +86,10 @@ async function buildHeroBanners() {
     }),
   );
 
-  const staticBanners = HERO_BANNER_DEFS.map(({ productName, ...banner }) => ({
+  return HERO_BANNER_DEFS.map(({ productName, ...banner }) => ({
     ...banner,
     href: productName ? hrefByName.get(productName) ?? banner.href : banner.href,
   }));
-
-  const bikiniSlides = await getHomeBikiniCharmSlides();
-  const bikiniBanners = bikiniSlides.map((slide) => ({
-    id: `bikini-charm-${slide.id}`,
-    imageSrc: slide.imageUrl,
-    width: 1024,
-    height: 576,
-    alt: `Zelula — ${slide.title}`,
-    href: slide.href,
-    objectPosition: "center center",
-  }));
-
-  return [...staticBanners, ...bikiniBanners];
 }
 
 export default async function HomePage() {
