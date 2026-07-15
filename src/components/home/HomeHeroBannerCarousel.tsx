@@ -55,7 +55,7 @@ export function HomeHeroBannerCarousel({ banners }: { banners: HomeHeroBanner[] 
               alt={active.alt}
               width={active.width}
               height={active.height}
-              quality={90}
+              unoptimized
               priority={index === 0}
               loading={index === 0 ? "eager" : "lazy"}
               fetchPriority={index === 0 ? "high" : "low"}
