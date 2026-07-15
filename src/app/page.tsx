@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
-import { getHomeData, getProductPageHrefByName } from "@/lib/storefront";
+import { getHomeBikiniCharmSlides, getHomeData, getProductPageHrefByName } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
 import { HomeHeroBannerCarousel } from "@/components/home/HomeHeroBannerCarousel";
+import { HomeShowcaseSlider } from "@/components/home/HomeShowcaseSlider";
 import { HomeNewsletter } from "@/components/home/HomeNewsletter";
 import { HomeCategoryGrid } from "@/components/home/HomeCategoryGrid";
 import { HomeWhyZelula } from "@/components/home/HomeWhyZelula";
@@ -84,8 +85,8 @@ async function buildHeroBanners() {
 }
 
 export default async function HomePage() {
-  const [{ categories, bestSellers, newArrivals }, { isSignedIn, favoriteIds }, heroBanners] =
-    await Promise.all([getHomeData(), loadFavoriteUiContext(), buildHeroBanners()]);
+  const [{ categories, bestSellers, newArrivals }, { isSignedIn, favoriteIds }, heroBanners, bikiniCharmSlides] =
+    await Promise.all([getHomeData(), loadFavoriteUiContext(), buildHeroBanners(), getHomeBikiniCharmSlides()]);
 
   const bestSellerItems = bestSellers.map((p) => ({
     product_id: p.id,
@@ -149,6 +150,32 @@ export default async function HomePage() {
       <ViewItemListTracker listName="Homepage New Arrivals" listId="home_new_arrivals" items={newArrivalItems} />
 
       <HomeHeroBannerCarousel banners={heroBanners} />
+
+      {bikiniCharmSlides.length > 0 ? (
+        <FadeIn delay={0.01}>
+          <section className="border-t border-[#ebe6df] bg-[#fffdfb]" aria-labelledby="home-bikini-charm-heading">
+            <div className="container-premium pt-10 text-center sm:pt-12">
+              <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Yaz stili</p>
+              <h2
+                id="home-bikini-charm-heading"
+                className="mt-2 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl"
+              >
+                Bikini charm zincirleri
+              </h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm font-light text-stone-600">
+                Altın kaplama charm detaylarıyla plaj ve festival kombinlerine ışıltı kat.
+              </p>
+              <Link
+                href="/kategori/aksesuar"
+                className="mt-4 inline-flex min-h-11 items-center text-[11px] font-medium uppercase tracking-[0.2em] text-stone-600 underline-offset-4 transition hover:text-stone-800 hover:underline"
+              >
+                Tüm aksesuarlar
+              </Link>
+            </div>
+            <HomeShowcaseSlider slides={bikiniCharmSlides} />
+          </section>
+        </FadeIn>
+      ) : null}
 
       <FadeIn delay={0.02}>
         <section className="border-t border-[#ebe6df] bg-[#fffdfb] py-10 sm:py-16">
