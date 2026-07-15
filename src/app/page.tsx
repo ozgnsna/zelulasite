@@ -48,6 +48,15 @@ const HERO_BANNER_DEFS: HeroBannerDef[] = [
     objectPosition: "left center",
   },
   {
+    id: "su-yolu-kolye",
+    imageSrc: "/hero-banner-su-yolu-kolye.webp",
+    width: 2200,
+    height: 1257,
+    alt: "Zelula — Su Yolu Kolye Koleksiyonu; zirkon taşlı paslanmaz çelik kolye",
+    href: "/kategori/kolye",
+    objectPosition: "left center",
+  },
+  {
     id: "baligin-isiltisi",
     imageSrc: "/hero-banner-baligin-isiltisi.webp",
     width: 1024,
