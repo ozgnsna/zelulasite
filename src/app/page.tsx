@@ -41,8 +41,8 @@ const HERO_BANNER_DEFS: HeroBannerDef[] = [
   {
     id: "erkek-yuzuk",
     imageSrc: "/hero-banner-erkek-yuzuk.webp",
-    width: 2048,
-    height: 1364,
+    width: 2200,
+    height: 1465,
     alt: "Zelula — Erkek Yüzük Koleksiyonu; paslanmaz çelik maskülen yüzükler",
     href: "/erkek/yuzuk",
     objectPosition: "left center",
