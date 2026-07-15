@@ -53,7 +53,8 @@ const HERO_BANNER_DEFS: HeroBannerDef[] = [
     width: 2200,
     height: 1257,
     alt: "Zelula — Su Yolu Kolye Koleksiyonu; zirkon taşlı paslanmaz çelik kolye",
-    href: "/kategori/kolye",
+    href: "/urunler/lumiere-stream-zirkon-tasl-gumus-renk-celik-su-yolu-koly",
+    productName: "Lumière Stream Zirkon Taşlı Gümüş Renk Çelik Su Yolu Kolye",
     objectPosition: "left center",
   },
   {
