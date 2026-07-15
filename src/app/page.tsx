@@ -32,8 +32,8 @@ const HERO_BANNER_DEFS: HeroBannerDef[] = [
   {
     id: "bikini-charm",
     imageSrc: "/hero-banner-bikini-charm.webp",
-    width: 2048,
-    height: 1364,
+    width: 2200,
+    height: 1465,
     alt: "Zelula — Bikini Charm Koleksiyonu; yengeç, dondurma ve balık charm zincirleri",
     href: "/kategori/aksesuar",
     objectPosition: "center center",
