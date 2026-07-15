@@ -30,6 +30,15 @@ type HeroBannerDef = {
 
 const HERO_BANNER_DEFS: HeroBannerDef[] = [
   {
+    id: "bikini-charm",
+    imageSrc: "/hero-banner-bikini-charm.webp",
+    width: 2048,
+    height: 1364,
+    alt: "Zelula — Bikini Charm Koleksiyonu; yengeç, dondurma ve balık charm zincirleri",
+    href: "/kategori/aksesuar",
+    objectPosition: "center center",
+  },
+  {
     id: "baligin-isiltisi",
     imageSrc: "/hero-banner-baligin-isiltisi.webp",
     width: 1024,
@@ -37,15 +46,6 @@ const HERO_BANNER_DEFS: HeroBannerDef[] = [
     alt: "Zelula — Balığın Işıltısı; Zelula Artisan Fish Küpe",
     href: "/urunler/zelula-artisan-fish-kupe",
     objectPosition: "left center",
-  },
-  {
-    id: "bikini-charm",
-    imageSrc: "/hero-banner-bikini-charm.webp",
-    width: 1024,
-    height: 682,
-    alt: "Zelula — Bikini Charm Koleksiyonu; yengeç, dondurma ve balık charm zincirleri",
-    href: "/kategori/aksesuar",
-    objectPosition: "center center",
   },
   {
     id: "gold",
