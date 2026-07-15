@@ -1,5 +1,6 @@
 "use client";
 
+import { getAnnouncementMonthTheme } from "@/lib/announcement/month-theme";
 import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
 import { getBayramAnnouncementMessages, isBayramShippingPause } from "@/lib/storefront/bayram-shipping-notice";
 import { formatShippingCountdownBanner, getShippingCountdownState } from "@/lib/storefront/pdp-shipping";
@@ -42,11 +43,13 @@ export function AnnouncementBar() {
   }, []);
 
   const messages = useMemo(() => buildTickerMessages(), [tick]);
+  const monthTheme = useMemo(() => getAnnouncementMonthTheme(), [tick]);
   const loop = reduceMotion ? messages : [...messages, ...messages];
 
   return (
     <div
-      className="relative z-[51] flex h-9 items-center overflow-hidden bg-[linear-gradient(180deg,#f5ecda_0%,#e9d5b4_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:h-10"
+      className="relative z-[51] flex h-9 items-center overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-[background,color] duration-700 sm:h-10"
+      style={{ background: monthTheme.background }}
       aria-label="Duyurular"
     >
       <div
@@ -59,9 +62,10 @@ export function AnnouncementBar() {
         {loop.map((text, index) => (
           <span
             key={`${text}-${index}`}
-            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-5 text-[11px] font-medium tracking-wide text-stone-700 sm:px-6 sm:text-xs"
+            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-5 text-[11px] font-medium tracking-wide transition-colors duration-700 sm:px-6 sm:text-xs"
+            style={{ color: monthTheme.text }}
           >
-            <span className="text-brand-gold-a11y" aria-hidden>
+            <span style={{ color: monthTheme.accent }} aria-hidden>
               ●
             </span>
             {text}
