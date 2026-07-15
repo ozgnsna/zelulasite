@@ -21,6 +21,7 @@ import {
   problemSecondaryPillClass,
   type ProductListOptRow,
 } from "@/lib/admin/products-list-optimization";
+import { productMatchesAdminSearch } from "@/lib/admin/products-list-search";
 import {
   buildProductListSuggestion,
   classifyProductSalesRow,
@@ -125,7 +126,7 @@ export default async function AdminProductsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const query = (sp.q ?? "").trim().toLowerCase();
+  const query = (sp.q ?? "").trim();
   const statusFilter = (sp.status ?? "all").trim();
   const trendyolFilter = (sp.trendyol ?? "all").trim();
   const stockFilter = (sp.stock ?? "all").trim();
@@ -207,11 +208,7 @@ export default async function AdminProductsPage({
   const listedActiveCount = allRows.filter((p) => Boolean(p.is_active) && isListedOnTrendyol(p)).length;
   const readinessPct =
     totalCatalog > 0 ? Math.min(100, Math.round((listedActiveCount / totalCatalog) * 100)) : 0;
-  const rows = allRows.filter((p) => {
-    if (!query) return true;
-    const hay = `${p.name ?? ""} ${p.sku ?? ""}`.toLowerCase();
-    return hay.includes(query);
-  });
+  const rows = allRows.filter((p) => productMatchesAdminSearch(String(p.name ?? ""), String(p.sku ?? ""), query));
 
   const baseFiltered = rows.filter((p) => {
     const stock = Number(p.stock_quantity ?? 0);
