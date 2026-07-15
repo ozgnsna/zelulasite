@@ -15,6 +15,11 @@ import {
   type ErkekCategorySlug,
   type TargetAudience,
 } from "@/lib/products/audience";
+import {
+  getIsoWeekKey,
+  resolveHomeCategorySpotlights,
+  type HomeCategoryCard,
+} from "@/lib/storefront/home-category-spotlights";
 
 function createStorefrontReadClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -695,5 +700,23 @@ export async function getProductBySlug(slug: string) {
     return { ...best, categorySlug: best.category?.slug };
   } catch {
     return null;
+  }
+}
+
+const getHomeCategoryCardsCached = unstable_cache(
+  async (weekKey: string) => {
+    const supabase = createStorefrontReadClient();
+    if (!supabase) return [] as HomeCategoryCard[];
+    return resolveHomeCategorySpotlights(supabase, weekKey);
+  },
+  ["home-category-cards"],
+  { revalidate: 3600, tags: ["home-category-spotlights", "storefront-home"] },
+);
+
+export async function getHomeCategoryCards(): Promise<HomeCategoryCard[]> {
+  try {
+    return await getHomeCategoryCardsCached(getIsoWeekKey());
+  } catch {
+    return [];
   }
 }

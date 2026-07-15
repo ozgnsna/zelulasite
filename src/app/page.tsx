@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
-import { getHomeData, getProductPageHrefByName } from "@/lib/storefront";
+import { getHomeData, getProductPageHrefByName, getHomeCategoryCards } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
@@ -112,8 +112,8 @@ async function buildHeroBanners() {
 }
 
 export default async function HomePage() {
-  const [{ categories, bestSellers, newArrivals }, { isSignedIn, favoriteIds }, heroBanners] =
-    await Promise.all([getHomeData(), loadFavoriteUiContext(), buildHeroBanners()]);
+  const [{ bestSellers, newArrivals }, { isSignedIn, favoriteIds }, heroBanners, categoryCards] =
+    await Promise.all([getHomeData(), loadFavoriteUiContext(), buildHeroBanners(), getHomeCategoryCards()]);
 
   const bestSellerItems = bestSellers.map((p) => ({
     product_id: p.id,
@@ -134,42 +134,11 @@ export default async function HomePage() {
 
   const bestSlice = bestSellers.slice(0, 4);
   const kombinSlice = newArrivals.slice(0, 4);
-  const categoryDefaults = [
-    {
-      slug: "kolye",
-      label: "Kolye",
-      href: "/kategori/kolye",
-      fallbackImage: "https://images.pexels.com/photos/1454173/pexels-photo-1454173.jpeg?auto=compress&cs=tinysrgb&w=800",
-    },
-    {
-      slug: "kupe",
-      label: "Küpe",
-      href: "/kategori/kupe",
-      fallbackImage: "https://images.pexels.com/photos/5370707/pexels-photo-5370707.jpeg?auto=compress&cs=tinysrgb&w=800",
-    },
-    {
-      slug: "bileklik",
-      label: "Bileklik",
-      href: "/kategori/bileklik",
-      fallbackImage: "https://images.pexels.com/photos/5370704/pexels-photo-5370704.jpeg?auto=compress&cs=tinysrgb&w=800",
-    },
-    {
-      slug: "yuzuk",
-      label: "Yüzük",
-      href: "/kategori/yuzuk",
-      fallbackImage: "https://images.pexels.com/photos/5370706/pexels-photo-5370706.jpeg?auto=compress&cs=tinysrgb&w=800",
-    },
-  ] as const;
-  const categoryBySlug = new Map(categories.map((c) => [c.slug, c]));
-  const categoryCards = categoryDefaults.map((cfg) => {
-    const dbRow = categoryBySlug.get(cfg.slug);
-    const imageFromDb = String(dbRow?.image_url ?? "").trim();
-    return {
-      label: dbRow?.name ?? cfg.label,
-      href: cfg.href,
-      image: imageFromDb || cfg.fallbackImage,
-    };
-  });
+  const categoryGridItems = categoryCards.map((card) => ({
+    label: card.label,
+    href: card.href,
+    image: card.image,
+  }));
 
   return (
     <main className="bg-[#faf8f5] pb-20">
@@ -231,7 +200,7 @@ export default async function HomePage() {
             <p className="mt-2 text-sm font-light text-stone-600">İhtiyacın olan parçayı tek dokunuşla seç.</p>
           </div>
           <div className="mt-10">
-            <HomeCategoryGrid items={categoryCards} />
+            <HomeCategoryGrid items={categoryGridItems} />
           </div>
         </section>
       </FadeIn>
