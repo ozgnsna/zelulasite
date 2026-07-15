@@ -257,8 +257,20 @@ export function Footer() {
       </div>
 
       <div className="border-t border-neutral-200 bg-[#f4f2ef] px-6 py-3">
-        <div className="container-premium text-center text-xs text-stone-600 sm:text-left">
+        <div className="container-premium flex flex-col items-center gap-1.5 text-center text-xs text-stone-600 sm:flex-row sm:items-center sm:justify-between sm:text-left">
           <p>© 2026 Zelula. Tüm hakları saklıdır.</p>
+          <p className="text-[10px] leading-relaxed text-stone-500 sm:text-[11px]">
+            Site altyapısı{" "}
+            <a
+              href="https://dinamikpos.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-stone-600 underline decoration-stone-400/70 underline-offset-[3px] transition hover:text-stone-900"
+            >
+              Dinamik Pos
+            </a>
+            {" "}tarafından geliştirilmiştir
+          </p>
         </div>
       </div>
     </footer>
