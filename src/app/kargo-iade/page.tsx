@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { RefreshCcw, Truck } from "lucide-react";
+import { FREE_SHIPPING_THRESHOLD_TRY, STANDARD_SHIPPING_FEE_TRY } from "@/lib/free-shipping";
+import { formatTry } from "@/lib/money";
 import { getSupportWhatsAppHref } from "@/lib/support-contact";
 import { BAYRAM_POLICY_LINE, isBayramShippingPause } from "@/lib/storefront/bayram-shipping-notice";
 import { SHIPPING_POLICY_LINE } from "@/lib/storefront/pdp-shipping";
@@ -14,6 +16,8 @@ export default function ShippingReturnsPage() {
   const supportMessage = "Merhaba, iade süreci hakkında destek almak istiyorum ✨";
   const supportHref = getSupportWhatsAppHref(supportMessage);
   const shippingPolicyLine = isBayramShippingPause() ? BAYRAM_POLICY_LINE : SHIPPING_POLICY_LINE;
+  const freeShippingThresholdLabel = formatTry(FREE_SHIPPING_THRESHOLD_TRY);
+  const standardShippingFeeLabel = formatTry(STANDARD_SHIPPING_FEE_TRY);
 
   return (
     <main className="container-premium pb-20 pt-12 sm:pt-16">
@@ -32,6 +36,13 @@ export default function ShippingReturnsPage() {
           </h2>
           <ul className="mt-3 space-y-2 text-sm leading-relaxed text-stone-700">
             <li>- {shippingPolicyLine}</li>
+            <li>
+              - {freeShippingThresholdLabel} ve üzeri siparişlerde kargo ücretsizdir.
+            </li>
+            <li>
+              - {freeShippingThresholdLabel} altı fiziksel siparişlerde kargo ücreti {standardShippingFeeLabel}&apos;dir.
+            </li>
+            <li>- Dijital hediye kartı siparişlerinde kargo ücreti uygulanmaz.</li>
             <li>- Gönderimler yalnızca Türkiye içi adreslere yapılır.</li>
             <li>- Teslimat süresi adres ve dönemsel yoğunluğa göre değişebilir.</li>
             <li>- Tüm siparişlerin özenle paketlenir.</li>

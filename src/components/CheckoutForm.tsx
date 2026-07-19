@@ -186,7 +186,7 @@ export function CheckoutForm({
   const promoDiscount = appliedPromo?.discountAmount ?? 0;
   const orderTotalBeforeGift = Math.max(0, subtotalAfterLoyalty - promoDiscount);
   const giftDiscount = appliedGift?.amountApplied ?? 0;
-  const payable = Math.max(0, orderTotalBeforeGift - giftDiscount);
+  const payable = Math.max(0, orderTotalBeforeGift + shippingCost - giftDiscount);
   const earnedPointsPreview = Math.floor(payable / 100) * ZELULA_PUAN_PER_100_TRY;
   const hasLoyaltyPoints = isSignedIn && loyaltyAvailablePoints > 0;
   const resolvedAccountName = (accountFullName ?? "").trim();

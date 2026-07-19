@@ -1,13 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
+import { getSiteOrigin } from "@/lib/seo/site";
 
 export const dynamic = "force-dynamic";
 
-const SITE_URL = (() => {
-  const env = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (env && env.startsWith("https://")) return env.replace(/\/+$/, "");
-  return "https://zeluladesign.com";
-})();
+const SITE_URL = getSiteOrigin();
 
 const BRAND = "Zelula";
 /** Google ürün taksonomisi: Apparel & Accessories > Jewelry */

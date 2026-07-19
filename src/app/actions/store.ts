@@ -30,6 +30,7 @@ import { completeGiftCardFullyCoveredOrder } from "@/lib/payments/order-status";
 import { normalizeEmailInput } from "@/lib/account/email-input";
 import { normalizeTurkishFullName } from "@/lib/account/turkish-full-name";
 import { isValidTurkishMobileDigits, normalizeTurkishMobileInput } from "@/lib/account/turkish-mobile-phone";
+import { computeShippingFeeTry } from "@/lib/free-shipping";
 
 /** ZLL0001… atomik sıra; migration / RPC yoksa eski uzun format. */
 async function allocateOrderNumber(admin: ReturnType<typeof createAdminClient>): Promise<string> {
@@ -487,7 +488,11 @@ export async function createCheckout(formData: FormData) {
   const cookieStore = await cookies();
   const referralCode = cookieStore.get(ZELULA_REFERRAL_COOKIE)?.value ?? null;
 
-  const shipping = 0;
+  const hasPhysicalItems = cart.some((line) => {
+    const p = productById.get(line.productId);
+    return p?.product_kind !== "gift_card";
+  });
+  const shipping = computeShippingFeeTry(subtotal, { hasPhysicalItems });
   const useLoyaltyRedeem = String(formData.get("loyalty_redeem") ?? "") === "on";
   let loyaltyRedeemPoints = 0;
   let loyaltyDiscount = 0;

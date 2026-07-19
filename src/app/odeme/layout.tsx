@@ -3,6 +3,6 @@ import { privatePageMetadata } from "@/lib/seo/robots-metadata";
 
 export const metadata: Metadata = privatePageMetadata;
 
-export default function HesabimLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+export default function OdemeLayout({ children }: { children: React.ReactNode }) {
+  return children;
 }

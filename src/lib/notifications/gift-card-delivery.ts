@@ -1,4 +1,5 @@
 import { formatTry } from "@/lib/money";
+import { getSiteOrigin } from "@/lib/seo/site";
 
 export type GiftCardDeliveryPayload = {
   recipientEmail: string;
@@ -63,7 +64,7 @@ function buildPlainText(payload: GiftCardDeliveryPayload): string {
       ]
     : ["", `${payload.senderName.trim() || "Bir Zelula müşterisi"} size bir Zelula hediye kartı gönderdi.`, ""];
 
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "") || "https://zeluladesign.com";
+  const siteUrl = getSiteOrigin();
 
   return [
     greeting,

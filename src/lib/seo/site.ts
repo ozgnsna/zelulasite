@@ -1,9 +1,22 @@
 /** Canlı site kökü — metadata, sitemap, canonical için tek kaynak. */
 export const DEFAULT_SITE_ORIGIN = "https://www.zeluladesign.com";
 
+function normalizeSiteOrigin(url: string): string {
+  const trimmed = url.replace(/\/+$/, "");
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.hostname === "zeluladesign.com") {
+      parsed.hostname = "www.zeluladesign.com";
+    }
+    return parsed.origin;
+  } catch {
+    return trimmed;
+  }
+}
+
 export function getSiteOrigin(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  if (fromEnv) return normalizeSiteOrigin(fromEnv);
   return DEFAULT_SITE_ORIGIN;
 }
 

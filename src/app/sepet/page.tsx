@@ -9,11 +9,13 @@ import { getDetailedCart } from "@/lib/cart";
 import { formatTry } from "@/lib/money";
 import { getCartUpsellProducts } from "@/lib/storefront";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
-import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
+import { computeShippingFeeTry, FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
 import { listSavedAddressesForUser } from "@/lib/account/saved-addresses";
+import { privatePageMetadata } from "@/lib/seo/robots-metadata";
 
 export const metadata = {
   title: "Sepet",
+  ...privatePageMetadata,
 };
 
 export default async function CartPage({
@@ -39,7 +41,8 @@ export default async function CartPage({
   const promoCampaignActive = Boolean(process.env.INSTAGRAM_FOLLOWER_PROMO_CODE?.trim());
   const freeShippingThreshold = FREE_SHIPPING_THRESHOLD_TRY;
   const shippingRemaining = Math.max(0, freeShippingThreshold - subtotal);
-  const shippingCost = shippingRemaining > 0 ? 89 : 0;
+  const hasPhysicalItems = lines.some((line) => line.product.product_kind !== "gift_card");
+  const shippingCost = computeShippingFeeTry(subtotal, { hasPhysicalItems });
 
   const upsellProducts = empty
     ? []
