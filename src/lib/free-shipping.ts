@@ -1,7 +1,7 @@
 /** Sepet ve checkout’ta ücretsiz kargo için ara toplam eşiği (TRY). */
-export const FREE_SHIPPING_THRESHOLD_TRY = 350;
+export const FREE_SHIPPING_THRESHOLD_TRY = 650;
 
-/** 350₺ altı fiziksel siparişlerde uygulanan sabit kargo ücreti (TRY). */
+/** 650₺ altı fiziksel siparişlerde uygulanan sabit kargo ücreti (TRY). */
 export const STANDARD_SHIPPING_FEE_TRY = 149.9;
 
 export function computeShippingFeeTry(
