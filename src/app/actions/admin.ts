@@ -400,6 +400,7 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
     full_description: String(formData.get("full_description") ?? ""),
     price: Number(formData.get("price") ?? 0),
     compare_at_price: Number(formData.get("compare_at_price") ?? 0) || null,
+    cost_price: Number(formData.get("cost_price") ?? 0) || null,
     sku: String(formData.get("sku") ?? ""),
     stock_quantity: hasVariants ? variantsStockTotal : Number(formData.get("stock_quantity") ?? 0),
     featured: formData.get("featured") === "on",

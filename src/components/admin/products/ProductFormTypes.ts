@@ -12,6 +12,7 @@ export type ProductFormInitialProduct = {
   full_description?: string | null;
   price?: number | null;
   compare_at_price?: number | null;
+  cost_price?: number | null;
   sku?: string | null;
   stock_quantity?: number | null;
   category_id?: string | null;

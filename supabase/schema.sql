@@ -26,6 +26,7 @@ create table if not exists products (
   full_description text not null,
   price numeric(10,2) not null default 0,
   compare_at_price numeric(10,2),
+  cost_price numeric(10,2),
   sku text not null unique,
   stock_quantity int not null default 0,
   featured boolean not null default false,

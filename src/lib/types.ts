@@ -23,6 +23,8 @@ export type Product = {
   full_description: string;
   price: number;
   compare_at_price: number | null;
+  /** Admin-only toptancı birim alış maliyeti (TRY). Storefront'ta gösterilmez. */
+  cost_price?: number | null;
   sku: string;
   stock_quantity: number;
   featured: boolean;

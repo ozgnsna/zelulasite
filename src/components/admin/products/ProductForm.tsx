@@ -17,6 +17,7 @@ import { ProductFormDraftStatus } from "@/components/admin/products/ProductFormD
 import { ProductFormTrendyolDetailsShell } from "@/components/admin/products/ProductFormTrendyolDetailsShell";
 import { TrendyolChannelActiveControl } from "@/components/admin/products/TrendyolChannelActiveControl";
 import { ProductFormUnsavedGuard } from "@/components/admin/products/ProductFormUnsavedGuard";
+import { ProductPricingAssistant } from "@/components/admin/products/ProductPricingAssistant";
 import { ProductVariantEditor } from "@/components/admin/products/ProductVariantEditor";
 import type { ProductFormProps } from "@/components/admin/products/ProductFormTypes";
 import { adminCheckbox, adminField, adminJsonField, adminLabel } from "@/components/admin/products/adminFieldClasses";
@@ -694,6 +695,10 @@ export function ProductForm({
                 <p className="mt-1 text-[9px] leading-snug text-stone-400">
                   Satış fiyatının üstünde üstü çizili görünür (indirim algısı). Boş bırakılırsa gösterilmez.
                 </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <ProductPricingAssistant formId="urun-formu" initialCostPrice={p.cost_price} />
               </div>
             </div>
 
