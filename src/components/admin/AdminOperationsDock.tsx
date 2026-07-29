@@ -15,7 +15,7 @@ export function AdminOperationsDock({
       : `${pendingShipmentCount.toLocaleString("tr-TR")} sipariş kargoya hazır bekliyor`;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(1rem,calc(3.5rem+env(safe-area-inset-bottom)+0.5rem))] pt-10 lg:pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="pointer-events-auto flex w-full max-w-lg items-center justify-between gap-4 rounded-2xl border border-stone-200/80 bg-[#141413]/95 px-4 py-3 text-white shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)] backdrop-blur-md ring-1 ring-white/10">
         <p className="min-w-0 text-sm font-medium leading-snug text-zinc-100">{label}</p>
         <Link

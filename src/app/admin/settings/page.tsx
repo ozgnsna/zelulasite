@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdminInstallHint } from "@/components/admin/AdminInstallHint";
 import { TaxonomyImageUploader } from "@/components/admin/TaxonomyImageUploader";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -42,6 +43,10 @@ export default async function AdminSettingsPage({
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">Yapılandırma</p>
           <h1 className="mt-1 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">Site ayarları</h1>
           <p className="mt-1 text-sm text-stone-600">Ana sayfa kartları ve vitrin görselleri.</p>
+        </div>
+
+        <div className="mb-6">
+          <AdminInstallHint />
         </div>
 
         {taxonomyImageOk ? (

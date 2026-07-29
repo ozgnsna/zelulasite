@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -34,9 +33,13 @@ const nav = [
   { href: "/admin/settings", label: "Ayarlar", icon: Settings, match: (p: string) => p.startsWith("/admin/settings") },
 ] as const;
 
-export function AdminSidebar() {
+type AdminSidebarProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+export function AdminSidebar({ open, onOpenChange }: AdminSidebarProps) {
   const pathname = usePathname() ?? "";
-  const [open, setOpen] = useState(false);
 
   const linkClass = (active: boolean) =>
     cn(
@@ -51,7 +54,7 @@ export function AdminSidebar() {
       <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#101011] px-3 lg:hidden">
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => onOpenChange(true)}
           className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
           aria-label="Menüyü aç"
         >
@@ -65,11 +68,11 @@ export function AdminSidebar() {
           type="button"
           className="fixed inset-0 z-[55] bg-black/55 backdrop-blur-[2px] lg:hidden"
           aria-label="Menüyü kapat"
-          onClick={() => setOpen(false)}
+          onClick={() => onOpenChange(false)}
         />
       ) : null}
 
-        <aside
+      <aside
         className={cn(
           "fixed inset-y-0 left-0 z-[60] flex w-[min(17.5rem,88vw)] flex-col border-r border-white/[0.06] bg-[#101011] shadow-2xl shadow-black/40 transition-transform duration-300 lg:static lg:z-0 lg:h-dvh lg:w-64 lg:translate-x-0 lg:shadow-none",
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
@@ -79,17 +82,24 @@ export function AdminSidebar() {
           <Link
             href="/admin"
             className="flex min-w-0 flex-1 items-center gap-2 py-1"
-            onClick={() => setOpen(false)}
+            onClick={() => onOpenChange(false)}
             aria-label="Kontrol paneli"
           >
             <span className="relative block h-8 w-[7.5rem] shrink-0">
-              <Image src="/zelula-logo-header.svg" alt="" fill className="object-contain object-left brightness-0 invert opacity-90" sizes="120px" priority />
+              <Image
+                src="/zelula-logo-header.svg"
+                alt=""
+                fill
+                className="object-contain object-left brightness-0 invert opacity-90"
+                sizes="120px"
+                priority
+              />
             </span>
           </Link>
           <button
             type="button"
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 hover:bg-white/[0.08] hover:text-white lg:hidden"
-            onClick={() => setOpen(false)}
+            onClick={() => onOpenChange(false)}
             aria-label="Kapat"
           >
             <X className="h-5 w-5" strokeWidth={1.75} />
@@ -106,7 +116,7 @@ export function AdminSidebar() {
                 key={item.href}
                 href={item.href}
                 className={linkClass(active)}
-                onClick={() => setOpen(false)}
+                onClick={() => onOpenChange(false)}
               >
                 <Icon className="h-[18px] w-[18px] shrink-0 opacity-80" strokeWidth={1.75} />
                 {item.label}
