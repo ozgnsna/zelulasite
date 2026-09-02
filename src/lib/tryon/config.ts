@@ -35,10 +35,13 @@ export const POSE_LANDMARKER_MODEL_URL =
 export const BODY_SILHOUETTE = {
   leftShoulder: { x: -0.5, y: 0 },
   rightShoulder: { x: 0.5, y: 0 },
-  /** Kolye klips / boyun kökü — omuz çizgisinin üstünde. */
-  necklaceMount: { x: 0, y: -0.22 },
+  /**
+   * Önden görünen zincirlerin boyun kökü (köprücük ortası).
+   * Klips PNG’nin üstünde; clip ile gizlenir — mount görünür üst kenara yakın.
+   */
+  necklaceMount: { x: 0, y: -0.14 },
   /** Kolye PNG genişliği (omuz açıklığının oranı). */
-  necklaceWidth: 0.78,
+  necklaceWidth: 0.92,
   /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
   neckGuide: { x: 0, y: -0.38 },
   /** Silüet rehberi: gövde altı (hafif trapez). */
@@ -47,10 +50,16 @@ export const BODY_SILHOUETTE = {
 } as const;
 
 /**
- * Overlay CSS translate Y (yüzde, öğe yüksekliğine göre).
- * transform-origin: top center ile klips ankrajda kalır.
+ * Capolia gibi klips üstte olan PNG’lerde üst bandı gizle (önden takılmış görünüm).
+ * Yüzde, görsel yüksekliğine göre.
  */
-export const OVERLAY_TRANSLATE_Y_PCT = -4;
+export const NECKLACE_CLIP_TOP_PCT = 16;
+
+/**
+ * Overlay CSS translate Y (yüzde, öğe yüksekliğine göre).
+ * Clip sonrası görünür üst kenarı mount’a yaslamak için clip kadar yukarı kaydır.
+ */
+export const OVERLAY_TRANSLATE_Y_PCT = -NECKLACE_CLIP_TOP_PCT;
 
 /** Landmark smoothing (0–1). */
 export const ANCHOR_SMOOTH_ALPHA = 0.3;

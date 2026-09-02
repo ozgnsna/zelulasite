@@ -5,6 +5,7 @@ import { Camera, X } from "lucide-react";
 import {
   FACE_LANDMARKER_MODEL_URL,
   MEDIAPIPE_WASM_CDN,
+  NECKLACE_CLIP_TOP_PCT,
   OVERLAY_TRANSLATE_Y_PCT,
   POSE_LANDMARKER_MODEL_URL,
 } from "@/lib/tryon/config";
@@ -120,6 +121,7 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
     el.style.width = `${wPct}%`;
     el.style.left = `${anchor.x * 100}%`;
     el.style.top = `${anchor.y * 100}%`;
+    el.style.clipPath = `inset(${NECKLACE_CLIP_TOP_PCT}% 0 0 0)`;
     el.style.transform = `translate(-50%, ${OVERLAY_TRANSLATE_Y_PCT}%) rotate(${anchor.rotation}rad)`;
     el.style.transformOrigin = "top center";
   }, []);
@@ -378,6 +380,11 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(rotation);
+      // Canlı overlay ile aynı: üst klips bandını kırp
+      const clipTop = (NECKLACE_CLIP_TOP_PCT / 100) * nh;
+      ctx.beginPath();
+      ctx.rect(-nw / 2, clipTop + (OVERLAY_TRANSLATE_Y_PCT / 100) * nh, nw, nh - clipTop);
+      ctx.clip();
       ctx.drawImage(necklace, -nw / 2, (OVERLAY_TRANSLATE_Y_PCT / 100) * nh, nw, nh);
       ctx.restore();
     }
@@ -449,6 +456,7 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
                 width: "40%",
                 transform: `translate(-50%, ${OVERLAY_TRANSLATE_Y_PCT}%)`,
                 transformOrigin: "top center",
+                clipPath: `inset(${NECKLACE_CLIP_TOP_PCT}% 0 0 0)`,
               }}
             />
             <svg
