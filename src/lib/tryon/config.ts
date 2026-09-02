@@ -29,40 +29,38 @@ export const POSE_LANDMARKER_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
 /**
- * Kolye genişliği ≈ yüz genişliği × bu oran.
- * Omuz oranına göre ölçek Capolia gibi uzun PNG’lerde göğüste dev halka yaratıyordu.
+ * Kanonik üst-gövde silüeti (birim: omuz açıklığı = 1).
+ * Sol omuz (-0.5, 0), sağ omuz (0.5, 0); Y aşağı artar, negatif Y = başa doğru.
  */
-export const NECKLACE_FACE_WIDTH_RATIO = 1.95;
-
-/** Omuz mesafesine üst sınır (yüz ölçeği bunu aşmasın). */
-export const NECKLACE_MAX_SHOULDER_RATIO = 0.58;
-
-/**
- * Overlay yüksekliği frame’in bu oranını aşmasın (uzun PNG clamp).
- * Capolia asset ~1.33 aspect → genişlik buna göre kısılır.
- */
-export const NECKLACE_MAX_HEIGHT_RATIO = 0.36;
-
-/** Çene → omuz orta noktası lerp. Boyun kökü / jugular için orta-düşük. */
-export const NECK_ANCHOR_T = 0.34;
+export const BODY_SILHOUETTE = {
+  leftShoulder: { x: -0.5, y: 0 },
+  rightShoulder: { x: 0.5, y: 0 },
+  /** Kolye klips / boyun kökü — omuz çizgisinin üstünde. */
+  necklaceMount: { x: 0, y: -0.22 },
+  /** Kolye PNG genişliği (omuz açıklığının oranı). */
+  necklaceWidth: 0.78,
+  /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
+  neckGuide: { x: 0, y: -0.38 },
+  /** Silüet rehberi: gövde altı (hafif trapez). */
+  torsoLeft: { x: -0.42, y: 0.55 },
+  torsoRight: { x: 0.42, y: 0.55 },
+} as const;
 
 /**
  * Overlay CSS translate Y (yüzde, öğe yüksekliğine göre).
- * Negatif = klipsi ankrajın biraz üstüne alır.
+ * transform-origin: top center ile klips ankrajda kalır.
  */
-export const OVERLAY_TRANSLATE_Y_PCT = -6;
+export const OVERLAY_TRANSLATE_Y_PCT = -4;
 
 /** Landmark smoothing (0–1). */
-export const ANCHOR_SMOOTH_ALPHA = 0.32;
+export const ANCHOR_SMOOTH_ALPHA = 0.3;
 
-/** MediaPipe Face Landmarker: çene ucu + yanaklar. */
+/** MediaPipe Face Landmarker: çene (dikey ince ayar için). */
 export const FACE_CHIN_INDEX = 152;
-export const FACE_LEFT_CHEEK_INDEX = 234;
-export const FACE_RIGHT_CHEEK_INDEX = 454;
 
 /** MediaPipe Pose: sol / sağ omuz. */
 export const POSE_LEFT_SHOULDER = 11;
 export const POSE_RIGHT_SHOULDER = 12;
 
-/** @deprecated Omuz tabanlı eski oran — face-width birincil. */
-export const NECKLACE_WIDTH_RATIO = NECKLACE_MAX_SHOULDER_RATIO;
+/** Çene ile silüet mount arasında dikey blend (0=yalnız silüet, 1=yalnız çene yönü). */
+export const CHIN_VERTICAL_BLEND = 0.35;

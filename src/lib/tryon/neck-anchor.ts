@@ -1,12 +1,8 @@
 import {
   ANCHOR_SMOOTH_ALPHA,
+  BODY_SILHOUETTE,
+  CHIN_VERTICAL_BLEND,
   FACE_CHIN_INDEX,
-  FACE_LEFT_CHEEK_INDEX,
-  FACE_RIGHT_CHEEK_INDEX,
-  NECK_ANCHOR_T,
-  NECKLACE_FACE_WIDTH_RATIO,
-  NECKLACE_MAX_HEIGHT_RATIO,
-  NECKLACE_MAX_SHOULDER_RATIO,
   POSE_LEFT_SHOULDER,
   POSE_RIGHT_SHOULDER,
 } from "@/lib/tryon/config";
@@ -23,9 +19,20 @@ export type NeckAnchor = {
   rotation: number;
 };
 
+/** Silüetin kameraya oturmuş hali — rehber çizimi için. */
+export type FittedSilhouette = {
+  leftShoulder: Point2;
+  rightShoulder: Point2;
+  necklaceMount: Point2;
+  neckGuide: Point2;
+  torsoLeft: Point2;
+  torsoRight: Point2;
+  scale: number;
+  rotation: number;
+};
+
 export type LandmarkLike = { x: number; y: number; z?: number; visibility?: number };
 
-/** Capolia try-on PNG doğal oranı (yükseklik / genişlik). */
 export const DEFAULT_NECKLACE_ASPECT = 1080 / 810;
 
 function lerp(a: number, b: number, t: number) {
@@ -83,6 +90,16 @@ export function mapVideoLengthToCoverContainerX(
   return lengthNorm;
 }
 
+export function mapFittedPointToCover(
+  p: Point2,
+  videoW: number,
+  videoH: number,
+  containerW: number,
+  containerH: number,
+): Point2 {
+  return mapVideoNormToCoverContainer(p.x, p.y, videoW, videoH, containerW, containerH);
+}
+
 export function smoothAnchor(prev: NeckAnchor | null, next: NeckAnchor, alpha = ANCHOR_SMOOTH_ALPHA): NeckAnchor {
   if (!prev) return next;
   let d = next.rotation - prev.rotation;
@@ -96,63 +113,119 @@ export function smoothAnchor(prev: NeckAnchor | null, next: NeckAnchor, alpha = 
   };
 }
 
+type ShoulderFit = {
+  midX: number;
+  midY: number;
+  scale: number;
+  cos: number;
+  sin: number;
+  rotation: number;
+  lx: number;
+  ly: number;
+  rx: number;
+  ry: number;
+};
+
+function fitShouldersToSilhouette(
+  left: LandmarkLike,
+  right: LandmarkLike,
+  mirrorX: boolean,
+): ShoulderFit | null {
+  const mapX = (x: number) => (mirrorX ? 1 - x : x);
+  const lx = mapX(left.x);
+  const ly = left.y;
+  const rx = mapX(right.x);
+  const ry = right.y;
+  const shoulderDist = Math.hypot(rx - lx, ry - ly);
+  if (!(shoulderDist > 0.04)) return null;
+
+  const rotation = Math.atan2(ry - ly, rx - lx);
+  return {
+    midX: (lx + rx) / 2,
+    midY: (ly + ry) / 2,
+    scale: shoulderDist,
+    cos: Math.cos(rotation),
+    sin: Math.sin(rotation),
+    rotation,
+    lx,
+    ly,
+    rx,
+    ry,
+  };
+}
+
+/** Silüet lokal noktayı omuzlara hizalı dünya (0–1 video) koordinatına çevir. */
+function silhouetteToWorld(local: Point2, fit: ShoulderFit): Point2 {
+  // local.x/y omuz açıklığı biriminde; scale = gerçek omuz mesafesi
+  return {
+    x: fit.midX + (local.x * fit.cos - local.y * fit.sin) * fit.scale,
+    y: fit.midY + (local.x * fit.sin + local.y * fit.cos) * fit.scale,
+  };
+}
+
 /**
- * Face chin/cheeks + pose shoulders → boyun ankrajı.
- * Ölçek birincil: yüz genişliği; omuz ve max-yükseklik ile clamp.
+ * Algılanan omuzları kanonik silüete oturtur; rehber noktalarını döner.
+ */
+export function fitBodySilhouette(params: {
+  poseLandmarks: LandmarkLike[] | null | undefined;
+  mirrorX?: boolean;
+}): FittedSilhouette | null {
+  const pose = params.poseLandmarks;
+  if (!pose?.length) return null;
+  const left = pose[POSE_LEFT_SHOULDER];
+  const right = pose[POSE_RIGHT_SHOULDER];
+  if (!left || !right) return null;
+  const visOk = (p: LandmarkLike) => p.visibility === undefined || p.visibility > 0.45;
+  if (!visOk(left) || !visOk(right)) return null;
+
+  const fit = fitShouldersToSilhouette(left, right, Boolean(params.mirrorX));
+  if (!fit) return null;
+
+  return {
+    leftShoulder: { x: fit.lx, y: fit.ly },
+    rightShoulder: { x: fit.rx, y: fit.ry },
+    necklaceMount: silhouetteToWorld(BODY_SILHOUETTE.necklaceMount, fit),
+    neckGuide: silhouetteToWorld(BODY_SILHOUETTE.neckGuide, fit),
+    torsoLeft: silhouetteToWorld(BODY_SILHOUETTE.torsoLeft, fit),
+    torsoRight: silhouetteToWorld(BODY_SILHOUETTE.torsoRight, fit),
+    scale: fit.scale,
+    rotation: fit.rotation,
+  };
+}
+
+/**
+ * Silüet + isteğe bağlı çene ince ayarı → kolye ankrajı.
+ * Ölçek = omuz açıklığı × BODY_SILHOUETTE.necklaceWidth (yüz clamp yok).
  */
 export function computeNeckAnchor(params: {
   faceLandmarks: LandmarkLike[] | null | undefined;
   poseLandmarks: LandmarkLike[] | null | undefined;
   mirrorX?: boolean;
-  neckT?: number;
-  necklaceAspect?: number;
 }): NeckAnchor | null {
+  const sil = fitBodySilhouette({
+    poseLandmarks: params.poseLandmarks,
+    mirrorX: params.mirrorX,
+  });
+  if (!sil) return null;
+
+  let x = sil.necklaceMount.x;
+  let y = sil.necklaceMount.y;
+
   const face = params.faceLandmarks;
-  const pose = params.poseLandmarks;
-  if (!face?.length || !pose?.length) return null;
-
-  const chin = face[FACE_CHIN_INDEX];
-  const leftCheek = face[FACE_LEFT_CHEEK_INDEX];
-  const rightCheek = face[FACE_RIGHT_CHEEK_INDEX];
-  const left = pose[POSE_LEFT_SHOULDER];
-  const right = pose[POSE_RIGHT_SHOULDER];
-  if (!chin || !left || !right) return null;
-
-  const visOk = (p: LandmarkLike) => p.visibility === undefined || p.visibility > 0.45;
-  if (!visOk(left) || !visOk(right)) return null;
-
-  const mapX = (x: number) => (params.mirrorX ? 1 - x : x);
-
-  const chinX = mapX(chin.x);
-  const chinY = chin.y;
-  const lx = mapX(left.x);
-  const ly = left.y;
-  const rx = mapX(right.x);
-  const ry = right.y;
-
-  const midX = (lx + rx) / 2;
-  const midY = (ly + ry) / 2;
-  const t = params.neckT ?? NECK_ANCHOR_T;
-
-  const x = lerp(chinX, midX, t);
-  const y = lerp(chinY, midY, t);
-  const shoulderDist = Math.hypot(rx - lx, ry - ly);
-  if (!(shoulderDist > 0.02)) return null;
-
-  let faceWidth = 0;
-  if (leftCheek && rightCheek) {
-    faceWidth = Math.hypot(mapX(rightCheek.x) - mapX(leftCheek.x), rightCheek.y - leftCheek.y);
+  const chin = face?.[FACE_CHIN_INDEX];
+  if (chin) {
+    const mapX = (v: number) => (params.mirrorX ? 1 - v : v);
+    const chinX = mapX(chin.x);
+    const chinY = chin.y;
+    // Çene↔omuz ortası ≈ boyun kökü; silüet mount ile karıştır
+    const neckFromChinY = lerp(chinY, (sil.leftShoulder.y + sil.rightShoulder.y) / 2, 0.42);
+    const neckFromChinX = lerp(chinX, (sil.leftShoulder.x + sil.rightShoulder.x) / 2, 0.42);
+    y = lerp(sil.necklaceMount.y, neckFromChinY, CHIN_VERTICAL_BLEND);
+    x = lerp(sil.necklaceMount.x, neckFromChinX, CHIN_VERTICAL_BLEND * 0.5);
   }
 
-  const fromFace = faceWidth > 0.02 ? faceWidth * NECKLACE_FACE_WIDTH_RATIO : Number.POSITIVE_INFINITY;
-  const fromShoulder = shoulderDist * NECKLACE_MAX_SHOULDER_RATIO;
-  const aspect = params.necklaceAspect ?? DEFAULT_NECKLACE_ASPECT;
-  const fromMaxHeight = NECKLACE_MAX_HEIGHT_RATIO / Math.max(0.5, aspect);
+  const width = sil.scale * BODY_SILHOUETTE.necklaceWidth;
+  if (!(width > 0.05)) return null;
 
-  const width = Math.min(fromFace, fromShoulder, fromMaxHeight);
-  if (!(width > 0.04)) return null;
-
-  const rotation = Math.atan2(ry - ly, rx - lx);
-
-  return { x, y, width, rotation };
+  return { x, y, width, rotation: sil.rotation };
 }

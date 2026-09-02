@@ -10,6 +10,8 @@ import {
 } from "@/lib/tryon/config";
 import {
   computeNeckAnchor,
+  fitBodySilhouette,
+  mapFittedPointToCover,
   mapVideoLengthToCoverContainerX,
   mapVideoNormToCoverContainer,
   smoothAnchor,
@@ -73,6 +75,8 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLImageElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const guidePathRef = useRef<SVGPathElement>(null);
+  const guideWrapRef = useRef<SVGSVGElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const faceRef = useRef<FaceLandmarker | null>(null);
   const poseRef = useRef<PoseLandmarker | null>(null);
@@ -120,6 +124,44 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
     el.style.transformOrigin = "top center";
   }, []);
 
+  const applySilhouetteGuide = useCallback(
+    (
+      sil: ReturnType<typeof fitBodySilhouette>,
+      videoW: number,
+      videoH: number,
+      containerW: number,
+      containerH: number,
+    ) => {
+      const path = guidePathRef.current;
+      const wrap = guideWrapRef.current;
+      if (!path || !wrap) return;
+      if (!sil) {
+        wrap.style.opacity = "0";
+        return;
+      }
+      const map = (p: { x: number; y: number }) =>
+        mapFittedPointToCover(p, videoW, videoH, containerW, containerH);
+      const ls = map(sil.leftShoulder);
+      const rs = map(sil.rightShoulder);
+      const ng = map(sil.neckGuide);
+      const tl = map(sil.torsoLeft);
+      const tr = map(sil.torsoRight);
+      const pt = (p: { x: number; y: number }) =>
+        `${(Math.min(1, Math.max(0, p.x)) * 100).toFixed(2)} ${(Math.min(1, Math.max(0, p.y)) * 100).toFixed(2)}`;
+      // Omuz çizgisi + boyun V + hafif gövde trapez (viewBox 0–100)
+      path.setAttribute(
+        "d",
+        [
+          `M ${pt(ls)} L ${pt(rs)}`,
+          `M ${pt(ls)} L ${pt(ng)} L ${pt(rs)}`,
+          `M ${pt(ls)} L ${pt(tl)} L ${pt(tr)} L ${pt(rs)}`,
+        ].join(" "),
+      );
+      wrap.style.opacity = "0.55";
+    },
+    [],
+  );
+
   const loop = useCallback(() => {
     const video = videoRef.current;
     const stage = stageRef.current;
@@ -146,6 +188,16 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
       poseLm = null;
     }
 
+    const cw = stage?.clientWidth ?? 0;
+    const ch = stage?.clientHeight ?? 0;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+
+    const silVideo = fitBodySilhouette({ poseLandmarks: poseLm, mirrorX: true });
+    if (stage && cw > 0 && ch > 0) {
+      applySilhouetteGuide(silVideo, vw, vh, cw, ch);
+    }
+
     const rawVideo = computeNeckAnchor({
       faceLandmarks: faceLm,
       poseLandmarks: poseLm,
@@ -153,11 +205,7 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
     });
 
     let raw: NeckAnchor | null = null;
-    if (rawVideo && stage) {
-      const cw = stage.clientWidth;
-      const ch = stage.clientHeight;
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
+    if (rawVideo && stage && cw > 0 && ch > 0) {
       const mapped = mapVideoNormToCoverContainer(rawVideo.x, rawVideo.y, vw, vh, cw, ch);
       const mappedW = mapVideoLengthToCoverContainerX(rawVideo.width, vw, vh, cw, ch);
       raw = { ...rawVideo, x: mapped.x, y: mapped.y, width: mappedW };
@@ -173,7 +221,7 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
     }
 
     rafRef.current = requestAnimationFrame(loop);
-  }, [applyOverlay]);
+  }, [applyOverlay, applySilhouetteGuide]);
 
   useEffect(() => {
     let cancelled = false;
@@ -403,6 +451,25 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
                 transformOrigin: "top center",
               }}
             />
+            <svg
+              ref={guideWrapRef}
+              className="pointer-events-none absolute inset-0 z-[2] h-full w-full transition-opacity duration-300"
+              style={{ opacity: 0 }}
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              <path
+                ref={guidePathRef}
+                fill="none"
+                stroke="rgba(253, 251, 248, 0.55)"
+                strokeWidth="0.35"
+                strokeDasharray="1.2 1.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
             {busy ? (
               <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center bg-stone-950/55 px-6 text-center backdrop-blur-[2px]">
                 <Camera className="mb-3 size-9 text-stone-300" strokeWidth={1.4} aria-hidden />
