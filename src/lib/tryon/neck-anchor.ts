@@ -5,6 +5,7 @@ import {
   FACE_CHIN_INDEX,
   POSE_LEFT_SHOULDER,
   POSE_RIGHT_SHOULDER,
+  SHOULDER_ACROMION_OUTSET,
 } from "@/lib/tryon/config";
 
 export type Point2 = { x: number; y: number };
@@ -132,20 +133,34 @@ function fitShouldersToSilhouette(
   mirrorX: boolean,
 ): ShoulderFit | null {
   const mapX = (x: number) => (mirrorX ? 1 - x : x);
-  const lx = mapX(left.x);
-  const ly = left.y;
-  const rx = mapX(right.x);
-  const ry = right.y;
-  const shoulderDist = Math.hypot(rx - lx, ry - ly);
-  if (!(shoulderDist > 0.04)) return null;
+  const rawLx = mapX(left.x);
+  const rawLy = left.y;
+  const rawRx = mapX(right.x);
+  const rawRy = right.y;
+  const rawDist = Math.hypot(rawRx - rawLx, rawRy - rawLy);
+  if (!(rawDist > 0.04)) return null;
 
-  const rotation = Math.atan2(ry - ly, rx - lx);
+  const midX = (rawLx + rawRx) / 2;
+  const midY = (rawLy + rawRy) / 2;
+  const rotation = Math.atan2(rawRy - rawLy, rawRx - rawLx);
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  // Landmark omuzları içeri kalır → omuz başına doğru dışa genişlet
+  const outset = SHOULDER_ACROMION_OUTSET;
+  const half = (rawDist * outset) / 2;
+  const lx = midX - cos * half;
+  const ly = midY - sin * half;
+  const rx = midX + cos * half;
+  const ry = midY + sin * half;
+  const shoulderDist = half * 2;
+
   return {
-    midX: (lx + rx) / 2,
-    midY: (ly + ry) / 2,
+    midX,
+    midY,
     scale: shoulderDist,
-    cos: Math.cos(rotation),
-    sin: Math.sin(rotation),
+    cos,
+    sin,
     rotation,
     lx,
     ly,

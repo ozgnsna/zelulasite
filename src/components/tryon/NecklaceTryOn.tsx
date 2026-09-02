@@ -501,18 +501,18 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
               />
               <circle
                 ref={guideLeftDotRef}
-                r="1.4"
+                r="2.2"
                 fill="#c9a86a"
-                stroke="rgba(255,255,255,0.9)"
-                strokeWidth="0.35"
+                stroke="rgba(255,255,255,0.95)"
+                strokeWidth="0.9"
                 vectorEffect="non-scaling-stroke"
               />
               <circle
                 ref={guideRightDotRef}
-                r="1.4"
+                r="2.2"
                 fill="#c9a86a"
-                stroke="rgba(255,255,255,0.9)"
-                strokeWidth="0.35"
+                stroke="rgba(255,255,255,0.95)"
+                strokeWidth="0.9"
                 vectorEffect="non-scaling-stroke"
               />
             </svg>

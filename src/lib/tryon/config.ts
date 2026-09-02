@@ -40,8 +40,8 @@ export const BODY_SILHOUETTE = {
    * Klips PNG’nin üstünde; clip ile gizlenir — mount görünür üst kenara yakın.
    */
   necklaceMount: { x: 0, y: -0.14 },
-  /** Kolye PNG genişliği (omuz açıklığının oranı). */
-  necklaceWidth: 0.92,
+  /** Kolye PNG genişliği (genişletilmiş omuz açıklığının oranı). */
+  necklaceWidth: 0.85,
   /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
   neckGuide: { x: 0, y: -0.38 },
   /** Silüet rehberi: gövde altı (hafif trapez). */
@@ -70,6 +70,12 @@ export const FACE_CHIN_INDEX = 152;
 /** MediaPipe Pose: sol / sağ omuz. */
 export const POSE_LEFT_SHOULDER = 11;
 export const POSE_RIGHT_SHOULDER = 12;
+
+/**
+ * Pose 11/12 eklem noktasıdır; görsel omuz başı (acromion) daha dışarıdadır.
+ * Algılanan omuz açıklığı bu oranla genişletilir (1 = ham landmark).
+ */
+export const SHOULDER_ACROMION_OUTSET = 1.28;
 
 /** Çene ile silüet mount arasında dikey blend (0=yalnız silüet, 1=yalnız çene yönü). */
 export const CHIN_VERTICAL_BLEND = 0.35;
