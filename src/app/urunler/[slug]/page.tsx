@@ -31,6 +31,8 @@ import {
 } from "@/lib/seo/product";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { loadProductReviewSectionData, ProductReviewsSection } from "@/components/reviews/ProductReviewsSection";
+import { NecklaceTryOnButton } from "@/components/tryon/NecklaceTryOnButton";
+import { isNecklaceTryOnEnabled } from "@/lib/tryon/config";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -248,6 +250,14 @@ export default async function ProductPage({ params, searchParams }: Props) {
               productSlug={product.slug}
               className="[&_button]:w-full [&_button]:py-4 [&_button]:text-sm [&_button]:font-bold [&_button]:transition [&_button]:duration-150 [&_button]:ease-in-out [&_button:hover]:scale-[1.01] [&_button:hover]:shadow-[0_14px_28px_rgba(30,24,18,0.24)]"
             />
+
+            {isNecklaceTryOnEnabled(product.sku, product.slug) ? (
+              <NecklaceTryOnButton
+                productName={product.name}
+                // TODO: products.try_on_image_url (Supabase)
+                necklaceImageUrl={`/tryon/${product.sku}.png`}
+              />
+            ) : null}
 
             <ul className="space-y-2.5 text-[12px] leading-relaxed text-stone-800">
               <li className="flex items-center gap-2">
