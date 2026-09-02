@@ -28,24 +28,41 @@ export const FACE_LANDMARKER_MODEL_URL =
 export const POSE_LANDMARKER_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
-/** Omuz mesafesine göre kolye genişliği oranı (önceki 1.18 fazla büyüktü). */
-export const NECKLACE_WIDTH_RATIO = 0.88;
+/**
+ * Kolye genişliği ≈ yüz genişliği × bu oran.
+ * Omuz oranına göre ölçek Capolia gibi uzun PNG’lerde göğüste dev halka yaratıyordu.
+ */
+export const NECKLACE_FACE_WIDTH_RATIO = 1.95;
 
-/** Çene → omuz orta noktası lerp. Düşük = yukarı (boyun); yüksek = göğüs. */
-export const NECK_ANCHOR_T = 0.28;
+/** Omuz mesafesine üst sınır (yüz ölçeği bunu aşmasın). */
+export const NECKLACE_MAX_SHOULDER_RATIO = 0.58;
+
+/**
+ * Overlay yüksekliği frame’in bu oranını aşmasın (uzun PNG clamp).
+ * Capolia asset ~1.33 aspect → genişlik buna göre kısılır.
+ */
+export const NECKLACE_MAX_HEIGHT_RATIO = 0.36;
+
+/** Çene → omuz orta noktası lerp. Boyun kökü / jugular için orta-düşük. */
+export const NECK_ANCHOR_T = 0.34;
 
 /**
  * Overlay CSS translate Y (yüzde, öğe yüksekliğine göre).
- * Negatif = klipsi ankrajın biraz üstüne alır (boyun kökü).
+ * Negatif = klipsi ankrajın biraz üstüne alır.
  */
-export const OVERLAY_TRANSLATE_Y_PCT = -8;
+export const OVERLAY_TRANSLATE_Y_PCT = -6;
 
-/** Landmark smoothing (0–1; yüksek = daha hızlı takip, daha fazla zıplama). */
+/** Landmark smoothing (0–1). */
 export const ANCHOR_SMOOTH_ALPHA = 0.32;
 
-/** MediaPipe Face Landmarker: çene ucu. */
+/** MediaPipe Face Landmarker: çene ucu + yanaklar. */
 export const FACE_CHIN_INDEX = 152;
+export const FACE_LEFT_CHEEK_INDEX = 234;
+export const FACE_RIGHT_CHEEK_INDEX = 454;
 
 /** MediaPipe Pose: sol / sağ omuz. */
 export const POSE_LEFT_SHOULDER = 11;
 export const POSE_RIGHT_SHOULDER = 12;
+
+/** @deprecated Omuz tabanlı eski oran — face-width birincil. */
+export const NECKLACE_WIDTH_RATIO = NECKLACE_MAX_SHOULDER_RATIO;

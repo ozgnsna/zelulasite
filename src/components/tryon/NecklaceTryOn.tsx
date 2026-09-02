@@ -117,6 +117,7 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
     el.style.left = `${anchor.x * 100}%`;
     el.style.top = `${anchor.y * 100}%`;
     el.style.transform = `translate(-50%, ${OVERLAY_TRANSLATE_Y_PCT}%) rotate(${anchor.rotation}rad)`;
+    el.style.transformOrigin = "top center";
   }, []);
 
   const loop = useCallback(() => {
@@ -392,13 +393,14 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
               src={necklaceImageUrl}
               alt=""
               draggable={false}
-              className="pointer-events-none absolute z-[1] max-w-none origin-center select-none will-change-transform"
+              className="pointer-events-none absolute z-[1] max-w-none select-none will-change-transform"
               style={{
                 opacity: 0,
                 left: "50%",
                 top: "50%",
                 width: "40%",
                 transform: `translate(-50%, ${OVERLAY_TRANSLATE_Y_PCT}%)`,
+                transformOrigin: "top center",
               }}
             />
             {busy ? (

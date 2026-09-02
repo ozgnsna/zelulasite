@@ -1,8 +1,12 @@
 import {
   ANCHOR_SMOOTH_ALPHA,
   FACE_CHIN_INDEX,
+  FACE_LEFT_CHEEK_INDEX,
+  FACE_RIGHT_CHEEK_INDEX,
   NECK_ANCHOR_T,
-  NECKLACE_WIDTH_RATIO,
+  NECKLACE_FACE_WIDTH_RATIO,
+  NECKLACE_MAX_HEIGHT_RATIO,
+  NECKLACE_MAX_SHOULDER_RATIO,
   POSE_LEFT_SHOULDER,
   POSE_RIGHT_SHOULDER,
 } from "@/lib/tryon/config";
@@ -21,13 +25,15 @@ export type NeckAnchor = {
 
 export type LandmarkLike = { x: number; y: number; z?: number; visibility?: number };
 
+/** Capolia try-on PNG doğal oranı (yükseklik / genişlik). */
+export const DEFAULT_NECKLACE_ASPECT = 1080 / 810;
+
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
 /**
  * MediaPipe 0–1 video koordinatını object-cover ile kırpılmış container’a map’ler.
- * Aksi halde kolye yanlış yerde / yanlış ölçekte görünür.
  */
 export function mapVideoNormToCoverContainer(
   nx: number,
@@ -44,7 +50,6 @@ export function mapVideoNormToCoverContainer(
   const containerAspect = containerW / containerH;
 
   if (videoAspect > containerAspect) {
-    // Geniş video: yanlar kırpılır, yükseklik dolar
     const displayedW = containerH * videoAspect;
     const offsetX = (displayedW - containerW) / 2;
     return {
@@ -52,7 +57,6 @@ export function mapVideoNormToCoverContainer(
       y: ny,
     };
   }
-  // Uzun video: üst-alt kırpılır, genişlik dolar
   const displayedH = containerW / videoAspect;
   const offsetY = (displayedH - containerH) / 2;
   return {
@@ -61,7 +65,7 @@ export function mapVideoNormToCoverContainer(
   };
 }
 
-/** Omuz mesafesini de cover ölçeğine göre düzelt (yalnızca X ölçeği). */
+/** Yatay mesafeyi cover ölçeğine göre düzelt. */
 export function mapVideoLengthToCoverContainerX(
   lengthNorm: number,
   videoW: number,
@@ -81,7 +85,6 @@ export function mapVideoLengthToCoverContainerX(
 
 export function smoothAnchor(prev: NeckAnchor | null, next: NeckAnchor, alpha = ANCHOR_SMOOTH_ALPHA): NeckAnchor {
   if (!prev) return next;
-  // Açıyı kısa yol ile yumuşat
   let d = next.rotation - prev.rotation;
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
@@ -94,27 +97,27 @@ export function smoothAnchor(prev: NeckAnchor | null, next: NeckAnchor, alpha = 
 }
 
 /**
- * Face chin + pose shoulders → boyun/décolleté anchor.
- * Landmarklar MediaPipe görüntü koordinatında (0–1, sol-üst origin).
- * `mirrorX`: ön kamera aynası için x = 1 - x.
+ * Face chin/cheeks + pose shoulders → boyun ankrajı.
+ * Ölçek birincil: yüz genişliği; omuz ve max-yükseklik ile clamp.
  */
 export function computeNeckAnchor(params: {
   faceLandmarks: LandmarkLike[] | null | undefined;
   poseLandmarks: LandmarkLike[] | null | undefined;
   mirrorX?: boolean;
   neckT?: number;
-  widthRatio?: number;
+  necklaceAspect?: number;
 }): NeckAnchor | null {
   const face = params.faceLandmarks;
   const pose = params.poseLandmarks;
   if (!face?.length || !pose?.length) return null;
 
   const chin = face[FACE_CHIN_INDEX];
+  const leftCheek = face[FACE_LEFT_CHEEK_INDEX];
+  const rightCheek = face[FACE_RIGHT_CHEEK_INDEX];
   const left = pose[POSE_LEFT_SHOULDER];
   const right = pose[POSE_RIGHT_SHOULDER];
   if (!chin || !left || !right) return null;
 
-  // Pose visibility düşükse güvenme
   const visOk = (p: LandmarkLike) => p.visibility === undefined || p.visibility > 0.45;
   if (!visOk(left) || !visOk(right)) return null;
 
@@ -136,8 +139,19 @@ export function computeNeckAnchor(params: {
   const shoulderDist = Math.hypot(rx - lx, ry - ly);
   if (!(shoulderDist > 0.02)) return null;
 
-  const width = shoulderDist * (params.widthRatio ?? NECKLACE_WIDTH_RATIO);
-  // Omuz çizgisi eğimi (ayna sonrası)
+  let faceWidth = 0;
+  if (leftCheek && rightCheek) {
+    faceWidth = Math.hypot(mapX(rightCheek.x) - mapX(leftCheek.x), rightCheek.y - leftCheek.y);
+  }
+
+  const fromFace = faceWidth > 0.02 ? faceWidth * NECKLACE_FACE_WIDTH_RATIO : Number.POSITIVE_INFINITY;
+  const fromShoulder = shoulderDist * NECKLACE_MAX_SHOULDER_RATIO;
+  const aspect = params.necklaceAspect ?? DEFAULT_NECKLACE_ASPECT;
+  const fromMaxHeight = NECKLACE_MAX_HEIGHT_RATIO / Math.max(0.5, aspect);
+
+  const width = Math.min(fromFace, fromShoulder, fromMaxHeight);
+  if (!(width > 0.04)) return null;
+
   const rotation = Math.atan2(ry - ly, rx - lx);
 
   return { x, y, width, rotation };
