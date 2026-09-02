@@ -28,17 +28,17 @@ export const FACE_LANDMARKER_MODEL_URL =
 export const POSE_LANDMARKER_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
-/** Omuz mesafesine göre kolye genişliği oranı (PNG tam genişliği ≈ omuz açıklığı). */
-export const NECKLACE_WIDTH_RATIO = 1.18;
+/** Omuz mesafesine göre kolye genişliği oranı (önceki 1.18 fazla büyüktü). */
+export const NECKLACE_WIDTH_RATIO = 0.88;
 
-/** Çene → omuz orta noktası lerp (0=çene, 1=omuz ortası). Décolleté için omza yakın. */
-export const NECK_ANCHOR_T = 0.62;
+/** Çene → omuz orta noktası lerp. Düşük = yukarı (boyun); yüksek = göğüs. */
+export const NECK_ANCHOR_T = 0.28;
 
 /**
- * Overlay CSS translate Y (yüzde). 0 = ankraj PNG’nin üst ortasında (klips).
- * Negatif = kolyeyi yukarı kaydırır; pozitif = aşağı.
+ * Overlay CSS translate Y (yüzde, öğe yüksekliğine göre).
+ * Negatif = klipsi ankrajın biraz üstüne alır (boyun kökü).
  */
-export const OVERLAY_TRANSLATE_Y_PCT = 2;
+export const OVERLAY_TRANSLATE_Y_PCT = -8;
 
 /** Landmark smoothing (0–1; yüksek = daha hızlı takip, daha fazla zıplama). */
 export const ANCHOR_SMOOTH_ALPHA = 0.32;
