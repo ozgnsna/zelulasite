@@ -77,7 +77,10 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
   const overlayRef = useRef<HTMLImageElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const guidePathRef = useRef<SVGPathElement>(null);
+  const guideGlowRef = useRef<SVGPathElement>(null);
   const guideWrapRef = useRef<SVGSVGElement>(null);
+  const guideLeftDotRef = useRef<SVGCircleElement>(null);
+  const guideRightDotRef = useRef<SVGCircleElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const faceRef = useRef<FaceLandmarker | null>(null);
   const poseRef = useRef<PoseLandmarker | null>(null);
@@ -135,7 +138,10 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
       containerH: number,
     ) => {
       const path = guidePathRef.current;
+      const pathGlow = guideGlowRef.current;
       const wrap = guideWrapRef.current;
+      const leftDot = guideLeftDotRef.current;
+      const rightDot = guideRightDotRef.current;
       if (!path || !wrap) return;
       if (!sil) {
         wrap.style.opacity = "0";
@@ -148,18 +154,25 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
       const ng = map(sil.neckGuide);
       const tl = map(sil.torsoLeft);
       const tr = map(sil.torsoRight);
+      const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
       const pt = (p: { x: number; y: number }) =>
-        `${(Math.min(1, Math.max(0, p.x)) * 100).toFixed(2)} ${(Math.min(1, Math.max(0, p.y)) * 100).toFixed(2)}`;
-      // Omuz çizgisi + boyun V + hafif gövde trapez (viewBox 0–100)
-      path.setAttribute(
-        "d",
-        [
-          `M ${pt(ls)} L ${pt(rs)}`,
-          `M ${pt(ls)} L ${pt(ng)} L ${pt(rs)}`,
-          `M ${pt(ls)} L ${pt(tl)} L ${pt(tr)} L ${pt(rs)}`,
-        ].join(" "),
-      );
-      wrap.style.opacity = "0.55";
+        `${(clamp01(p.x) * 100).toFixed(2)} ${(clamp01(p.y) * 100).toFixed(2)}`;
+      const d = [
+        `M ${pt(ls)} L ${pt(rs)}`,
+        `M ${pt(ls)} L ${pt(ng)} L ${pt(rs)}`,
+        `M ${pt(ls)} L ${pt(tl)} L ${pt(tr)} L ${pt(rs)}`,
+      ].join(" ");
+      path.setAttribute("d", d);
+      pathGlow?.setAttribute("d", d);
+      if (leftDot) {
+        leftDot.setAttribute("cx", (clamp01(ls.x) * 100).toFixed(2));
+        leftDot.setAttribute("cy", (clamp01(ls.y) * 100).toFixed(2));
+      }
+      if (rightDot) {
+        rightDot.setAttribute("cx", (clamp01(rs.x) * 100).toFixed(2));
+        rightDot.setAttribute("cy", (clamp01(rs.y) * 100).toFixed(2));
+      }
+      wrap.style.opacity = "1";
     },
     [],
   );
@@ -461,23 +474,53 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
             />
             <svg
               ref={guideWrapRef}
-              className="pointer-events-none absolute inset-0 z-[2] h-full w-full transition-opacity duration-300"
+              className="pointer-events-none absolute inset-0 z-[3] h-full w-full transition-opacity duration-200"
               style={{ opacity: 0 }}
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
               aria-hidden
             >
               <path
-                ref={guidePathRef}
+                ref={guideGlowRef}
                 fill="none"
-                stroke="rgba(253, 251, 248, 0.55)"
-                strokeWidth="0.35"
-                strokeDasharray="1.2 1.1"
+                stroke="rgba(0, 0, 0, 0.45)"
+                strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
               />
+              <path
+                ref={guidePathRef}
+                fill="none"
+                stroke="rgba(253, 246, 233, 0.95)"
+                strokeWidth="1.6"
+                strokeDasharray="6 5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle
+                ref={guideLeftDotRef}
+                r="1.4"
+                fill="#c9a86a"
+                stroke="rgba(255,255,255,0.9)"
+                strokeWidth="0.35"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle
+                ref={guideRightDotRef}
+                r="1.4"
+                fill="#c9a86a"
+                stroke="rgba(255,255,255,0.9)"
+                strokeWidth="0.35"
+                vectorEffect="non-scaling-stroke"
+              />
             </svg>
+            {phase === "ready" ? (
+              <p className="pointer-events-none absolute bottom-3 left-1/2 z-[4] w-[90%] -translate-x-1/2 rounded-full bg-stone-950/55 px-3 py-1.5 text-center text-[11px] text-stone-100 backdrop-blur-[2px]">
+                Omuzlarını kesik çizgiye hizala
+              </p>
+            ) : null}
             {busy ? (
               <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center bg-stone-950/55 px-6 text-center backdrop-blur-[2px]">
                 <Camera className="mb-3 size-9 text-stone-300" strokeWidth={1.4} aria-hidden />
