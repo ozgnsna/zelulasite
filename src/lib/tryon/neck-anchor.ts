@@ -1,8 +1,12 @@
 import {
   ANCHOR_SMOOTH_ALPHA,
   BODY_SILHOUETTE,
-  CHIN_VERTICAL_BLEND,
+  CHIN_DROP_RATIO,
   FACE_CHIN_INDEX,
+  FACE_FOREHEAD,
+  FACE_LEFT_CHEEK,
+  FACE_RIGHT_CHEEK,
+  FACE_WIDTH_TO_NECKLACE,
   POSE_LEFT_SHOULDER,
   POSE_RIGHT_SHOULDER,
   SHOULDER_ACROMION_OUTSET,
@@ -11,7 +15,7 @@ import {
 export type Point2 = { x: number; y: number };
 
 export type NeckAnchor = {
-  /** 0–1, video/container göreli (ayna: x zaten mirror edilmiş olabilir). */
+  /** 0–1, video/container göreli. */
   x: number;
   y: number;
   /** Kolye görselinin hedef genişliği (0–1, container genişliğine göre). */
@@ -41,7 +45,7 @@ function lerp(a: number, b: number, t: number) {
 }
 
 /**
- * MediaPipe 0–1 video koordinatını object-cover ile kırpılmış container’a map’ler.
+ * MediaPipe 0–1 video koordinatını object-cover ile kırpılmış container'a map'ler.
  */
 export function mapVideoNormToCoverContainer(
   nx: number,
@@ -114,6 +118,8 @@ export function smoothAnchor(prev: NeckAnchor | null, next: NeckAnchor, alpha = 
   };
 }
 
+/* ── Omuz fit — yalnızca rehber çizgi (SVG) için ── */
+
 type ShoulderFit = {
   midX: number;
   midY: number;
@@ -140,7 +146,6 @@ function fitShouldersToSilhouette(
   const rawDist = Math.hypot(rawRx - rawLx, rawRy - rawLy);
   if (!(rawDist > 0.04)) return null;
 
-  // Ekranda soldan sağa — aynalı ön kamerada rotasyon yamuk kalmasın
   const screenLeft =
     rawLx <= rawRx ? { x: rawLx, y: rawLy } : { x: rawRx, y: rawRy };
   const screenRight =
@@ -163,23 +168,10 @@ function fitShouldersToSilhouette(
   const ry = midY + sin * half;
   const shoulderDist = half * 2;
 
-  return {
-    midX,
-    midY,
-    scale: shoulderDist,
-    cos,
-    sin,
-    rotation,
-    lx,
-    ly,
-    rx,
-    ry,
-  };
+  return { midX, midY, scale: shoulderDist, cos, sin, rotation, lx, ly, rx, ry };
 }
 
-/** Silüet lokal noktayı omuzlara hizalı dünya (0–1 video) koordinatına çevir. */
 function silhouetteToWorld(local: Point2, fit: ShoulderFit): Point2 {
-  // local.x/y omuz açıklığı biriminde; scale = gerçek omuz mesafesi
   return {
     x: fit.midX + (local.x * fit.cos - local.y * fit.sin) * fit.scale,
     y: fit.midY + (local.x * fit.sin + local.y * fit.cos) * fit.scale,
@@ -187,7 +179,7 @@ function silhouetteToWorld(local: Point2, fit: ShoulderFit): Point2 {
 }
 
 /**
- * Algılanan omuzları kanonik silüete oturtur; rehber noktalarını döner.
+ * Algılanan omuzları kanonik silüete oturtur; rehber çizgi noktalarını döner.
  */
 export function fitBodySilhouette(params: {
   poseLandmarks: LandmarkLike[] | null | undefined;
@@ -216,38 +208,54 @@ export function fitBodySilhouette(params: {
   };
 }
 
+/* ── Çene-bazlı kolye anchor (asıl konum + ölçek) ── */
+
 /**
- * Silüet + isteğe bağlı çene ince ayarı → kolye ankrajı.
- * Ölçek = omuz açıklığı × BODY_SILHOUETTE.necklaceWidth (yüz clamp yok).
+ * Kolyeyi ÇENE + YÜZ GENİŞLİĞİ'nden türetir.
+ * Omuz landmark'ına bağımlılık yok — yüz mesh yeterli.
+ * Omuz sadece rotation fallback için kullanılır.
  */
 export function computeNeckAnchor(params: {
   faceLandmarks: LandmarkLike[] | null | undefined;
   poseLandmarks: LandmarkLike[] | null | undefined;
   mirrorX?: boolean;
 }): NeckAnchor | null {
-  const sil = fitBodySilhouette({
-    poseLandmarks: params.poseLandmarks,
-    mirrorX: params.mirrorX,
-  });
-  if (!sil) return null;
-
-  let x = sil.necklaceMount.x;
-  let y = sil.necklaceMount.y;
-
   const face = params.faceLandmarks;
-  const chin = face?.[FACE_CHIN_INDEX];
-  if (chin && CHIN_VERTICAL_BLEND > 0) {
-    const mapX = (v: number) => (params.mirrorX ? 1 - v : v);
-    const chinX = mapX(chin.x);
-    const chinY = chin.y;
-    const neckFromChinY = lerp(chinY, (sil.leftShoulder.y + sil.rightShoulder.y) / 2, 0.42);
-    const neckFromChinX = lerp(chinX, (sil.leftShoulder.x + sil.rightShoulder.x) / 2, 0.42);
-    y = lerp(sil.necklaceMount.y, neckFromChinY, CHIN_VERTICAL_BLEND);
-    x = lerp(sil.necklaceMount.x, neckFromChinX, CHIN_VERTICAL_BLEND * 0.5);
-  }
+  if (!face?.length) return null;
 
-  const width = sil.scale * BODY_SILHOUETTE.necklaceWidth;
+  const chin = face[FACE_CHIN_INDEX];
+  const leftCheek = face[FACE_LEFT_CHEEK];
+  const rightCheek = face[FACE_RIGHT_CHEEK];
+  const forehead = face[FACE_FOREHEAD];
+  if (!chin || !leftCheek || !rightCheek || !forehead) return null;
+
+  const mirror = Boolean(params.mirrorX);
+  const mx = (v: number) => (mirror ? 1 - v : v);
+
+  const chinX = mx(chin.x);
+  const chinY = chin.y;
+
+  const faceHeight = Math.abs(chinY - forehead.y);
+  if (!(faceHeight > 0.02)) return null;
+
+  const lcX = mx(leftCheek.x);
+  const rcX = mx(rightCheek.x);
+  const faceWidth = Math.abs(lcX - rcX);
+  if (!(faceWidth > 0.02)) return null;
+
+  const y = chinY + faceHeight * CHIN_DROP_RATIO;
+  const x = (lcX + rcX) / 2;
+  const width = faceWidth * FACE_WIDTH_TO_NECKLACE;
   if (!(width > 0.05)) return null;
 
-  return { x, y, width, rotation: sil.rotation };
+  // Rotation: yüz tilt'inden türet (sol/sağ yanak Y farkı)
+  const lcY = leftCheek.y;
+  const rcY = rightCheek.y;
+  let rotation = Math.atan2(rcY - lcY, rcX - lcX);
+  // Eğer ekranda sol yanak sağdaysa (mirror) rotation ters
+  if (lcX > rcX) {
+    rotation = Math.atan2(lcY - rcY, lcX - rcX);
+  }
+
+  return { x, y, width, rotation };
 }

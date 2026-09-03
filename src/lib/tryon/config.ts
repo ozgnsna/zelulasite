@@ -29,50 +29,54 @@ export const POSE_LANDMARKER_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
 /**
- * Kanonik üst-gövde silüeti (birim: omuz açıklığı = 1).
- * Sol omuz (-0.5, 0), sağ omuz (0.5, 0); Y aşağı artar, negatif Y = başa doğru.
+ * Kanonik üst-gövde silüeti — yalnızca rehber çizgi için kullanılır.
  */
 export const BODY_SILHOUETTE = {
   leftShoulder: { x: -0.5, y: 0 },
   rightShoulder: { x: 0.5, y: 0 },
-  /**
-   * Kırpılmış üst kenar = köprücük / boyun kökü (çene değil).
-   * y=0 omuz çizgisi; negatif = yukarı.
-   */
   necklaceMount: { x: 0, y: -0.22 },
   necklaceWidth: 0.42,
-  /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
   neckGuide: { x: 0, y: -0.38 },
-  /** Silüet rehberi: gövde altı (hafif trapez). */
   torsoLeft: { x: -0.42, y: 0.55 },
   torsoRight: { x: 0.42, y: 0.55 },
 } as const;
 
 /**
  * Boyun arkasına gelen üst yay + klipsi gizle.
- * Kalan üst kenar = önden görünen iki zincir ucu.
  */
 export const NECKLACE_CLIP_TOP_PCT = 34;
 
-/**
- * Clip sonrası görünür üst kenarı mount’a yasla (tam clip kadar değil — yüze çıkmaz).
- */
 export const OVERLAY_TRANSLATE_Y_PCT = -Math.round(NECKLACE_CLIP_TOP_PCT * 0.55);
 
 /** Landmark smoothing (0–1). */
 export const ANCHOR_SMOOTH_ALPHA = 0.3;
 
-/** MediaPipe Face Landmarker: çene (dikey ince ayar için). */
+/* ── Face Mesh landmark indeksleri ── */
 export const FACE_CHIN_INDEX = 152;
+/** Sol yanak dış kenar (tragion yakını). */
+export const FACE_LEFT_CHEEK = 234;
+/** Sağ yanak dış kenar. */
+export const FACE_RIGHT_CHEEK = 454;
+/** Alın üst-orta (forehead). */
+export const FACE_FOREHEAD = 10;
 
-/** MediaPipe Pose: sol / sağ omuz. */
+/* ── Pose landmark indeksleri (rehber çizgi için) ── */
 export const POSE_LEFT_SHOULDER = 11;
 export const POSE_RIGHT_SHOULDER = 12;
-
-/**
- * Pose 11/12 eklem noktasıdır; görsel omuz başı (acromion) daha dışarıdadır.
- */
 export const SHOULDER_ACROMION_OUTSET = 1.28;
 
-/** Çene blend kapalı — yüze çeker; yalnız silüet mount. */
-export const CHIN_VERTICAL_BLEND = 0;
+/* ── Çene-bazlı kolye anchor ayarları ── */
+
+/**
+ * Kolye Y = çene Y + yüzYüksekliği × bu katsayı.
+ * Büyük → aşağıda, küçük → çeneye yakın.
+ * Önerilen aralık: 0.3 – 0.7
+ */
+export const CHIN_DROP_RATIO = 0.45;
+
+/**
+ * Kolye genişliği = yüzGenişliği × bu katsayı.
+ * Büyük → geniş, küçük → dar / boyna sarılmış.
+ * Önerilen aralık: 1.4 – 2.2
+ */
+export const FACE_WIDTH_TO_NECKLACE = 1.7;
