@@ -46,7 +46,11 @@ export const BODY_SILHOUETTE = {
  */
 export const NECKLACE_CLIP_TOP_PCT = 34;
 
-export const OVERLAY_TRANSLATE_Y_PCT = -50;
+/**
+ * Görünür üst kenarı (clip sonrası) anchor’a yasla.
+ * Merkeze hizalamak kolyeyi göğse indirir.
+ */
+export const OVERLAY_TRANSLATE_Y_PCT = -NECKLACE_CLIP_TOP_PCT;
 
 /** Landmark smoothing (0–1). */
 export const ANCHOR_SMOOTH_ALPHA = 0.3;
@@ -69,13 +73,11 @@ export const SHOULDER_ACROMION_OUTSET = 1.28;
 
 /**
  * Kolye Y = çene Y + yüzYüksekliği × bu katsayı.
- * 0 = çene hizası; negatif = çenenin üstü.
+ * Görünür üst kenar bu noktada (boyun kökü / köprücük).
  */
-export const CHIN_DROP_RATIO = 0;
+export const CHIN_DROP_RATIO = 0.12;
 
 /**
  * Kolye genişliği = yüzGenişliği × bu katsayı.
- * Büyük → geniş, küçük → dar / boyna sarılmış.
- * Önerilen aralık: 1.4 – 2.2
  */
-export const FACE_WIDTH_TO_NECKLACE = 1.7;
+export const FACE_WIDTH_TO_NECKLACE = 1.25;
