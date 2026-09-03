@@ -46,7 +46,7 @@ export const BODY_SILHOUETTE = {
  */
 export const NECKLACE_CLIP_TOP_PCT = 34;
 
-export const OVERLAY_TRANSLATE_Y_PCT = -Math.round(NECKLACE_CLIP_TOP_PCT * 0.55);
+export const OVERLAY_TRANSLATE_Y_PCT = -50;
 
 /** Landmark smoothing (0–1). */
 export const ANCHOR_SMOOTH_ALPHA = 0.3;
@@ -69,10 +69,9 @@ export const SHOULDER_ACROMION_OUTSET = 1.28;
 
 /**
  * Kolye Y = çene Y + yüzYüksekliği × bu katsayı.
- * Büyük → aşağıda, küçük → çeneye yakın.
- * Önerilen aralık: 0.3 – 0.7
+ * 0 = çene hizası; negatif = çenenin üstü.
  */
-export const CHIN_DROP_RATIO = 0.25;
+export const CHIN_DROP_RATIO = 0;
 
 /**
  * Kolye genişliği = yüzGenişliği × bu katsayı.
