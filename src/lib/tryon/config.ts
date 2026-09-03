@@ -36,12 +36,11 @@ export const BODY_SILHOUETTE = {
   leftShoulder: { x: -0.5, y: 0 },
   rightShoulder: { x: 0.5, y: 0 },
   /**
-   * Önden görünen zincirlerin boyun kökü (çene altına yakın).
-   * Daha az negatif = göğüste asılı kalır.
+   * Görünür üst kenar = boyun kökü / köprücük (arkadaki kısım clip ile gizlenir).
    */
-  necklaceMount: { x: 0, y: -0.32 },
+  necklaceMount: { x: 0, y: -0.22 },
   /** Kolye PNG genişliği (genişletilmiş omuz açıklığının oranı). */
-  necklaceWidth: 0.58,
+  necklaceWidth: 0.5,
   /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
   neckGuide: { x: 0, y: -0.38 },
   /** Silüet rehberi: gövde altı (hafif trapez). */
@@ -50,9 +49,10 @@ export const BODY_SILHOUETTE = {
 } as const;
 
 /**
- * Capolia gibi klips üstte olan PNG’lerde üst bandı gizle (önden takılmış görünüm).
+ * Boyun arkasına gelen üst yay + klipsi gizle.
+ * Capolia PNG’de üst ~1/3 “arka boyun”; önden yalnızca sarkan kısım kalsın.
  */
-export const NECKLACE_CLIP_TOP_PCT = 18;
+export const NECKLACE_CLIP_TOP_PCT = 34;
 
 /**
  * Overlay CSS translate Y — clip kadar yukarı, görünür üst kenar mount’ta kalsın.
