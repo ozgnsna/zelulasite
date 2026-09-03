@@ -36,12 +36,12 @@ export const BODY_SILHOUETTE = {
   leftShoulder: { x: -0.5, y: 0 },
   rightShoulder: { x: 0.5, y: 0 },
   /**
-   * Önden görünen zincirlerin boyun kökü (köprücük ortası).
-   * Klips PNG’nin üstünde; clip ile gizlenir — mount görünür üst kenara yakın.
+   * Önden görünen zincirlerin boyun kökü (çene altına yakın).
+   * Daha az negatif = göğüste asılı kalır.
    */
-  necklaceMount: { x: 0, y: -0.14 },
+  necklaceMount: { x: 0, y: -0.32 },
   /** Kolye PNG genişliği (genişletilmiş omuz açıklığının oranı). */
-  necklaceWidth: 0.85,
+  necklaceWidth: 0.58,
   /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
   neckGuide: { x: 0, y: -0.38 },
   /** Silüet rehberi: gövde altı (hafif trapez). */
@@ -51,13 +51,11 @@ export const BODY_SILHOUETTE = {
 
 /**
  * Capolia gibi klips üstte olan PNG’lerde üst bandı gizle (önden takılmış görünüm).
- * Yüzde, görsel yüksekliğine göre.
  */
-export const NECKLACE_CLIP_TOP_PCT = 16;
+export const NECKLACE_CLIP_TOP_PCT = 18;
 
 /**
- * Overlay CSS translate Y (yüzde, öğe yüksekliğine göre).
- * Clip sonrası görünür üst kenarı mount’a yaslamak için clip kadar yukarı kaydır.
+ * Overlay CSS translate Y — clip kadar yukarı, görünür üst kenar mount’ta kalsın.
  */
 export const OVERLAY_TRANSLATE_Y_PCT = -NECKLACE_CLIP_TOP_PCT;
 
@@ -73,9 +71,8 @@ export const POSE_RIGHT_SHOULDER = 12;
 
 /**
  * Pose 11/12 eklem noktasıdır; görsel omuz başı (acromion) daha dışarıdadır.
- * Algılanan omuz açıklığı bu oranla genişletilir (1 = ham landmark).
  */
 export const SHOULDER_ACROMION_OUTSET = 1.28;
 
-/** Çene ile silüet mount arasında dikey blend (0=yalnız silüet, 1=yalnız çene yönü). */
-export const CHIN_VERTICAL_BLEND = 0.35;
+/** Çene blend’i düşük tut — göğüse çekmesin; silüet mount birincil. */
+export const CHIN_VERTICAL_BLEND = 0.18;
