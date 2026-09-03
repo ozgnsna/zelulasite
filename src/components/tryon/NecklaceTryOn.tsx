@@ -147,30 +147,33 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
         wrap.style.opacity = "0";
         return;
       }
+
+      wrap.setAttribute("viewBox", `0 0 ${containerW} ${containerH}`);
+
       const map = (p: { x: number; y: number }) =>
         mapFittedPointToCover(p, videoW, videoH, containerW, containerH);
       const ls = map(sil.leftShoulder);
       const rs = map(sil.rightShoulder);
       const ng = map(sil.neckGuide);
-      const tl = map(sil.torsoLeft);
-      const tr = map(sil.torsoRight);
-      const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-      const pt = (p: { x: number; y: number }) =>
-        `${(clamp01(p.x) * 100).toFixed(2)} ${(clamp01(p.y) * 100).toFixed(2)}`;
-      const d = [
-        `M ${pt(ls)} L ${pt(rs)}`,
-        `M ${pt(ls)} L ${pt(ng)} L ${pt(rs)}`,
-        `M ${pt(ls)} L ${pt(tl)} L ${pt(tr)} L ${pt(rs)}`,
-      ].join(" ");
+      const px = (p: { x: number; y: number }) => ({
+        x: p.x * containerW,
+        y: p.y * containerH,
+      });
+      const a = px(ls);
+      const b = px(rs);
+      const n = px(ng);
+      const pt = (p: { x: number; y: number }) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+      // Yalnız omuz çizgisi + boyun V (trapez yamuk hissi veriyordu)
+      const d = [`M ${pt(a)} L ${pt(b)}`, `M ${pt(a)} L ${pt(n)} L ${pt(b)}`].join(" ");
       path.setAttribute("d", d);
       pathGlow?.setAttribute("d", d);
       if (leftDot) {
-        leftDot.setAttribute("cx", (clamp01(ls.x) * 100).toFixed(2));
-        leftDot.setAttribute("cy", (clamp01(ls.y) * 100).toFixed(2));
+        leftDot.setAttribute("cx", a.x.toFixed(1));
+        leftDot.setAttribute("cy", a.y.toFixed(1));
       }
       if (rightDot) {
-        rightDot.setAttribute("cx", (clamp01(rs.x) * 100).toFixed(2));
-        rightDot.setAttribute("cy", (clamp01(rs.y) * 100).toFixed(2));
+        rightDot.setAttribute("cx", b.x.toFixed(1));
+        rightDot.setAttribute("cy", b.y.toFixed(1));
       }
       wrap.style.opacity = "1";
     },
@@ -476,7 +479,6 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
               ref={guideWrapRef}
               className="pointer-events-none absolute inset-0 z-[3] h-full w-full transition-opacity duration-200"
               style={{ opacity: 0 }}
-              viewBox="0 0 100 100"
               preserveAspectRatio="none"
               aria-hidden
             >
@@ -484,7 +486,7 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
                 ref={guideGlowRef}
                 fill="none"
                 stroke="rgba(0, 0, 0, 0.45)"
-                strokeWidth="2.2"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
@@ -493,26 +495,26 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
                 ref={guidePathRef}
                 fill="none"
                 stroke="rgba(253, 246, 233, 0.95)"
-                strokeWidth="1.6"
-                strokeDasharray="6 5"
+                strokeWidth="2"
+                strokeDasharray="8 6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
               />
               <circle
                 ref={guideLeftDotRef}
-                r="2.2"
+                r="4"
                 fill="#c9a86a"
                 stroke="rgba(255,255,255,0.95)"
-                strokeWidth="0.9"
+                strokeWidth="1.5"
                 vectorEffect="non-scaling-stroke"
               />
               <circle
                 ref={guideRightDotRef}
-                r="2.2"
+                r="4"
                 fill="#c9a86a"
                 stroke="rgba(255,255,255,0.95)"
-                strokeWidth="0.9"
+                strokeWidth="1.5"
                 vectorEffect="non-scaling-stroke"
               />
             </svg>

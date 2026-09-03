@@ -140,13 +140,21 @@ function fitShouldersToSilhouette(
   const rawDist = Math.hypot(rawRx - rawLx, rawRy - rawLy);
   if (!(rawDist > 0.04)) return null;
 
-  const midX = (rawLx + rawRx) / 2;
-  const midY = (rawLy + rawRy) / 2;
-  const rotation = Math.atan2(rawRy - rawLy, rawRx - rawLx);
+  // Ekranda soldan sağa — aynalı ön kamerada rotasyon yamuk kalmasın
+  const screenLeft =
+    rawLx <= rawRx ? { x: rawLx, y: rawLy } : { x: rawRx, y: rawRy };
+  const screenRight =
+    rawLx <= rawRx ? { x: rawRx, y: rawRy } : { x: rawLx, y: rawLy };
+
+  const midX = (screenLeft.x + screenRight.x) / 2;
+  const midY = (screenLeft.y + screenRight.y) / 2;
+  const rotation = Math.atan2(
+    screenRight.y - screenLeft.y,
+    screenRight.x - screenLeft.x,
+  );
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
 
-  // Landmark omuzları içeri kalır → omuz başına doğru dışa genişlet
   const outset = SHOULDER_ACROMION_OUTSET;
   const half = (rawDist * outset) / 2;
   const lx = midX - cos * half;
@@ -228,11 +236,10 @@ export function computeNeckAnchor(params: {
 
   const face = params.faceLandmarks;
   const chin = face?.[FACE_CHIN_INDEX];
-  if (chin) {
+  if (chin && CHIN_VERTICAL_BLEND > 0) {
     const mapX = (v: number) => (params.mirrorX ? 1 - v : v);
     const chinX = mapX(chin.x);
     const chinY = chin.y;
-    // Çene↔omuz ortası ≈ boyun kökü; silüet mount ile karıştır
     const neckFromChinY = lerp(chinY, (sil.leftShoulder.y + sil.rightShoulder.y) / 2, 0.42);
     const neckFromChinX = lerp(chinX, (sil.leftShoulder.x + sil.rightShoulder.x) / 2, 0.42);
     y = lerp(sil.necklaceMount.y, neckFromChinY, CHIN_VERTICAL_BLEND);

@@ -36,11 +36,10 @@ export const BODY_SILHOUETTE = {
   leftShoulder: { x: -0.5, y: 0 },
   rightShoulder: { x: 0.5, y: 0 },
   /**
-   * Kırpılmış görünür üst kenar (iki zincir ucu) boyun kökünde.
-   * Önceki -0.22 göğüste kaldı; çene–omuz arası boyun köküne çek.
+   * Kırpılmış üst kenar = köprücük / boyun kökü (çene değil).
+   * y=0 omuz çizgisi; negatif = yukarı.
    */
-  necklaceMount: { x: 0, y: -0.3 },
-  /** Boyut kullanıcıya küçük geldi — 0.5 civarı tut. */
+  necklaceMount: { x: 0, y: -0.11 },
   necklaceWidth: 0.52,
   /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
   neckGuide: { x: 0, y: -0.38 },
@@ -53,12 +52,12 @@ export const BODY_SILHOUETTE = {
  * Boyun arkasına gelen üst yay + klipsi gizle.
  * Kalan üst kenar = önden görünen iki zincir ucu.
  */
-export const NECKLACE_CLIP_TOP_PCT = 36;
+export const NECKLACE_CLIP_TOP_PCT = 34;
 
 /**
- * Overlay CSS translate Y — clip kadar yukarı, görünür üst kenar mount’ta kalsın.
+ * Clip sonrası görünür üst kenarı mount’a yasla (tam clip kadar değil — yüze çıkmaz).
  */
-export const OVERLAY_TRANSLATE_Y_PCT = -NECKLACE_CLIP_TOP_PCT;
+export const OVERLAY_TRANSLATE_Y_PCT = -Math.round(NECKLACE_CLIP_TOP_PCT * 0.55);
 
 /** Landmark smoothing (0–1). */
 export const ANCHOR_SMOOTH_ALPHA = 0.3;
@@ -75,5 +74,5 @@ export const POSE_RIGHT_SHOULDER = 12;
  */
 export const SHOULDER_ACROMION_OUTSET = 1.28;
 
-/** Çene blend’i düşük tut — göğüse çekmesin; silüet mount birincil. */
-export const CHIN_VERTICAL_BLEND = 0.18;
+/** Çene blend kapalı — yüze çeker; yalnız silüet mount. */
+export const CHIN_VERTICAL_BLEND = 0;
