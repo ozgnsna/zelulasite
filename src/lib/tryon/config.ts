@@ -39,8 +39,8 @@ export const BODY_SILHOUETTE = {
    * Kırpılmış üst kenar = köprücük / boyun kökü (çene değil).
    * y=0 omuz çizgisi; negatif = yukarı.
    */
-  necklaceMount: { x: 0, y: -0.11 },
-  necklaceWidth: 0.52,
+  necklaceMount: { x: 0, y: -0.22 },
+  necklaceWidth: 0.42,
   /** Silüet rehberi: boyun üst noktası (görsel kılavuz). */
   neckGuide: { x: 0, y: -0.38 },
   /** Silüet rehberi: gövde altı (hafif trapez). */
