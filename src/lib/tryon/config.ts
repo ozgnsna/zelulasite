@@ -72,7 +72,7 @@ export const SHOULDER_ACROMION_OUTSET = 1.28;
  * Büyük → aşağıda, küçük → çeneye yakın.
  * Önerilen aralık: 0.3 – 0.7
  */
-export const CHIN_DROP_RATIO = 0.45;
+export const CHIN_DROP_RATIO = 0.25;
 
 /**
  * Kolye genişliği = yüzGenişliği × bu katsayı.
