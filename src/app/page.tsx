@@ -139,7 +139,7 @@ async function buildHeroBanners() {
 }
 
 export default async function HomePage() {
-  const [{ bestSellers, newArrivals }, { isSignedIn, favoriteIds }, heroBanners, categoryCards] =
+  const [{ bestSellers, bestSellersTitle, newArrivals }, { isSignedIn, favoriteIds }, heroBanners, categoryCards] =
     await Promise.all([getHomeData(), loadFavoriteUiContext(), buildHeroBanners(), getHomeCategoryCards()]);
 
   const bestSellerItems = bestSellers.map((p) => ({
@@ -159,8 +159,8 @@ export default async function HomePage() {
     collection: p.collection?.name ?? null,
   }));
 
-  const bestSlice = bestSellers.slice(0, 4);
-  const kombinSlice = newArrivals.slice(0, 4);
+  const bestSlice = bestSellers.slice(0, 8);
+  const kombinSlice = newArrivals.slice(0, 8);
   const categoryGridItems = categoryCards.map((card) => ({
     label: card.label,
     href: card.href,
@@ -182,7 +182,7 @@ export default async function HomePage() {
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Öne çıkan</p>
                 <h2 className="mt-2 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
-                  Çok satanlar
+                  {bestSellersTitle}
                 </h2>
               </div>
               <Link
