@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSafeReturnPath } from "@/lib/account/safe-return-path";
 import { LoginForm } from "@/components/account/LoginForm";
+import { privatePageMetadata } from "@/lib/seo/robots-metadata";
 
 export const metadata: Metadata = {
+  ...privatePageMetadata,
   title: "Giriş",
   description: "Zelula hesabınıza giriş yapın.",
 };

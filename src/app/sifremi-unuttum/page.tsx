@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ForgotPasswordForm } from "@/components/account/ForgotPasswordForm";
+import { privatePageMetadata } from "@/lib/seo/robots-metadata";
 
 export const metadata: Metadata = {
+  ...privatePageMetadata,
   title: "Şifremi unuttum",
   description: "Zelula hesabınız için şifre sıfırlama bağlantısı isteyin.",
 };

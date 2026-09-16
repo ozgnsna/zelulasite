@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ResetPasswordForm } from "@/components/account/ResetPasswordForm";
+import { privatePageMetadata } from "@/lib/seo/robots-metadata";
 
 export const metadata: Metadata = {
+  ...privatePageMetadata,
   title: "Yeni şifre",
   description: "Zelula hesabınız için yeni şifre belirleyin.",
 };

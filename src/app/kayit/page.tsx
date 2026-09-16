@@ -3,8 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RegisterForm } from "@/components/account/RegisterForm";
+import { privatePageMetadata } from "@/lib/seo/robots-metadata";
 
 export const metadata: Metadata = {
+  ...privatePageMetadata,
   title: "Kayıt",
   description: "Zelula için yeni hesap oluşturun.",
 };
