@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
+import { sanitizeGeneratedSlug, slugifyTrFromName } from "@/lib/seo/slugify-tr";
 
 const microBase =
   "rounded-md border border-transparent bg-transparent px-1.5 py-0.5 font-medium leading-tight tracking-tight text-stone-600/90 underline decoration-stone-300/70 underline-offset-2 transition-colors hover:border-[#e7ded2]/80 hover:bg-[#fdfcfa] hover:text-amber-900/90 hover:decoration-amber-700/50 active:scale-[0.98]";
@@ -140,41 +141,6 @@ function applyTrendyolFillFromSite(overwrite: boolean) {
 
 const microSectionBtn =
   "shrink-0 rounded-lg border border-[#e7ded2]/70 bg-white/90 px-2.5 py-1.5 text-[10px] font-medium text-stone-700 shadow-sm transition-[background-color,box-shadow,transform] hover:border-[#dfd3c4] hover:bg-[#fdfcfa] hover:text-amber-900/90 active:scale-[0.99]";
-
-function slugifyTrFromName(name: string): string {
-  let s = name.trim();
-  const pairs: [string, string][] = [
-    ["ğ", "g"],
-    ["ü", "u"],
-    ["ş", "s"],
-    ["ı", "i"],
-    ["ö", "o"],
-    ["ç", "c"],
-    ["Ğ", "g"],
-    ["Ü", "u"],
-    ["Ş", "s"],
-    ["İ", "i"],
-    ["I", "i"],
-    ["Ö", "o"],
-    ["Ç", "c"],
-  ];
-  for (const [a, b] of pairs) {
-    s = s.split(a).join(b);
-  }
-  s = s.toLocaleLowerCase("tr-TR");
-  s = s.replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  return s || "urun";
-}
-
-function sanitizeGeneratedSlug(slug: string): string {
-  // Guard rail: historical source suffixes should never survive generation.
-  let out = slug;
-  // remove terminal tokens like -ig, -instagram, -source (single or repeated at end)
-  out = out.replace(/(?:-(?:ig|instagram|source))+$/i, "");
-  // remove patterns like -ig-123 or -instagram-abc at end
-  out = out.replace(/-(?:ig|instagram|source)-[a-z0-9]+$/i, "");
-  return out.replace(/-+/g, "-").replace(/^-|-$/g, "");
-}
 
 const CATEGORY_PREFIX: Record<string, string> = {
   kupe: "KP",
