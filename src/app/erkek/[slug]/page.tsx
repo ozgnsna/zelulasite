@@ -29,13 +29,15 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   if (!isErkekCategorySlug(slug)) return { title: "Erkek" };
   const name = erkekCategoryLabel(slug);
   const path = erkekCategoryHref(slug);
+  const lower = name.toLocaleLowerCase("tr-TR");
+  const description = `Erkek ${lower} modelleri — paslanmaz çelik Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.`;
   return {
     title: `Erkek ${name}`,
-    description: `Erkek ${name.toLocaleLowerCase("tr-TR")} — Zelula Design seçkisi.`,
+    description,
     alternates: { canonical: absoluteUrl(path) },
     openGraph: {
       title: `Erkek ${name} | Zelula Design`,
-      description: `Erkek ${name.toLocaleLowerCase("tr-TR")} koleksiyonu.`,
+      description,
       url: absoluteUrl(path),
       type: "website",
       locale: "tr_TR",

@@ -3,10 +3,12 @@ import Link from "next/link";
 import { Gift } from "lucide-react";
 import { GiftCardPurchaseForm } from "@/components/gift-cards/GiftCardPurchaseForm";
 import { listActiveGiftCardDenominations } from "@/lib/gift-cards/denominations";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Dijital Hediye Kartı",
   description: "500 ₺, 750 ₺ ve 1000 ₺ Zelula dijital hediye kartı — kod alıcı e-postasına iletilir.",
+  alternates: { canonical: absoluteUrl("/hediye-karti") },
 };
 
 export default async function HediyeKartiPage() {

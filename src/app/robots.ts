@@ -6,7 +6,18 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin/", "/api/", "/auth/", "/hesabim/", "/odeme/", "/sepet"],
+      disallow: [
+        "/admin/",
+        "/api/",
+        "/auth/",
+        "/hesabim/",
+        "/odeme/",
+        "/sepet",
+        "/giris",
+        "/kayit",
+        "/sifremi-unuttum",
+        "/sifre-yenile",
+      ],
     },
     sitemap: `${getSiteOrigin()}/sitemap.xml`,
   };

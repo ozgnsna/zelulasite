@@ -25,7 +25,7 @@ export function HomeCategoryGrid({ items }: { items?: HomeCategoryGridItem[] }) 
               {c.image ? (
                 <ProductImage
                   src={c.image}
-                  alt=""
+                  alt={`${c.label} kategorisi — Zelula Design`}
                   fill
                   sizes="(max-width: 1024px) 50vw, 25vw"
                   className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.03]"

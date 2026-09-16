@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { getSupportWhatsAppHref } from "@/lib/support-contact";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Takı Bakım Rehberi",
   description: "Zelula takılarının ışıltısını korumak için bakım önerileri.",
+  alternates: { canonical: absoluteUrl("/bakim-rehberi") },
 };
 
 export default function JewelryCareGuidePage() {

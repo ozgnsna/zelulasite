@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { LegalLayout } from "@/components/legal/LegalLayout";
 import { LegalDocumentBody } from "@/components/legal/LegalDocumentBody";
 import { getDistanceSalesContractText } from "@/lib/legal/legal-content";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Mesafeli Satış Sözleşmesi",
   description: "Zelula mesafeli satış sözleşmesi — 6502 sayılı Kanun kapsamı.",
+  alternates: { canonical: absoluteUrl("/mesafeli-satis-sozlesmesi") },
 };
 
 export default function MesafeliSatisPage() {

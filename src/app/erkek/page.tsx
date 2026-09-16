@@ -17,12 +17,13 @@ type Props = {
 };
 
 export const metadata: Metadata = {
-  title: "Erkek",
-  description: "Erkek bileklik ve yüzük koleksiyonu — Zelula Design.",
+  title: "Erkek Takı",
+  description:
+    "Erkek çelik bileklik ve yüzük modelleri — maskülen, günlük ve statement Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.",
   alternates: { canonical: absoluteUrl(ERKEK_HUB_HREF) },
   openGraph: {
-    title: "Erkek | Zelula Design",
-    description: "Erkek bileklik ve yüzük koleksiyonu.",
+    title: "Erkek Takı | Zelula Design",
+    description: "Erkek çelik bileklik ve yüzük koleksiyonu — Zelula Design.",
     url: absoluteUrl(ERKEK_HUB_HREF),
     type: "website",
     locale: "tr_TR",

@@ -6,10 +6,12 @@ import { formatTry } from "@/lib/money";
 import { getSupportWhatsAppHref } from "@/lib/support-contact";
 import { BAYRAM_POLICY_LINE, isBayramShippingPause } from "@/lib/storefront/bayram-shipping-notice";
 import { SHIPPING_POLICY_LINE } from "@/lib/storefront/pdp-shipping";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Kargo & İade",
   description: "Kargo ve iade süreçleri hakkında hızlı bilgiler.",
+  alternates: { canonical: absoluteUrl("/kargo-iade") },
 };
 
 export default function ShippingReturnsPage() {

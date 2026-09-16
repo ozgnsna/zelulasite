@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getHomeData, getProductPageHrefByName, getHomeCategoryCards } from "@/lib/storefront";
@@ -16,6 +17,32 @@ import {
   HomeInstagramSection,
   HomeInstagramSectionSkeleton,
 } from "@/components/home/HomeInstagramSection";
+import { absoluteUrl } from "@/lib/seo/site";
+
+const HOME_TITLE = "Zelula Design | Çelik Kolye, Küpe ve Takı";
+const HOME_DESCRIPTION =
+  "Paslanmaz çelik kolye, küpe, bileklik ve yüzük seçkisi. Zamansız tasarım, premium ama erişilebilir takı — Zelula Design.";
+
+export const metadata: Metadata = {
+  title: { absolute: HOME_TITLE },
+  description: HOME_DESCRIPTION,
+  alternates: { canonical: absoluteUrl("/") },
+  openGraph: {
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    url: absoluteUrl("/"),
+    type: "website",
+    locale: "tr_TR",
+    siteName: "Zelula Design",
+    images: [{ url: "/zelula-logo.png", alt: "Zelula Design" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    images: ["/zelula-logo.png"],
+  },
+};
 
 type HeroBannerDef = {
   id: string;
@@ -142,6 +169,7 @@ export default async function HomePage() {
 
   return (
     <main className="bg-[#faf8f5] pb-20">
+      <h1 className="sr-only">Zelula Design — çelik kolye, küpe ve takı</h1>
       <ViewItemListTracker listName="Homepage Best Sellers" listId="home_best_sellers" items={bestSellerItems} />
       <ViewItemListTracker listName="Homepage New Arrivals" listId="home_new_arrivals" items={newArrivalItems} />
 
@@ -179,7 +207,7 @@ export default async function HomePage() {
                     imageForward
                     imageEmphasis="high"
                     conversionOverlay
-                    badges={{ bestseller: true, new: p.new_arrival }}
+                    badges={{ bestseller: Boolean(p.featured), new: p.new_arrival }}
                     isSignedIn={isSignedIn}
                     initialFavorited={favoriteIds.has(p.id)}
                   />

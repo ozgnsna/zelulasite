@@ -23,13 +23,15 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   if (!isKnownCategorySlug(slug)) return { title: "Kategori" };
   const data = await getCategoryPageData(slug);
   if (!data) return { title: "Kategori" };
+  const name = data.taxon.name;
+  const description = `${name} modelleri — paslanmaz çelik ve zamansız Zelula Design takı seçkisi. 650₺ üzeri ücretsiz kargo.`;
   return {
-    title: data.taxon.name,
-    description: `${data.taxon.name} — Zelula seçkisinde ürünleri keşfedin.`,
+    title: name,
+    description,
     alternates: { canonical: absoluteUrl(`/kategori/${slug}`) },
     openGraph: {
-      title: `${data.taxon.name} | Zelula Design`,
-      description: `${data.taxon.name} — Zelula seçkisinde ürünleri keşfedin.`,
+      title: `${name} | Zelula Design`,
+      description,
       url: absoluteUrl(`/kategori/${slug}`),
       type: "website",
       locale: "tr_TR",
