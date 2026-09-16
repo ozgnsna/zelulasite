@@ -15,7 +15,7 @@ const STATIC_PATHS = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteOrigin();
-  const { products } = await getProducts({});
+  const { products } = await getProducts({ includeOutOfStock: true });
 
   const staticRoutes: MetadataRoute.Sitemap = STATIC_PATHS.map((path) => ({
     url: `${siteUrl}${path}`,

@@ -33,6 +33,7 @@ async function fetchHomeDataFromDb() {
   if (!supabase) {
     return { categories: [], collections: [], bestSellers: [], newArrivals: [] as Product[] };
   }
+  const HOME_BEST_SELLERS_TARGET = 8;
   const [categoriesRes, collectionsRes, bestRes, newRes] = await Promise.all([
     supabase.from("categories").select("*").order("name"),
     supabase.from("collections").select("*").order("name"),
@@ -43,7 +44,7 @@ async function fetchHomeDataFromDb() {
       .eq("product_kind", "physical")
       .gt("stock_quantity", 0)
       .eq("featured", true)
-      .limit(8),
+      .limit(HOME_BEST_SELLERS_TARGET),
     supabase
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
@@ -54,10 +55,30 @@ async function fetchHomeDataFromDb() {
       .limit(8),
   ]);
 
+  let bestSellers = (bestRes.data ?? []) as Product[];
+  if (bestSellers.length < HOME_BEST_SELLERS_TARGET) {
+    const excludeIds = bestSellers.map((p) => p.id);
+    let fillQuery = supabase
+      .from("products")
+      .select("*, category:categories(*), collection:collections(*), product_images(*)")
+      .eq("is_active", true)
+      .eq("product_kind", "physical")
+      .gt("stock_quantity", 0)
+      .order("created_at", { ascending: false })
+      .limit(HOME_BEST_SELLERS_TARGET - bestSellers.length);
+    if (excludeIds.length > 0) {
+      fillQuery = fillQuery.not("id", "in", `(${excludeIds.join(",")})`);
+    }
+    const { data: fill } = await fillQuery;
+    if (fill?.length) {
+      bestSellers = [...bestSellers, ...(fill as Product[])];
+    }
+  }
+
   return {
     categories: categoriesRes.data ?? [],
     collections: collectionsRes.data ?? [],
-    bestSellers: (bestRes.data ?? []) as Product[],
+    bestSellers,
     newArrivals: (newRes.data ?? []) as Product[],
   };
 }
@@ -124,6 +145,11 @@ export async function getProducts(params: {
   featuredOnly?: boolean;
   /** Serbest metin araması (ad, açıklama, materyal, renk) */
   q?: string;
+  /**
+   * true: stokta olmayan aktif ürünleri de dahil et (sitemap / SEO).
+   * Listeleme vitrinlerinde varsayılan false kalır.
+   */
+  includeOutOfStock?: boolean;
 }) {
   try {
     const supabase = await createServerClient();
@@ -149,8 +175,11 @@ export async function getProducts(params: {
     let query = supabase
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(*)")
-      .eq("is_active", true)
-      .gt("stock_quantity", 0);
+      .eq("is_active", true);
+
+    if (!params.includeOutOfStock) {
+      query = query.gt("stock_quantity", 0);
+    }
 
     if (categoryIdsFromSlugs.length > 0) {
       query = query.in("category_id", categoryIdsFromSlugs);
@@ -641,7 +670,6 @@ export async function getProductBySlug(slug: string) {
       .select("*, category:categories(*), collection:collections(*), product_images(id, image_url, is_cover, sort_order)")
       .eq("slug", decodedSlug)
       .eq("is_active", true)
-      .gt("stock_quantity", 0)
       .order("sort_order", { foreignTable: "product_images", ascending: true })
       .maybeSingle();
     if (data) {
@@ -654,7 +682,6 @@ export async function getProductBySlug(slug: string) {
       .from("products")
       .select("*, category:categories(*), collection:collections(*), product_images(id, image_url, is_cover, sort_order)")
       .eq("is_active", true)
-      .gt("stock_quantity", 0)
       .order("sort_order", { foreignTable: "product_images", ascending: true })
       .limit(1200);
     const products = (allActive ?? []) as Product[];

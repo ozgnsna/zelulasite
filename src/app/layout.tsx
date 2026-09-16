@@ -45,9 +45,6 @@ export const metadata: Metadata = {
     template: "%s | Zelula",
   },
   description: siteDescription,
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     title: "Zelula Design",
     description: "Günlük ışıltını tamamlayan seçkiler.",

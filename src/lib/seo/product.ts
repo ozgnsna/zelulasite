@@ -122,9 +122,11 @@ export function buildProductJsonLd(
     "@type": "Product",
     name: product.name,
     description,
+    url: pageUrl,
     image,
     sku: product.sku ?? undefined,
     brand: { "@type": "Brand", name: "Zelula Design" },
+    ...(product.categoryName ? { category: product.categoryName } : {}),
     ...(product.material ? { material: product.material } : {}),
     ...(reviewSummary && reviewSummary.count > 0
       ? {
@@ -144,9 +146,7 @@ export function buildProductJsonLd(
       price: Number(product.price).toFixed(2),
       availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
-      ...(product.compare_at_price && Number(product.compare_at_price) > Number(product.price)
-        ? { priceValidUntil: undefined }
-        : {}),
+      seller: { "@type": "Organization", name: "Zelula Design" },
     },
   };
 }
