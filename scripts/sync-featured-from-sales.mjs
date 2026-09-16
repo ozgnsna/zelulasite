@@ -80,8 +80,10 @@ for (const p of products ?? []) {
   }
   const salesQty = salesByProduct.get(p.id) ?? 0;
   const shouldFeature = Boolean(p.is_active) && salesQty >= threshold && salesQty > 0;
+  // Yalnızca gerçek çok satanları ekle; vitrin için elle açılan featured'ı silme
+  // (küçük satış hacminde ana sayfa boşalmaması için).
   if (shouldFeature && !p.featured) toFeature.push({ ...p, salesQty });
-  if (!shouldFeature && p.featured) toUnfeature.push({ ...p, salesQty });
+  if (!p.is_active && p.featured) toUnfeature.push({ ...p, salesQty });
 }
 
 console.log(`Eşik: ${threshold}+ adet satış (aktif ürünler)`);
