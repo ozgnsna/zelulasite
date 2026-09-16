@@ -1,17 +1,24 @@
-/** PDP kargo vaadi — İstanbul saati; kesim 13:00, hafta sonu pazartesi. */
+/** PDP kargo vaadi — İstanbul saati; kesim 13:00, hafta sonu + resmi tatil atlanır. */
 
 import {
   BAYRAM_POLICY_LINE,
   formatBayramShippingBanner,
   isBayramShippingPause,
 } from "@/lib/storefront/bayram-shipping-notice";
+import { getIstanbulYmd, isOfficialHolidayTr } from "@/lib/storefront/official-holidays-tr";
 
 const ISTANBUL = "Europe/Istanbul";
 const CUTOFF_HOUR = 13;
 const CUTOFF_MINUTE = 0;
 
+const TR_WEEKDAY = ["pazar", "pazartesi", "salı", "çarşamba", "perşembe", "cuma", "cumartesi"] as const;
+
 export const SHIPPING_POLICY_LINE =
   "Saat 13:00'a kadar verilen siparişler aynı gün kargoya verilir. Cumartesi ve pazar verilen siparişler pazartesi kargoya teslim edilir.";
+
+/** SSR / ilk boyama — canlı geri sayım yok (hydration uyumu). */
+export const SHIPPING_BANNER_SSR_NEUTRAL =
+  "13:00'a kadar verilen siparişler aynı gün kargoda";
 
 export type ShippingCountdownUrgency = "same-day" | "next-window";
 
@@ -45,17 +52,33 @@ function istanbulDateParts(now: Date) {
   };
 }
 
-function isWeekday(weekday: number) {
-  return weekday >= 1 && weekday <= 5;
+function addDaysYmd(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days, 12, 0, 0));
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+function weekdayFromYmd(ymd: string): number {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay();
+}
+
+function isBusinessYmd(ymd: string): boolean {
+  const wd = weekdayFromYmd(ymd);
+  return wd >= 1 && wd <= 5 && !isOfficialHolidayTr(ymd);
 }
 
 /** Her PDP’de gösterilecek geri sayım (13:00 kesimine veya sonraki iş günü 13:00’e). */
 export function getShippingCountdownState(now = new Date()): ShippingCountdownState {
-  const { weekday, hour, minute } = istanbulDateParts(now);
+  const { hour, minute } = istanbulDateParts(now);
+  const ymd = getIstanbulYmd(now);
   const nowMins = hour * 60 + minute;
   const cutoffMins = CUTOFF_HOUR * 60 + CUTOFF_MINUTE;
 
-  if (isWeekday(weekday) && nowMins < cutoffMins) {
+  if (isBusinessYmd(ymd) && nowMins < cutoffMins) {
     const total = cutoffMins - nowMins;
     return {
       hours: Math.floor(total / 60),
@@ -65,22 +88,21 @@ export function getShippingCountdownState(now = new Date()): ShippingCountdownSt
     };
   }
 
-  const minsToMidnight = 24 * 60 - nowMins;
-  let extraFullDays = 0;
-  let tail = "içinde sipariş verirsen yarın DHL Kargo'ya teslim edilir.";
-
-  if (weekday === 5) {
-    extraFullDays = 2;
-    tail = "içinde sipariş verirsen pazartesi DHL Kargo'ya teslim edilir.";
-  } else if (weekday === 6) {
-    extraFullDays = 1;
-    tail = "içinde sipariş verirsen pazartesi DHL Kargo'ya teslim edilir.";
-  } else if (weekday === 0) {
-    extraFullDays = 0;
-    tail = "içinde sipariş verirsen pazartesi DHL Kargo'ya teslim edilir.";
+  let nextYmd = addDaysYmd(ymd, 1);
+  let daysAhead = 1;
+  while (!isBusinessYmd(nextYmd) && daysAhead < 21) {
+    nextYmd = addDaysYmd(nextYmd, 1);
+    daysAhead += 1;
   }
 
+  const minsToMidnight = 24 * 60 - nowMins;
+  const extraFullDays = daysAhead - 1;
   const total = minsToMidnight + extraFullDays * 24 * 60 + cutoffMins;
+
+  const tomorrowYmd = addDaysYmd(ymd, 1);
+  const dayLabel = nextYmd === tomorrowYmd ? "yarın" : TR_WEEKDAY[weekdayFromYmd(nextYmd)];
+  const tail = `içinde sipariş verirsen ${dayLabel} DHL Kargo'ya teslim edilir.`;
+
   return {
     hours: Math.floor(total / 60),
     minutes: total % 60,
@@ -101,10 +123,13 @@ export function formatShippingCountdownBanner(state: ShippingCountdownState, now
   }
 
   /**
-   * Sonraki pencere (kesimden sonra / hafta sonu): kalan süre 13–72 saat olabilir;
+   * Sonraki pencere (kesimden sonra / hafta sonu / tatil): kalan süre 13–72 saat olabilir;
    * büyük bir "X sa kaldı" sayacı korkutucu ve gereksiz. Sadece sevk gününü göster.
    */
-  const dispatchDay = state.tail.includes("pazartesi") ? "pazartesi" : "yarın";
+  const match = state.tail.match(
+    /sipariş verirsen (yarın|pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar)/,
+  );
+  const dispatchDay = match?.[1] ?? "yarın";
   return `Şimdi verilen siparişler ${dispatchDay} kargoda`;
 }
 

@@ -1,6 +1,10 @@
 "use client";
 
-import { formatShippingCountdownBanner, getShippingCountdownState } from "@/lib/storefront/pdp-shipping";
+import {
+  formatShippingCountdownBanner,
+  getShippingCountdownState,
+  SHIPPING_BANNER_SSR_NEUTRAL,
+} from "@/lib/storefront/pdp-shipping";
 import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -12,19 +16,21 @@ type Props = {
   embedded?: boolean;
 };
 
-/** Canlı geri sayım — İstanbul 13:00 kesimi. */
+/** Canlı geri sayım — İstanbul 13:00 kesimi (SSR’de nötr metin). */
 export function ProductPdpShippingCountdown({ embedded = false }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [countdown, setCountdown] = useState(() => getShippingCountdownState());
 
   useEffect(() => {
+    setMounted(true);
     const tick = () => setCountdown(getShippingCountdownState());
     tick();
     const id = window.setInterval(tick, TICK_MS);
     return () => window.clearInterval(id);
   }, []);
 
-  const isSameDay = countdown.urgency === "same-day";
-  const message = formatShippingCountdownBanner(countdown);
+  const isSameDay = mounted && countdown.urgency === "same-day";
+  const message = mounted ? formatShippingCountdownBanner(countdown) : SHIPPING_BANNER_SSR_NEUTRAL;
 
   return (
     <div

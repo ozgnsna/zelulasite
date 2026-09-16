@@ -3,12 +3,16 @@
 import { getAnnouncementMonthTheme } from "@/lib/announcement/month-theme";
 import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
 import { getBayramAnnouncementMessages, isBayramShippingPause } from "@/lib/storefront/bayram-shipping-notice";
-import { formatShippingCountdownBanner, getShippingCountdownState } from "@/lib/storefront/pdp-shipping";
+import {
+  formatShippingCountdownBanner,
+  getShippingCountdownState,
+  SHIPPING_BANNER_SSR_NEUTRAL,
+} from "@/lib/storefront/pdp-shipping";
 import { useEffect, useMemo, useState } from "react";
 
 const TICK_MS = 60_000;
 
-function buildTickerMessages() {
+function buildTickerMessages(liveShipping: boolean) {
   const threshold = FREE_SHIPPING_THRESHOLD_TRY.toLocaleString("tr-TR");
   const freeShippingLine = `₺${threshold} üzeri ücretsiz kargo`;
 
@@ -16,20 +20,20 @@ function buildTickerMessages() {
     return getBayramAnnouncementMessages(freeShippingLine);
   }
 
-  const cd = getShippingCountdownState();
-  return [
-    freeShippingLine,
-    formatShippingCountdownBanner(cd),
-    "Güvenli ödeme · Kolay iade",
-    "Türkiye geneli teslimat",
-  ];
+  const shippingLine = liveShipping
+    ? formatShippingCountdownBanner(getShippingCountdownState())
+    : SHIPPING_BANNER_SSR_NEUTRAL;
+
+  return [freeShippingLine, shippingLine, "Güvenli ödeme · Kolay iade", "Türkiye geneli teslimat"];
 }
 
 export function AnnouncementBar() {
   const [tick, setTick] = useState(0);
+  const [liveShipping, setLiveShipping] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
+    setLiveShipping(true);
     const id = window.setInterval(() => setTick((n) => n + 1), TICK_MS);
     return () => window.clearInterval(id);
   }, []);
@@ -42,7 +46,7 @@ export function AnnouncementBar() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  const messages = useMemo(() => buildTickerMessages(), [tick]);
+  const messages = useMemo(() => buildTickerMessages(liveShipping), [tick, liveShipping]);
   const monthTheme = useMemo(() => getAnnouncementMonthTheme(), [tick]);
   const loop = reduceMotion ? messages : [...messages, ...messages];
 
