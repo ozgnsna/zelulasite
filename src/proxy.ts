@@ -5,13 +5,30 @@ import {
   activeProductSlugExists,
   parseLegacyProductSlugCandidate,
 } from "@/lib/seo/legacy-product-redirect";
+import { resolveUrlRedirect } from "@/lib/seo/url-redirects";
 
 export async function proxy(request: NextRequest) {
-  const legacySlug = parseLegacyProductSlugCandidate(request.nextUrl.pathname);
+  const pathname = request.nextUrl.pathname;
+
+  const legacySlug = parseLegacyProductSlugCandidate(pathname);
   if (legacySlug && (await activeProductSlugExists(legacySlug))) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = `/urunler/${legacySlug}`;
     return NextResponse.redirect(redirectUrl, 301);
+  }
+
+  try {
+    const resolved = await resolveUrlRedirect(pathname);
+    if (resolved?.kind === "gone") {
+      return new NextResponse("Gone", { status: 410 });
+    }
+    if (resolved?.kind === "redirect") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = resolved.toPath;
+      return NextResponse.redirect(redirectUrl, resolved.status);
+    }
+  } catch {
+    // Yönlendirme tablosu yoksa / env eksikse isteği düşürme
   }
 
   const requestHeaders = new Headers(request.headers);
@@ -36,7 +53,6 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  const pathname = request.nextUrl.pathname;
   const needsAuthGuard = pathname.startsWith("/hesabim");
 
   let user: { id: string } | null = null;

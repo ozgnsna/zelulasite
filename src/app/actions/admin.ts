@@ -23,6 +23,10 @@ import { resolveTrackingUrlForProvider } from "@/lib/orders/shipping-tracking";
 import { parseShippingCarrierId } from "@/lib/shipping/provider";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  deleteRedirectFromPath,
+  upsertProductSlugRedirect,
+} from "@/lib/seo/url-redirects";
 import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
 import { captureGiftCardRedemptionForOrder } from "@/lib/gift-cards/redeem";
 import { PRODUCT_IMAGE_MAX_BYTES } from "@/lib/images/product-image-upload";
@@ -427,7 +431,15 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
   };
 
   let productId = id;
+  let previousSlug: string | null = null;
   if (id) {
+    const { data: existingRow } = await supabase
+      .from("products")
+      .select("slug")
+      .eq("id", id)
+      .maybeSingle();
+    previousSlug = String(existingRow?.slug ?? "").trim() || null;
+
     const { error: updateError } = await supabase.from("products").update(payload).eq("id", id);
     if (updateError) {
       console.error("[admin/saveProduct] update failed", { id, message: updateError.message });
@@ -438,6 +450,27 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
           friendlyProductSaveError(updateError, "Ürün güncellenemedi."),
         ),
       );
+    }
+
+    const nextSlug = String(payload.slug ?? "").trim();
+    if (previousSlug && nextSlug && previousSlug !== nextSlug) {
+      try {
+        const result = await upsertProductSlugRedirect(supabase, previousSlug, nextSlug);
+        if (!result.ok) {
+          console.error("[admin/saveProduct] slug redirect failed", result.error);
+        }
+        await deleteRedirectFromPath(supabase, `/urunler/${nextSlug}`);
+      } catch (err) {
+        console.error("[admin/saveProduct] slug redirect unexpected", {
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    } else if (nextSlug) {
+      try {
+        await deleteRedirectFromPath(supabase, `/urunler/${nextSlug}`);
+      } catch {
+        /* ignore */
+      }
     }
   } else {
     const { data: inserted, error: insertError } = await supabase
