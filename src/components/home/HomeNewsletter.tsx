@@ -55,7 +55,6 @@ export function HomeNewsletter() {
           Davet linkini paylaş, Zelula Puan kazanmaya devam et
         </p>
         <p className="relative mt-2 text-sm font-medium text-[#8a6a3d]">Her davetten +50 Zelula Puan kazan ✨</p>
-        <p className="relative mt-2 text-xs font-light text-stone-500">Bugün birçok kişi Zelula&apos;yı davet etti</p>
 
         <div className="relative mx-auto mt-8 flex max-w-md justify-center"
         >

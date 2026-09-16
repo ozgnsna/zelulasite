@@ -102,11 +102,6 @@ export function Footer() {
                     En Çok Satanlar
                   </Link>
                 </li>
-                <li>
-                  <Link href="/urunler" className={linkClass}>
-                    Kampanyalar
-                  </Link>
-                </li>
               </ul>
             </div>
 

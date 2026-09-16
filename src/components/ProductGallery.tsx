@@ -139,7 +139,7 @@ export function ProductGallery({
                   ) : (
                     <ProductImage
                       src={img.image_url}
-                      alt=""
+                      alt={`${alt} – görsel ${index + 1}`}
                       fill
                       className="object-contain bg-white p-0.5"
                       sizes="120px"

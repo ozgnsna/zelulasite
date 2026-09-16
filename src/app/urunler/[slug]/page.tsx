@@ -244,7 +244,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               stock={product.stock_quantity}
               tone="luxury"
               label="Şimdi satın al"
-              secondaryLabel="🛒 Stiline Ekle"
+              secondaryLabel="Sepete Ekle"
               helperText="Sana özel güvenli ödeme; siparişin özenle hazırlanır."
               redirectAfterAdd="/sepet"
               productSlug={product.slug}
@@ -401,7 +401,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               stock={product.stock_quantity}
               tone="luxury"
               label="Şimdi satın al"
-              secondaryLabel="🛒 Stiline Ekle"
+              secondaryLabel="Sepete Ekle"
               redirectAfterAdd="/sepet"
               productSlug={product.slug}
               className="!space-y-2 [&_button]:!py-3 [&_button]:text-xs"
