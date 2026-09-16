@@ -16,6 +16,8 @@ import { normalizeEmailInput } from "@/lib/account/email-input";
 import { purgeAllOrdersAndResetCounter } from "@/lib/admin/purge-orders";
 import { markOrderHandDeliveredInDb } from "@/lib/admin/mark-order-hand-delivered";
 import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
+import { sendCustomerOrderEmail } from "@/lib/notifications/order-customer";
+import { DEFAULT_SITE_ORIGIN } from "@/lib/seo/site";
 import { buildDhlTrackingUrl } from "@/lib/shipping/dhl";
 import { resolveTrackingUrlForProvider } from "@/lib/orders/shipping-tracking";
 import { parseShippingCarrierId } from "@/lib/shipping/provider";
@@ -1058,6 +1060,69 @@ export async function updateOrderStatus(formData: FormData) {
   });
   if (order_status === "shipped" && before?.order_status !== "shipped") {
     await notifyCustomerOrderWhatsApp(supabase, id, "order_shipped");
+  }
+  if (order_status === "cancelled" && before?.order_status !== "cancelled") {
+    const { data: orderForNotify } = await supabase
+      .from("orders")
+      .select("id,order_number,customer_name,email,total,currency,shipping_address_json")
+      .eq("id", id)
+      .maybeSingle();
+    const { data: itemsForNotify } = await supabase
+      .from("order_items")
+      .select("quantity,total_price,product:products(name)")
+      .eq("order_id", id)
+      .limit(50);
+
+    if (orderForNotify) {
+      const customerItems = (itemsForNotify ?? []).map((i) => {
+        const product = i.product as { name?: string } | { name?: string }[] | null;
+        const name = Array.isArray(product) ? product[0]?.name : product?.name;
+        return {
+          name: String(name ?? "Ürün"),
+          quantity: Number(i.quantity ?? 0),
+          totalPrice: Number(i.total_price ?? 0),
+        };
+      });
+      const addr = orderForNotify.shipping_address_json as
+        | {
+            address_line?: string;
+            district?: string;
+            city?: string;
+            postal_code?: string;
+          }
+        | null;
+      const shippingAddress = addr
+        ? [addr.address_line, addr.district, addr.city, addr.postal_code]
+            .map((p) => String(p ?? "").trim())
+            .filter(Boolean)
+            .join(", ")
+        : null;
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_ORIGIN).replace(/\/$/, "");
+      const customerResult = await sendCustomerOrderEmail({
+        kind: "cancelled",
+        orderNumber: String(orderForNotify.order_number ?? ""),
+        customerName: String(orderForNotify.customer_name ?? ""),
+        customerEmail: String(orderForNotify.email ?? ""),
+        total: Number(orderForNotify.total ?? 0),
+        currency: String(orderForNotify.currency ?? "TRY"),
+        items: customerItems,
+        shippingAddress,
+        orderUrl: `${siteUrl}/hesabim`,
+      });
+      await supabase.from("payment_logs").insert({
+        order_id: id,
+        provider: "internal_customer_notify",
+        event_type: "customer_cancel_notify",
+        status: customerResult.ok ? "sent" : customerResult.attempted ? "failed" : "skipped",
+        response_payload: customerResult,
+        callback_payload: null,
+        callback_hash: null,
+        reference: orderForNotify.order_number,
+        verification_status: customerResult.ok ? "passed" : "failed",
+        verification_error: customerResult.error || customerResult.skippedReason || null,
+        processed_at: new Date().toISOString(),
+      });
+    }
   }
   revalidateAdminOrderPaths(id);
   if (returnTo) redirect(returnTo);

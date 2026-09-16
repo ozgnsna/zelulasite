@@ -1,15 +1,16 @@
 import { getSupportPhoneDisplay } from "@/lib/support-contact";
 
 /**
- * Müşteriye gönderilen sipariş onay e-postası (markalı HTML).
+ * Müşteriye gönderilen sipariş e-postası (markalı HTML).
  * - kind "paid": kart ödemesi onaylandı.
  * - kind "bank_transfer": sipariş alındı, havale/EFT bekleniyor (banka bilgileri eklenir).
+ * - kind "cancelled": sipariş iptal edildi.
  */
 
 type CustomerItem = { name: string; quantity: number; totalPrice: number };
 
 export type CustomerOrderEmailInput = {
-  kind: "paid" | "bank_transfer";
+  kind: "paid" | "bank_transfer" | "cancelled";
   orderNumber: string;
   customerName: string;
   customerEmail: string;
@@ -74,6 +75,9 @@ function isValidEmail(email: string): boolean {
 }
 
 function buildSubject(input: CustomerOrderEmailInput): string {
+  if (input.kind === "cancelled") {
+    return `Siparişin iptal edildi · ${input.orderNumber} · Zelula`;
+  }
   return input.kind === "paid"
     ? `Siparişin alındı · ${input.orderNumber} · Zelula`
     : `Siparişin alındı · Havale bekleniyor · ${input.orderNumber}`;
@@ -109,6 +113,29 @@ function paidNextStepsHtml(): string {
 }
 
 function buildText(input: CustomerOrderEmailInput): string {
+  if (input.kind === "cancelled") {
+    const lines = input.items
+      .slice(0, 30)
+      .map((i) => `- ${i.name} x${i.quantity} (${toTry(i.totalPrice, input.currency)})`);
+    return [
+      `Merhaba ${firstName(input.customerName)},`,
+      "",
+      "Siparişin iptal edildi.",
+      "",
+      `Sipariş No: ${input.orderNumber}`,
+      `Toplam: ${toTry(input.total, input.currency)}`,
+      "",
+      "Ödediğin tutar, ödeme yöntemine en geç 14 gün içinde iade edilir.",
+      "Bankana bağlı olarak hesabına yansıması birkaç iş günü daha sürebilir.",
+      "",
+      "Ürünler:",
+      ...(lines.length > 0 ? lines : ["- (ürün bilgisi yok)"]),
+      "",
+      `Soruların için: ${SUPPORT_EMAIL} · ${getSupportPhoneDisplay()}`,
+      "Zelula",
+    ].join("\n");
+  }
+
   const intro =
     input.kind === "paid"
       ? "Ödemen alındı, siparişin hazırlanıyor."
@@ -148,13 +175,23 @@ function buildText(input: CustomerOrderEmailInput): string {
 
 function buildHtml(input: CustomerOrderEmailInput): string {
   const isPaid = input.kind === "paid";
-  const heading = isPaid ? "Siparişin alındı" : "Siparişin kaydedildi";
-  const intro = isPaid
-    ? "Ödemen bize ulaştı. Seçimlerin özenle hazırlanmaya başlıyor; kargoya verildiğinde seni bilgilendireceğiz."
-    : "Siparişini aldık. Havale veya EFT ödemen hesabımıza ulaştığında hazırlığa geçiyoruz.";
-  const preheader = isPaid
-    ? `${input.orderNumber} · ${toTry(input.total, input.currency)} · Teşekkür ederiz.`
-    : `${input.orderNumber} · Havale bilgileri mailinde.`;
+  const isCancelled = input.kind === "cancelled";
+  const heading = isCancelled
+    ? "Siparişin iptal edildi"
+    : isPaid
+      ? "Siparişin alındı"
+      : "Siparişin kaydedildi";
+  const intro = isCancelled
+    ? "Ödediğin tutar, ödeme yöntemine en geç 14 gün içinde iade edilir. Bankana bağlı olarak hesabına yansıması birkaç iş günü daha sürebilir."
+    : isPaid
+      ? "Ödemen bize ulaştı. Seçimlerin özenle hazırlanmaya başlıyor; kargoya verildiğinde seni bilgilendireceğiz."
+      : "Siparişini aldık. Havale veya EFT ödemen hesabımıza ulaştığında hazırlığa geçiyoruz.";
+  const preheader = isCancelled
+    ? `${input.orderNumber} · Sipariş iptal edildi.`
+    : isPaid
+      ? `${input.orderNumber} · ${toTry(input.total, input.currency)} · Teşekkür ederiz.`
+      : `${input.orderNumber} · Havale bilgileri mailinde.`;
+  const eyebrow = isCancelled ? "Bilgilendirme" : "Teşekkürler";
 
   const itemRows =
     input.items.length > 0
@@ -193,6 +230,9 @@ function buildHtml(input: CustomerOrderEmailInput): string {
       : "";
 
   const orderUrl = input.orderUrl?.trim() || `${SITE_URL}/hesabim`;
+  const ctaHref = isCancelled ? `mailto:${SUPPORT_EMAIL}` : orderUrl;
+  const ctaLabel = isCancelled ? "Bize yaz" : "Siparişini görüntüle";
+  const footerNote = "Soruların için yanınızdayız.";
 
   return `<!doctype html>
 <html lang="tr">
@@ -217,7 +257,7 @@ function buildHtml(input: CustomerOrderEmailInput): string {
         </tr>
         <tr>
           <td style="padding:28px 28px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <p style="margin:0 0 8px;color:${BRAND.gold};font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">Teşekkürler</p>
+            <p style="margin:0 0 8px;color:${BRAND.gold};font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">${escapeHtml(eyebrow)}</p>
             <p style="margin:0 0 10px;color:${BRAND.text};font-size:22px;font-weight:700;line-height:1.25;font-family:Georgia,'Times New Roman',Times,serif;">${escapeHtml(heading)}</p>
             <p style="margin:0 0 6px;color:${BRAND.text};font-size:15px;font-weight:600;">Merhaba ${escapeHtml(firstName(input.customerName))},</p>
             <p style="margin:0;color:${BRAND.textSoft};font-size:14px;line-height:1.65;">${escapeHtml(intro)}</p>
@@ -238,7 +278,7 @@ function buildHtml(input: CustomerOrderEmailInput): string {
         </tr>
         <tr>
           <td style="padding:18px 28px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <p style="margin:0 0 10px;color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Seçimlerin</p>
+            <p style="margin:0 0 10px;color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${isCancelled ? "Sipariş özeti" : "Seçimlerin"}</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               ${itemRows}
               <tr>
@@ -249,7 +289,7 @@ function buildHtml(input: CustomerOrderEmailInput): string {
           </td>
         </tr>
         ${
-          input.shippingAddress
+          !isCancelled && input.shippingAddress
             ? `<tr><td style="padding:18px 28px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
                  <div style="border-left:3px solid ${BRAND.goldLight};padding:2px 0 2px 14px;">
                    <p style="margin:0 0 6px;color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Teslimat adresi</p>
@@ -261,12 +301,12 @@ function buildHtml(input: CustomerOrderEmailInput): string {
         ${bankBlock}
         <tr>
           <td align="center" style="padding:26px 28px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <a href="${escapeHtml(orderUrl)}" style="display:inline-block;min-width:220px;background:${BRAND.gold};color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 28px;border-radius:999px;text-align:center;box-shadow:0 8px 24px -8px rgba(107,83,68,0.45);">Siparişini görüntüle</a>
+            <a href="${escapeHtml(ctaHref)}" style="display:inline-block;min-width:220px;background:${BRAND.gold};color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 28px;border-radius:999px;text-align:center;box-shadow:0 8px 24px -8px rgba(107,83,68,0.45);">${escapeHtml(ctaLabel)}</a>
           </td>
         </tr>
         <tr>
           <td style="padding:8px 28px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <p style="margin:0;text-align:center;color:${BRAND.muted};font-size:12px;line-height:1.5;">Soruların için yanınızdayız.</p>
+            <p style="margin:0;text-align:center;color:${BRAND.muted};font-size:12px;line-height:1.5;">${escapeHtml(footerNote)}</p>
           </td>
         </tr>
         <tr>
