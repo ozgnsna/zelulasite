@@ -5,6 +5,7 @@ import { ProductListingGrid } from "@/components/product/ProductListingGrid";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getCategoryPageData } from "@/lib/storefront";
+import { UNIQUE_PIECE_CATEGORY_NOTE } from "@/lib/storefront/unique-piece-copy";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
 import { absoluteUrl } from "@/lib/seo/site";
 
@@ -90,6 +91,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         <h1 className="mt-4 font-serif text-3xl font-light tracking-tight text-stone-900 sm:text-4xl">
           {data.taxon.name}
         </h1>
+        <p className="mt-2 text-[11px] leading-relaxed text-stone-500">{UNIQUE_PIECE_CATEGORY_NOTE}</p>
         {data.mode === "list" && data.listCaption ? (
           <p className="mt-3 text-sm leading-relaxed text-stone-600">{data.listCaption}</p>
         ) : data.mode === "hub" ? (
