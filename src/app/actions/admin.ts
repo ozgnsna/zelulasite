@@ -276,7 +276,9 @@ export async function updateProductStockInline(
   const rawId = String(productId ?? "").trim();
   if (!rawId) return { ok: false, error: "Geçersiz ürün." };
   const stock = Math.trunc(Number(nextStock));
-  if (!Number.isFinite(stock) || stock < 0) return { ok: false, error: "Geçersiz stok değeri." };
+  if (!Number.isFinite(stock) || stock < 0) {
+    return { ok: false, error: "Stok miktarı 0 veya pozitif olmalıdır (negatif stok kabul edilmez)." };
+  }
 
   const supabase = await createClient();
   const {
@@ -399,6 +401,22 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
   const hasVariants = parsedVariants.length > 0;
   const variantsStockTotal = parsedVariants.reduce((s, v) => s + v.stock_quantity, 0);
 
+  const stockRaw = hasVariants ? variantsStockTotal : Number(formData.get("stock_quantity") ?? 0);
+  if (!Number.isFinite(stockRaw) || stockRaw < 0) {
+    return failSave(
+      returnTo === "/admin" ? (id ? editSuccessPath : newProductFormPath) : returnTo,
+      "Stok miktarı 0 veya pozitif bir sayı olmalıdır (negatif stok kabul edilmez).",
+    );
+  }
+  for (const v of parsedVariants) {
+    if (!Number.isFinite(v.stock_quantity) || v.stock_quantity < 0) {
+      return failSave(
+        returnTo === "/admin" ? (id ? editSuccessPath : newProductFormPath) : returnTo,
+        `Varyant stoğu geçersiz (${v.label}): 0 veya pozitif olmalıdır.`,
+      );
+    }
+  }
+
   const payload = {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? ""),
@@ -408,7 +426,7 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
     compare_at_price: Number(formData.get("compare_at_price") ?? 0) || null,
     cost_price: Number(formData.get("cost_price") ?? 0) || null,
     sku: String(formData.get("sku") ?? ""),
-    stock_quantity: hasVariants ? variantsStockTotal : Number(formData.get("stock_quantity") ?? 0),
+    stock_quantity: hasVariants ? variantsStockTotal : Math.trunc(stockRaw),
     featured: formData.get("featured") === "on",
     new_arrival: id ? formData.get("new_arrival") === "on" : true,
     category_id: categoryId,
@@ -1327,10 +1345,11 @@ function parseVariantsJson(raw: string): ParsedVariant[] {
     const key = label.toLocaleLowerCase("tr-TR");
     if (seen.has(key)) continue;
     seen.add(key);
+    const n = Math.floor(Number(row?.stock_quantity ?? 0));
     out.push({
       id: row?.id ? String(row.id) : undefined,
       label,
-      stock_quantity: Math.max(0, Math.floor(Number(row?.stock_quantity ?? 0))),
+      stock_quantity: Number.isFinite(n) ? n : 0,
     });
   }
   return out;
