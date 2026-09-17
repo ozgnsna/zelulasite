@@ -42,6 +42,30 @@ export function isNumericSizeSuffix(suffix: string): boolean {
 }
 
 /**
+ * Zelula362-11 → Zelula362 (sonek sayısal ölçü).
+ * Renk soneklerinde (Zelula232-Pembe) null.
+ */
+export function extractNumericSizeBaseFromIdentifier(identifier: string): string | null {
+  const b = String(identifier ?? "").trim();
+  const idx = b.lastIndexOf("-");
+  if (idx <= 0 || idx >= b.length - 1) return null;
+  const base = b.slice(0, idx).trim();
+  const suffix = b.slice(idx + 1).trim();
+  if (!base || !isNumericSizeSuffix(suffix)) return null;
+  return base;
+}
+
+/** Sipariş satırı anahtarlarından ölçü taban barkod/SKU’larını toplar. */
+export function collectNumericSizeBasesFromIdentifiers(identifiers: Iterable<string>): string[] {
+  const bases = new Set<string>();
+  for (const id of identifiers) {
+    const base = extractNumericSizeBaseFromIdentifier(id);
+    if (base) bases.add(base);
+  }
+  return [...bases];
+}
+
+/**
  * Barkodu taban + renk sonekine ayırır (Zelula267-Altın → base Zelula267, color Altın).
  * Sonek sayısal ölçüyse null (ölçü yolu ayrı).
  */
@@ -198,10 +222,13 @@ export async function buildTrendyolIdentifierToProductIdMapFromIdentifiers(
   const ids = [...new Set([...identifiers].map((x) => x.trim()).filter(Boolean))];
   if (ids.length === 0) return new Map();
 
+  const sizeBases = collectNumericSizeBasesFromIdentifiers(ids);
+  const lookupKeys = [...new Set([...ids, ...sizeBases])];
+
   const [r1, r2, r3] = await Promise.all([
-    admin.from("products").select("id,trendyol_barcode,trendyol_stock_code,sku").in("trendyol_barcode", ids),
-    admin.from("products").select("id,trendyol_barcode,trendyol_stock_code,sku").in("trendyol_stock_code", ids),
-    admin.from("products").select("id,trendyol_barcode,trendyol_stock_code,sku").in("sku", ids),
+    admin.from("products").select("id,trendyol_barcode,trendyol_stock_code,sku").in("trendyol_barcode", lookupKeys),
+    admin.from("products").select("id,trendyol_barcode,trendyol_stock_code,sku").in("trendyol_stock_code", lookupKeys),
+    admin.from("products").select("id,trendyol_barcode,trendyol_stock_code,sku").in("sku", lookupKeys),
   ]);
 
   const merged = dedupeById([

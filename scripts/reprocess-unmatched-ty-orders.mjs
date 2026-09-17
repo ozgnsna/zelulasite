@@ -47,6 +47,16 @@ function isNumericSizeSuffix(suffix) {
   return /^\d+([.,]\d+)?$/.test(String(suffix ?? "").trim());
 }
 
+function extractNumericSizeBaseFromIdentifier(identifier) {
+  const b = String(identifier ?? "").trim();
+  const idx = b.lastIndexOf("-");
+  if (idx <= 0 || idx >= b.length - 1) return null;
+  const base = b.slice(0, idx).trim();
+  const suffix = b.slice(idx + 1).trim();
+  if (!base || !isNumericSizeSuffix(suffix)) return null;
+  return base;
+}
+
 function parseTrendyolColorSuffixBarcode(barcode) {
   const b = String(barcode ?? "").trim();
   const idx = b.lastIndexOf("-");
@@ -103,6 +113,10 @@ function resolveExact(map, barcode, stockCode) {
   const s = isPlaceholderStockCode(stockCode) ? "" : String(stockCode ?? "").trim();
   if (b && map.has(b)) return map.get(b);
   if (s && map.has(s)) return map.get(s);
+  for (const key of [b, s].filter(Boolean)) {
+    const base = extractNumericSizeBaseFromIdentifier(key);
+    if (base && map.has(base)) return map.get(base);
+  }
   return null;
 }
 

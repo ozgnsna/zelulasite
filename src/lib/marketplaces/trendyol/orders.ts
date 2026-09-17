@@ -9,6 +9,7 @@ import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inven
 import { isTrendyolPlaceholderStockCode } from "@/lib/marketplaces/trendyol/product-identifiers";
 import {
   buildTrendyolIdentifierToProductIdMap,
+  collectNumericSizeBasesFromIdentifiers,
   enrichTrendyolMapWithVariantBarcodes,
   resolveProductIdByColorSuffix,
   resolveProductIdForTrendyolIdentifiers,
@@ -102,10 +103,16 @@ async function applyTrendyolOrderStockDelta(
     return { updatedProductIds: [], unmatchedUnits: 0, unmatchedOrderItems: 0, orderOutcomes };
   }
 
+  // Ölçü barkodu (Zelula362-11): products’ta tam satır yok; taban ürünü yükle → enrich/resolve.
+  const sizeBases = collectNumericSizeBasesFromIdentifiers(keys);
+  const productLookupKeys = [...new Set([...keys, ...sizeBases])];
+  const productSelect =
+    "id,stock_quantity,trendyol_barcode,trendyol_stock_code,sku,trendyol_active,is_active";
+
   const [byBarcode, byStockCode, bySku] = await Promise.all([
-    admin.from("products").select("id,stock_quantity,trendyol_barcode,trendyol_stock_code,sku,trendyol_active,is_active").in("trendyol_barcode", keys),
-    admin.from("products").select("id,stock_quantity,trendyol_barcode,trendyol_stock_code,sku,trendyol_active,is_active").in("trendyol_stock_code", keys),
-    admin.from("products").select("id,stock_quantity,trendyol_barcode,trendyol_stock_code,sku,trendyol_active,is_active").in("sku", keys),
+    admin.from("products").select(productSelect).in("trendyol_barcode", productLookupKeys),
+    admin.from("products").select(productSelect).in("trendyol_stock_code", productLookupKeys),
+    admin.from("products").select(productSelect).in("sku", productLookupKeys),
   ]);
 
   const merged = [...(byBarcode.data ?? []), ...(byStockCode.data ?? []), ...(bySku.data ?? [])];
