@@ -21,7 +21,15 @@ type RelatedItem = {
   collection?: { name: string } | null;
 };
 
-export function RelatedProductsCarousel({ items }: { items: RelatedItem[] }) {
+export function RelatedProductsCarousel({
+  items,
+  title,
+  subtitle,
+}: {
+  items: RelatedItem[];
+  title?: string;
+  subtitle?: string;
+}) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const dragStartXRef = useRef(0);
@@ -59,10 +67,13 @@ export function RelatedProductsCarousel({ items }: { items: RelatedItem[] }) {
     }
   };
 
+  const heading = title ?? "Benzer parçalar";
+  const sub = subtitle ?? "Tarzını tamamlamak için öneriler";
+
   return (
-    <section className="mt-16 border-t border-brand-gold/15 pt-12">
-      <h2 className="section-title font-light text-stone-900">Bunu alanlar şunları da aldı</h2>
-      <p className="mt-2 text-sm font-light text-stone-600">Tarzını tamamlamak için öneriler</p>
+    <section id="benzer-urunler" className="mt-16 scroll-mt-28 border-t border-brand-gold/15 pt-12">
+      <h2 className="section-title font-light text-stone-900">{heading}</h2>
+      <p className="mt-2 text-sm font-light text-stone-600">{sub}</p>
 
       <div className="relative mt-6">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#f7f4ef] to-transparent" />

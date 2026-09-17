@@ -6,8 +6,19 @@ import { AddToCartButton } from "@/components/AddToCartButton";
 import { ProductReferralShare } from "@/components/referral/ProductReferralShare";
 import { ProductGallery } from "@/components/ProductGallery";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
-import { getProductBySlug, getProducts } from "@/lib/storefront";
+import { getProductBySlug } from "@/lib/storefront";
+import { fetchRelatedProducts } from "@/lib/storefront/related-products";
+import {
+  OOS_PDP_BADGE,
+  OOS_PDP_CTA_NOTE,
+  RELATED_SUBTITLE,
+  RELATED_TITLE_IN_STOCK,
+  RELATED_TITLE_OOS,
+  STOCK_ONE_PDP_BADGE,
+} from "@/lib/storefront/unique-piece-copy";
 import { formatTry } from "@/lib/money";
+import { categoryHref } from "@/lib/categories/taxonomy";
+import type { Product } from "@/lib/types";
 import { ViewItemTracker } from "@/components/analytics/ViewItemTracker";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -91,7 +102,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const hasRealDiscount = Boolean(compareAt && compareAt > priceNum);
   const discountAmount = hasRealDiscount ? Math.round((compareAt ?? 0) - priceNum) : 0;
   const stockQty = Number(product.stock_quantity ?? 0);
-  const isLowStock = stockQty > 0 && stockQty <= 3;
+  const isOutOfStock = stockQty < 1;
+  const isStockOne = stockQty === 1;
+  const isLowStockBand = stockQty >= 2 && stockQty <= 3;
   const supportMessage = "Merhaba, Zelula’daki bir ürün hakkında bilgi almak istiyorum ✨";
   const whatsappSupportHref = getSupportWhatsAppHref(supportMessage);
   const supabase = await createClient();
@@ -99,16 +112,33 @@ export default async function ProductPage({ params, searchParams }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
   const admin = createAdminClient();
-  const [favorited, referralCode, traitGroups, shippingPromise, variants, reviewSection] = await Promise.all([
-    user?.id ? isProductFavorited(supabase, user.id, product.id) : Promise.resolve(false),
-    user?.id ? ensureUserReferralCode(admin, user.id) : Promise.resolve(null),
-    resolvePdpTraitGroups(product, admin),
-    Promise.resolve(buildPdpShippingPromise()),
-    fetchProductVariants(supabase, product.id),
-    loadProductReviewSectionData(supabase, { id: product.id, slug: product.slug, name: product.name }, user?.id, {
-      highlightForm: highlightReviewForm,
-    }),
-  ]);
+  const [favorited, referralCode, traitGroups, shippingPromise, variants, reviewSection, relatedProducts] =
+    await Promise.all([
+      user?.id ? isProductFavorited(supabase, user.id, product.id) : Promise.resolve(false),
+      user?.id ? ensureUserReferralCode(admin, user.id) : Promise.resolve(null),
+      resolvePdpTraitGroups(product, admin),
+      Promise.resolve(buildPdpShippingPromise()),
+      fetchProductVariants(supabase, product.id),
+      loadProductReviewSectionData(supabase, { id: product.id, slug: product.slug, name: product.name }, user?.id, {
+        highlightForm: highlightReviewForm,
+      }),
+      fetchRelatedProducts(supabase, {
+        id: product.id,
+        price: priceNum,
+        category_id: product.category_id ?? null,
+        collection_id: product.collection_id ?? null,
+        target_audience: product.target_audience ?? null,
+      }),
+    ]);
+
+  const relatedBlock = (
+    <RelatedProductsBlock
+      items={relatedProducts}
+      outOfStock={isOutOfStock}
+      categorySlug={product.category?.slug ?? product.categorySlug ?? null}
+      categoryName={product.category?.name ?? null}
+    />
+  );
   return (
     <main className="container-premium pb-28 pt-8 sm:pb-16 sm:pt-10">
       <JsonLd
@@ -251,6 +281,18 @@ export default async function ProductPage({ params, searchParams }: Props) {
               className="[&_button]:w-full [&_button]:py-4 [&_button]:text-sm [&_button]:font-bold [&_button]:transition [&_button]:duration-150 [&_button]:ease-in-out [&_button:hover]:scale-[1.01] [&_button:hover]:shadow-[0_14px_28px_rgba(30,24,18,0.24)]"
             />
 
+            {isOutOfStock ? (
+              <p className="text-[12px] leading-relaxed text-stone-600">
+                {OOS_PDP_CTA_NOTE}{" "}
+                <a
+                  href="#benzer-urunler"
+                  className="font-semibold text-[#8a734f] underline-offset-2 hover:underline"
+                >
+                  Benzer parçalara git
+                </a>
+              </p>
+            ) : null}
+
             {isNecklaceTryOnEnabled(product.sku, product.slug) ? (
               <NecklaceTryOnButton
                 productName={product.name}
@@ -277,14 +319,20 @@ export default async function ProductPage({ params, searchParams }: Props) {
             {stockQty > 0 ? (
               <p
                 className={`inline-flex w-fit rounded-full px-3 py-1 text-[12px] font-medium ${
-                  isLowStock ? "border border-amber-200 bg-amber-50 text-amber-800" : "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                  isStockOne || isLowStockBand
+                    ? "border border-amber-200 bg-amber-50 text-amber-800"
+                    : "border border-emerald-200 bg-emerald-50 text-emerald-800"
                 }`}
               >
-                {isLowStock ? `Son ${stockQty} ürün` : "Stokta var"}
+                {isStockOne
+                  ? STOCK_ONE_PDP_BADGE
+                  : isLowStockBand
+                    ? `Son ${stockQty} ürün`
+                    : "Stokta var"}
               </p>
             ) : (
               <p className="inline-flex w-fit rounded-full border border-stone-200 bg-stone-100 px-3 py-1 text-[12px] font-medium text-stone-700">
-                Şu an stokta yok
+                {OOS_PDP_BADGE}
               </p>
             )}
 
@@ -368,28 +416,39 @@ export default async function ProductPage({ params, searchParams }: Props) {
       </div>
 
       <div className="mt-12 border-t border-brand-gold/20 pt-10">
-        <ProductReviewsSection
-          productName={product.name}
-          productId={product.id}
-          productSlug={product.slug}
-          reviews={reviewSection.reviews}
-          summary={reviewSection.summary}
-          userReview={reviewSection.userReview}
-          canReview={reviewSection.canReview}
-          isLoggedIn={Boolean(user?.id)}
-          highlightForm={reviewSection.highlightForm}
-          loginNext={reviewSection.loginNext}
-        />
+        {isOutOfStock ? relatedBlock : null}
+        <div className={isOutOfStock ? "mt-12" : undefined}>
+          <ProductReviewsSection
+            productName={product.name}
+            productId={product.id}
+            productSlug={product.slug}
+            reviews={reviewSection.reviews}
+            summary={reviewSection.summary}
+            userReview={reviewSection.userReview}
+            canReview={reviewSection.canReview}
+            isLoggedIn={Boolean(user?.id)}
+            highlightForm={reviewSection.highlightForm}
+            loginNext={reviewSection.loginNext}
+          />
+        </div>
       </div>
 
-      <RelatedProducts currentProductId={product.id} />
+      {!isOutOfStock ? relatedBlock : null}
 
       <div className="fixed inset-x-0 bottom-3 z-[110] mx-auto w-[calc(100%-1rem)] max-w-md rounded-2xl border border-brand-gold/25 bg-[#fffdfb]/95 p-3 shadow-[0_12px_32px_rgba(45,37,33,0.14)] backdrop-blur-md md:hidden">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs text-stone-500">Toplam</p>
             <p className="text-lg font-semibold text-brand-gold">{formatTry(priceNum)}</p>
-            <p className="text-[11px] text-stone-500">{stockQty > 0 ? (isLowStock ? `Son ${stockQty} ürün` : "Stokta var") : "Stokta yok"}</p>
+            <p className="text-[11px] text-stone-500">
+              {isOutOfStock
+                ? OOS_PDP_BADGE
+                : isStockOne
+                  ? "Son 1 adet"
+                  : isLowStockBand
+                    ? `Son ${stockQty} ürün`
+                    : "Stokta var"}
+            </p>
           </div>
           <div className="min-w-[9.5rem] shrink-0">
             <AddToCartButton
@@ -414,9 +473,43 @@ export default async function ProductPage({ params, searchParams }: Props) {
   );
 }
 
-async function RelatedProducts({ currentProductId }: { currentProductId: string }) {
-  const { products } = await getProducts({ sort: "featured" });
-  const list = products.filter((p) => p.id !== currentProductId).slice(0, 4);
-  if (list.length === 0) return null;
-  return <RelatedProductsCarousel items={list} />;
+function RelatedProductsBlock({
+  items,
+  outOfStock,
+  categorySlug,
+  categoryName,
+}: {
+  items: Product[];
+  outOfStock: boolean;
+  categorySlug: string | null;
+  categoryName: string | null;
+}) {
+  if (items.length === 0) {
+    const href = categorySlug ? categoryHref(categorySlug) : "/urunler";
+    const label = categoryName ? `${categoryName} koleksiyonuna göz at` : "Tüm ürünlere göz at";
+    return (
+      <section id="benzer-urunler" className="mt-16 scroll-mt-28 border-t border-brand-gold/15 pt-12">
+        <h2 className="section-title font-light text-stone-900">
+          {outOfStock ? RELATED_TITLE_OOS : RELATED_TITLE_IN_STOCK}
+        </h2>
+        <p className="mt-2 text-sm font-light text-stone-600">
+          Bu parçaya yakın öneri bulunamadı.
+        </p>
+        <Link
+          href={href}
+          className="mt-4 inline-flex text-sm font-semibold text-[#8a734f] underline-offset-2 hover:underline"
+        >
+          {label} →
+        </Link>
+      </section>
+    );
+  }
+
+  return (
+    <RelatedProductsCarousel
+      items={items}
+      title={outOfStock ? RELATED_TITLE_OOS : RELATED_TITLE_IN_STOCK}
+      subtitle={RELATED_SUBTITLE}
+    />
+  );
 }
