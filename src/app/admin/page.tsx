@@ -9,6 +9,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { AdminAnalyticsSection } from "@/components/admin/dashboard/AdminAnalyticsSection";
 import { ProductHealthPanel } from "@/components/admin/dashboard/ProductHealthPanel";
+import {
+  readUnmatchedLinesFromRawPayload,
+  UnmatchedTyOrdersCard,
+  type UnmatchedTyOrderRow,
+} from "@/components/admin/dashboard/UnmatchedTyOrdersCard";
 import { fetchDashboardProductCounts } from "@/lib/admin/dashboard-product-counts";
 import { resolveAnalyticsRange } from "@/lib/admin/analytics-range";
 import { fetchAnalyticsSectionData } from "@/lib/admin/fetch-analytics-section";
@@ -130,6 +135,7 @@ export default async function AdminPage({
   });
   const { start: dayStart, end: dayEnd } = istanbulDayUtcRange();
   const { start: yStart, end: yEnd } = istanbulYesterdayUtcRange();
+  const unmatchedSinceIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
     todayOrdersRes,
@@ -141,6 +147,7 @@ export default async function AdminPage({
     analyticsSectionData,
     productCounts,
     paidOrdersAllTimeRes,
+    recentMarketplaceOrdersRes,
   ] = await Promise.all([
     admin
       .from("orders")
@@ -184,6 +191,13 @@ export default async function AdminPage({
       .select("*", { count: "exact", head: true })
       .eq("payment_status", "paid")
       .neq("order_status", "cancelled"),
+    admin
+      .from("marketplace_orders")
+      .select("order_number,external_order_id,order_status,raw_payload,updated_at")
+      .eq("marketplace", "trendyol")
+      .gte("updated_at", unmatchedSinceIso)
+      .order("updated_at", { ascending: false })
+      .limit(200),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
@@ -193,6 +207,20 @@ export default async function AdminPage({
   const pendingShipmentCount = pendingShipCountRes.count ?? 0;
   const pendingShipQueue = pendingShipListRes.data ?? [];
   const paidOrdersAllTime = paidOrdersAllTimeRes.count ?? 0;
+
+  const unmatchedTyOrders: UnmatchedTyOrderRow[] = [];
+  for (const row of recentMarketplaceOrdersRes.data ?? []) {
+    const unmatchedLines = readUnmatchedLinesFromRawPayload(row.raw_payload);
+    if (unmatchedLines <= 0) continue;
+    const orderNumber = String(row.order_number ?? row.external_order_id ?? "").trim();
+    if (!orderNumber) continue;
+    unmatchedTyOrders.push({
+      orderNumber,
+      unmatchedLines,
+      orderStatus: String(row.order_status ?? "").trim(),
+      updatedAt: String(row.updated_at ?? ""),
+    });
+  }
 
   const { activeProductsCount, outOfStockCount, lowStockCount, notListedOnMarketplaceCount } = productCounts;
 
@@ -412,6 +440,8 @@ export default async function AdminPage({
             lowStockCount={lowStockCount}
             notListedOnMarketplaceCount={notListedOnMarketplaceCount}
           />
+
+          <UnmatchedTyOrdersCard orders={unmatchedTyOrders} />
 
           <section>
             <h2 className="text-base font-semibold text-stone-950">Bugün yapılacaklar</h2>
