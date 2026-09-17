@@ -10,6 +10,7 @@ import { isTrendyolPlaceholderStockCode } from "@/lib/marketplaces/trendyol/prod
 import {
   buildTrendyolIdentifierToProductIdMap,
   enrichTrendyolMapWithVariantBarcodes,
+  resolveProductIdByColorSuffix,
   resolveProductIdForTrendyolIdentifiers,
 } from "@/lib/marketplaces/trendyol/product-lookup";
 import { parseTrendyolVariantBarcode } from "@/lib/marketplaces/trendyol/product-variants";
@@ -160,11 +161,39 @@ async function applyTrendyolOrderStockDelta(
     for (const line of order.lines) {
       const qty = Number(line.quantity ?? 0);
       if (!Number.isFinite(qty) || qty <= 0) continue;
-      const matchId = resolveProductIdForTrendyolIdentifiers(
+      let matchId = resolveProductIdForTrendyolIdentifiers(
         byIdentifier,
         line.barcode,
         lineStockCodeForMatch(line.stockCode),
       );
+      if (!matchId) {
+        const colorHit = await resolveProductIdByColorSuffix(admin, line.barcode, {
+          productName: line.productName,
+        });
+        if (colorHit) {
+          matchId = colorHit.id;
+          byIdentifier.set(String(line.barcode ?? "").trim(), matchId);
+          if (!byId.has(matchId)) {
+            byId.set(matchId, {
+              id: matchId,
+              stock_quantity: Number(colorHit.row.stock_quantity ?? 0),
+              consumed: 0,
+            });
+            const moreVariants = await fetchVariantsForProducts(admin, [matchId]);
+            for (const [pid, list] of moreVariants) {
+              variantsByProduct.set(pid, list);
+              for (const v of list) {
+                variantById.set(v.id, {
+                  id: v.id,
+                  product_id: v.product_id,
+                  stock_quantity: v.stock_quantity,
+                  label: v.label,
+                });
+              }
+            }
+          }
+        }
+      }
       if (!matchId) {
         unmatchedUnits += qty;
         unmatchedOrderItems += 1;
@@ -178,7 +207,7 @@ async function applyTrendyolOrderStockDelta(
       current.consumed += qty;
 
       const parsedVariant = parseTrendyolVariantBarcode(String(line.barcode ?? ""), byIdentifier.keys());
-      if (parsedVariant) {
+      if (parsedVariant && /^\d+([.,]\d+)?$/.test(parsedVariant.sizeLabel.trim())) {
         const variants = variantsByProduct.get(matchId) ?? [];
         const variant = variants.find(
           (v) => v.label.trim().toLowerCase() === parsedVariant.sizeLabel.trim().toLowerCase(),
