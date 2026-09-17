@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { syncLoyaltyLedgersForOrder } from "@/lib/loyalty/sync-order-ledger";
 import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
+import { buildFulfillmentTimestampPatch } from "@/lib/orders/fulfillment-timestamps";
 
 export type MarkOrderHandDeliveredResult =
   | { ok: true; alreadyDelivered?: boolean }
@@ -15,7 +16,7 @@ export async function markOrderHandDeliveredInDb(
 
   const { data: before, error: fetchErr } = await admin
     .from("orders")
-    .select("payment_status,order_status")
+    .select("payment_status,order_status,shipped_at,delivered_at")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -27,12 +28,14 @@ export async function markOrderHandDeliveredInDb(
   }
 
   const now = new Date().toISOString();
+  const ts = buildFulfillmentTimestampPatch("hand_delivered", before, now);
   const { data: updated, error: updateErr } = await admin
     .from("orders")
     .update({
       order_status: "hand_delivered",
       payment_status: before.payment_status,
       updated_at: now,
+      ...ts,
     })
     .eq("id", orderId)
     .select("id")

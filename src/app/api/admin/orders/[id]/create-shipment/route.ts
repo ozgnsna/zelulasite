@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notifyCustomerOrderWhatsApp } from "@/lib/notifications/order-customer-whatsapp";
+import { buildFulfillmentTimestampPatch } from "@/lib/orders/fulfillment-timestamps";
 import { createShipmentForOrder, parseShippingCarrierId } from "@/lib/shipping/provider";
 import type { OrderShippingSource } from "@/lib/shipping/types";
 
@@ -92,6 +93,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   const now = new Date().toISOString();
+  const ts = buildFulfillmentTimestampPatch("shipped", {
+    shipped_at: row.shipped_at == null ? null : String(row.shipped_at),
+    delivered_at: row.delivered_at == null ? null : String(row.delivered_at),
+  }, now);
   const { error: updErr } = await admin
     .from("orders")
     .update({
@@ -102,6 +107,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       shipping_status: result.shippingStatus,
       shipping_created_at: now,
       updated_at: now,
+      ...ts,
     })
     .eq("id", orderId);
 

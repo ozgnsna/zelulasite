@@ -38,6 +38,7 @@ import {
   productVideoMimeType,
 } from "@/lib/products/media-url";
 import { syncLoyaltyLedgersForOrder } from "@/lib/loyalty/sync-order-ledger";
+import { buildFulfillmentTimestampPatch } from "@/lib/orders/fulfillment-timestamps";
 import { countTrendyolHttpsProductImages } from "@/lib/marketplaces/trendyol/int-ids";
 import { ZELULA_TRENDYOL_BRAND_ID, ZELULA_TRENDYOL_VAT_RATE } from "@/lib/marketplaces/trendyol/shop-defaults";
 import { syncPriceInventoryForProducts } from "@/lib/marketplaces/trendyol/inventory";
@@ -1090,10 +1091,16 @@ export async function updateOrderStatus(formData: FormData) {
   const returnTo = adminOrderReturnTo(formData, id);
   if (!id) return;
 
-  const { data: before } = await supabase.from("orders").select("order_status").eq("id", id).maybeSingle();
+  const { data: before } = await supabase
+    .from("orders")
+    .select("order_status,shipped_at,delivered_at")
+    .eq("id", id)
+    .maybeSingle();
+  const now = new Date().toISOString();
+  const ts = buildFulfillmentTimestampPatch(order_status, before ?? {}, now);
   const { error: updateErr } = await supabase
     .from("orders")
-    .update({ order_status, payment_status, updated_at: new Date().toISOString() })
+    .update({ order_status, payment_status, updated_at: now, ...ts })
     .eq("id", id);
   if (updateErr) {
     if (returnTo) redirect(`${returnTo}?orderError=${encodeURIComponent(updateErr.message)}`);
@@ -1196,7 +1203,7 @@ export async function updateOrderShippingTrackingAction(formData: FormData) {
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id,payment_status,order_status,order_number,shipping_tracking_number")
+    .select("id,payment_status,order_status,order_number,shipping_tracking_number,shipped_at,delivered_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -1210,17 +1217,20 @@ export async function updateOrderShippingTrackingAction(formData: FormData) {
     (shippingProvider === "dhl" ? buildDhlTrackingUrl(trackingNumber) : null);
   const now = new Date().toISOString();
   const prevTracking = String(order.shipping_tracking_number ?? "").trim();
+  const nextStatus = String(order.order_status ?? "") === "cancelled" ? order.order_status : "shipped";
+  const ts = buildFulfillmentTimestampPatch(String(nextStatus), order, now);
 
   const { error: updateErr } = await supabase
     .from("orders")
     .update({
-      order_status: String(order.order_status ?? "") === "cancelled" ? order.order_status : "shipped",
+      order_status: nextStatus,
       shipping_provider: shippingProvider,
       shipping_tracking_number: trackingNumber,
       shipping_label_url: trackingUrl,
       shipping_status: "created",
       shipping_created_at: now,
       updated_at: now,
+      ...ts,
     })
     .eq("id", id);
 
