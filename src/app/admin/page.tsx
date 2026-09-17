@@ -14,6 +14,7 @@ import {
   UnmatchedTyOrdersCard,
   type UnmatchedTyOrderRow,
 } from "@/components/admin/dashboard/UnmatchedTyOrdersCard";
+import { PendingReviewsCard } from "@/components/admin/dashboard/PendingReviewsCard";
 import { fetchDashboardProductCounts } from "@/lib/admin/dashboard-product-counts";
 import { resolveAnalyticsRange } from "@/lib/admin/analytics-range";
 import { fetchAnalyticsSectionData } from "@/lib/admin/fetch-analytics-section";
@@ -148,6 +149,7 @@ export default async function AdminPage({
     productCounts,
     paidOrdersAllTimeRes,
     recentMarketplaceOrdersRes,
+    pendingReviewsCountRes,
   ] = await Promise.all([
     admin
       .from("orders")
@@ -198,6 +200,10 @@ export default async function AdminPage({
       .gte("updated_at", unmatchedSinceIso)
       .order("updated_at", { ascending: false })
       .limit(200),
+    admin
+      .from("customer_product_reviews")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
@@ -221,6 +227,7 @@ export default async function AdminPage({
       updatedAt: String(row.updated_at ?? ""),
     });
   }
+  const pendingReviewsCount = pendingReviewsCountRes.count ?? 0;
 
   const { activeProductsCount, outOfStockCount, lowStockCount, notListedOnMarketplaceCount } = productCounts;
 
@@ -442,6 +449,8 @@ export default async function AdminPage({
           />
 
           <UnmatchedTyOrdersCard orders={unmatchedTyOrders} />
+
+          <PendingReviewsCard pendingCount={pendingReviewsCount} />
 
           <section>
             <h2 className="text-base font-semibold text-stone-950">Bugün yapılacaklar</h2>
