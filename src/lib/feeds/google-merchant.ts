@@ -1,5 +1,5 @@
 import { CATEGORY_TAXONOMY, getTaxonBySlug } from "@/lib/categories/taxonomy";
-import { FREE_SHIPPING_THRESHOLD_TRY, STANDARD_SHIPPING_FEE_TRY } from "@/lib/free-shipping";
+import { STANDARD_SHIPPING_FEE_TRY } from "@/lib/free-shipping";
 import { unwrapSupabaseRelation } from "@/lib/gift-cards/unwrap-relation";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
@@ -98,25 +98,15 @@ export function googleProductType(
   return leaf || null;
 }
 
-/** compare_at varsa price = eski fiyat, sale_price = güncel. Aksi halde yalnızca güncel price. */
-export function resolveFeedPrices(price: number, compareAt: number | null): {
-  price: number;
-  salePrice: number | null;
-} {
-  const current = Number.isFinite(price) ? price : 0;
-  const regular = compareAt != null && Number.isFinite(compareAt) ? compareAt : 0;
-  if (regular > current && current > 0) {
-    return { price: regular, salePrice: current };
-  }
-  return { price: current, salePrice: null };
-}
-
 export function formatFeedMoneyTry(amount: number): string {
   return `${amount.toFixed(2)} TRY`;
 }
 
-export function feedShippingPriceTry(sellingPrice: number): number {
-  if (sellingPrice >= FREE_SHIPPING_THRESHOLD_TRY) return 0;
+/**
+ * Feed kargosunu sepet eşiğine göre değiştirme.
+ * Ücretsiz kargo sepet toplamına bakıyor; tek ürün fiyatı yeterli değil.
+ */
+export function feedShippingPriceTry(): number {
   return STANDARD_SHIPPING_FEE_TRY;
 }
 
@@ -188,11 +178,11 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
   const sku = String(p.sku ?? "").trim();
   const hasVariants = (p.product_variants ?? []).some((v) => v?.is_active !== false);
 
+  // sale_price kapalı: Google 10 günlük fiyat geçmişi ister.
+  // product_price_history en az 10 gün birikince compare_at / geçmiş
+  // fiyattan sale_price tekrar açılacak (price = eski, sale_price = güncel).
   const currentPrice = Number(p.price ?? 0);
-  const compareAt = p.compare_at_price != null ? Number(p.compare_at_price) : null;
-  const prices = resolveFeedPrices(currentPrice, compareAt);
-  const sellingPrice = prices.salePrice ?? prices.price;
-  const shipping = feedShippingPriceTry(sellingPrice);
+  const shipping = feedShippingPriceTry();
   const inStock = Number(p.stock_quantity ?? 0) > 0;
   const description = resolveFeedDescription({
     name,
@@ -211,12 +201,8 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
     `      <g:description>${escapeXml(description)}</g:description>`,
     `      <g:link>${escapeXml(link)}</g:link>`,
     `      <g:image_link>${escapeXml(imageLink)}</g:image_link>`,
-    `      <g:price>${escapeXml(formatFeedMoneyTry(prices.price))}</g:price>`,
+    `      <g:price>${escapeXml(formatFeedMoneyTry(currentPrice))}</g:price>`,
   ];
-
-  if (prices.salePrice != null) {
-    lines.push(`      <g:sale_price>${escapeXml(formatFeedMoneyTry(prices.salePrice))}</g:sale_price>`);
-  }
 
   lines.push(
     `      <g:availability>${inStock ? "in_stock" : "out_of_stock"}</g:availability>`,
