@@ -11,6 +11,8 @@ import {
   captureGiftCardRedemptionForOrder,
   releaseGiftCardHoldsForOrder,
 } from "@/lib/gift-cards/redeem";
+import { sendMetaPurchaseCapi } from "@/lib/meta/capi";
+import { getSiteOrigin } from "@/lib/seo/site";
 
 type LockedOrderRow = {
   id: string;
@@ -269,13 +271,13 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
     const { data: orderForNotify } = await admin
       .from("orders")
       .select(
-        "id,order_number,customer_name,email,phone,total,currency,payment_status,payment_provider,shipping_address_json",
+        "id,order_number,customer_name,email,phone,total,currency,payment_status,payment_provider,shipping_address_json,legal_ip,legal_user_agent",
       )
       .eq("id", payload.orderId)
       .maybeSingle();
     const { data: itemsForNotify } = await admin
       .from("order_items")
-      .select("quantity,total_price,product:products(name)")
+      .select("quantity,total_price,product_id,product:products(name)")
       .eq("order_id", payload.orderId)
       .limit(20);
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -373,6 +375,35 @@ export async function applyPaymentResult(payload: PaymentCallbackPayload) {
       });
 
       await notifyCustomerOrderWhatsApp(admin, payload.orderId, "order_paid");
+
+      let marketingConsent = false;
+      const { data: consentRow, error: consentErr } = await admin
+        .from("orders")
+        .select("marketing_consent")
+        .eq("id", payload.orderId)
+        .maybeSingle();
+      if (!consentErr && (consentRow as { marketing_consent?: boolean } | null)?.marketing_consent === true) {
+        marketingConsent = true;
+      }
+
+      const orderForCapi = orderForNotify as typeof orderForNotify & {
+        legal_ip?: string | null;
+        legal_user_agent?: string | null;
+      };
+      void sendMetaPurchaseCapi({
+        orderNumber: String(orderForCapi.order_number ?? ""),
+        email: String(orderForCapi.email ?? ""),
+        phone: String(orderForCapi.phone ?? ""),
+        total: Number(orderForCapi.total ?? 0),
+        currency: String(orderForCapi.currency ?? "TRY"),
+        contentIds: (itemsForNotify ?? [])
+          .map((i) => String((i as { product_id?: unknown }).product_id ?? "").trim())
+          .filter(Boolean),
+        marketingConsent,
+        clientIp: String(orderForCapi.legal_ip ?? ""),
+        clientUserAgent: String(orderForCapi.legal_user_agent ?? ""),
+        eventSourceUrl: `${getSiteOrigin()}/odeme/basarili`,
+      });
     }
   } else {
     await releaseGiftCardHoldsForOrder(admin, payload.orderId);

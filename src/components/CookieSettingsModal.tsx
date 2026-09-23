@@ -102,7 +102,7 @@ export function CookieSettingsModal({
             <div>
               <p className="text-sm font-semibold text-stone-900">Pazarlama çerezleri</p>
               <p className="mt-1 text-xs leading-relaxed text-stone-600">
-                İlgi alanına dayalı içerik ve kampanya ölçümü (şimdilik tercih olarak saklanır).
+                Meta Pixel ve reklam / kampanya ölçümü. Kabul etmezsen bu çerezler yüklenmez.
               </p>
             </div>
             <input

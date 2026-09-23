@@ -18,7 +18,8 @@ export function AnalyticsProvider() {
   useEffect(() => {
     const fire = () => {
       if (isAnalyticsExcludedPath(pathname)) return;
-      if (!getCookieConsent()?.analytics) return;
+      const consent = getCookieConsent();
+      if (!consent?.analytics && !consent?.marketing) return;
       const search = searchParams?.toString();
       const path = search ? `${pathname}?${search}` : pathname;
       trackPageView(path);

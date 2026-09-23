@@ -4,6 +4,13 @@ import { getCookieConsent } from "@/lib/cookies/consent";
 
 import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
 import {
+  trackMetaAddToCart,
+  trackMetaInitiateCheckout,
+  trackMetaPageView,
+  trackMetaPurchase,
+  trackMetaViewContent,
+} from "@/lib/meta/pixel";
+import {
   bindAdminAnalyticsExclusionListener,
   shouldExcludeStorefrontAnalytics,
 } from "@/lib/analytics/admin-session-guard";
@@ -206,10 +213,12 @@ function trackEcommerceEvent(
 }
 
 export function trackPageView(path: string) {
+  trackMetaPageView(path);
   trackEvent("page_view", { page_path: path }, { dedupeKey: `pv:${path}`, dedupe: true });
 }
 
 export function trackViewItem(item: AnalyticsItem) {
+  trackMetaViewContent(item);
   trackEcommerceEvent(
     "view_item",
     {
@@ -239,6 +248,7 @@ export function trackViewItemList(
 }
 
 export function trackAddToCart(item: AnalyticsItem) {
+  trackMetaAddToCart(item);
   trackEcommerceEvent("add_to_cart", {
     currency: "TRY",
     value: item.price * item.quantity,
@@ -255,6 +265,7 @@ export function trackRemoveFromCart(item: AnalyticsItem) {
 }
 
 export function trackBeginCheckout(items: AnalyticsItem[]) {
+  trackMetaInitiateCheckout(items);
   const value = items.reduce((s, i) => s + i.price * i.quantity, 0);
   trackEcommerceEvent(
     "begin_checkout",
@@ -270,6 +281,7 @@ export function trackPurchase(params: {
   shipping?: number;
   items: AnalyticsItem[];
 }) {
+  trackMetaPurchase(params);
   trackEcommerceEvent(
     "purchase",
     { currency: "TRY", ...params },

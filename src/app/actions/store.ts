@@ -584,6 +584,8 @@ export async function createCheckout(formData: FormData) {
     accept_pre_contract_info: true,
     kvkk_consent: true,
     kvkk_consent_at: legalAcceptedAt,
+    marketing_consent:
+      entries.marketing_consent === "on" || entries.marketing_consent === "true",
     legal_accepted_at: legalAcceptedAt,
     legal_contract_version: LEGAL_CONTRACT_VERSION,
     legal_contract_snapshot: legalSnapshot,

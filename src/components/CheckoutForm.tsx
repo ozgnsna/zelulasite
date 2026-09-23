@@ -23,6 +23,7 @@ import {
   isValidTurkishMobileDigits,
   normalizeTurkishMobileInput,
 } from "@/lib/account/turkish-mobile-phone";
+import { getCookieConsent } from "@/lib/cookies/consent";
 
 const EMPTY_SAVED_ADDRESSES: SavedAddress[] = [];
 
@@ -212,6 +213,7 @@ export function CheckoutForm({
           setSuccessHint(null);
           setPhoneSubmitAttempted(false);
           const fd = new FormData(e.currentTarget);
+          fd.set("marketing_consent", getCookieConsent()?.marketing === true ? "on" : "off");
           if (
             fd.get("accept_distance_sales") !== "on" ||
             fd.get("accept_pre_contract_info") !== "on" ||

@@ -9,6 +9,7 @@ import { StorefrontSiteChrome } from "@/components/StorefrontSiteChrome";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { GoogleAnalyticsLoader } from "@/components/analytics/GoogleAnalyticsLoader";
+import { MetaPixelLoader } from "@/components/analytics/MetaPixelLoader";
 import { MicrosoftClarityLoader } from "@/components/analytics/MicrosoftClarityLoader";
 import { CookieBanner } from "@/components/CookieBanner";
 import { ReferralTrackingBridge } from "@/components/referral/ReferralTrackingBridge";
@@ -92,12 +93,14 @@ export default async function RootLayout({
   const isAdminRoute = pathname.startsWith("/admin");
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+  const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
   return (
     <html lang="tr" className={`${display.variable} ${sans.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-[color:var(--background)] font-sans text-stone-900 antialiased">
         <JsonLd data={buildOrganizationJsonLd()} />
         <GoogleAnalyticsLoader gaId={gaId} />
         <MicrosoftClarityLoader projectId={clarityId} />
+        {isAdminRoute ? null : <MetaPixelLoader pixelId={metaPixelId} />}
         <Suspense fallback={null}>
           <AnalyticsProvider />
           <ReferralTrackingBridge />
