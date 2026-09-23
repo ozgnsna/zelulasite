@@ -5,6 +5,9 @@ import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
 export const GOOGLE_FEED_BRAND = "Zelula";
 
+/** Google Merchant `id` üst sınırı. */
+export const GOOGLE_FEED_ID_MAX_LENGTH = 50;
+
 /** Apparel & Accessories > Jewelry — genel takı (201 saat; kullanılmaz). */
 export const GOOGLE_PRODUCT_CATEGORY_JEWELRY = "188";
 
@@ -41,22 +44,33 @@ export type GoogleFeedProductRow = {
   product_kind?: string | null;
   category?: { name?: string | null; slug?: string | null } | { name?: string | null; slug?: string | null }[] | null;
   product_images?: { image_url?: string | null; is_cover?: boolean | null; sort_order?: number | null }[] | null;
-  product_variants?: { id?: string | null; is_active?: boolean | null }[] | null;
+  product_variants?: {
+    id?: string | null;
+    label?: string | null;
+    stock_quantity?: number | null;
+    is_active?: boolean | null;
+  }[] | null;
 };
 
-export type GoogleFeedSkipReason = "gift_card" | "invalid" | "no_image";
+export type GoogleFeedSkipReason = "gift_card" | "invalid" | "no_image" | "no_sku" | "id_too_long";
+
+export type GoogleFeedOffer = { xml: string; id: string };
 
 export type GoogleFeedItemResult =
-  | { ok: true; xml: string; slug: string }
+  | { ok: true; offers: GoogleFeedOffer[]; slug: string }
   | { ok: false; reason: GoogleFeedSkipReason; slug: string; name: string };
 
 export type GoogleFeedBuildResult = {
   itemsXml: string;
   included: number;
+  offerIds: string[];
   skippedGiftCard: number;
   skippedInvalid: number;
   skippedNoImage: number;
+  skippedNoSku: number;
+  skippedIdTooLong: number;
   skippedNoImageSlugs: string[];
+  skippedNoSkuSlugs: string[];
 };
 
 export function escapeXml(value: string): string {
@@ -110,6 +124,19 @@ export function feedShippingPriceTry(): number {
   return STANDARD_SHIPPING_FEE_TRY;
 }
 
+/** Merchant `id`: SKU, varyantta `SKU-ölçü`. Slug kullanılmaz (50 karakter limiti). */
+export function buildFeedOfferId(sku: string, variantLabel?: string | null): string {
+  const base = String(sku ?? "").trim().replace(/\s+/g, "");
+  const variant = String(variantLabel ?? "").trim().replace(/\s+/g, "");
+  return variant ? `${base}-${variant}` : base;
+}
+
+function activeFeedVariants(p: GoogleFeedProductRow): NonNullable<GoogleFeedProductRow["product_variants"]> {
+  return (p.product_variants ?? []).filter(
+    (v) => v?.is_active !== false && String(v?.label ?? "").trim().length > 0,
+  );
+}
+
 export function buildFallbackDescription(
   name: string,
   categoryName: string | null | undefined,
@@ -154,6 +181,59 @@ export function toAbsoluteFeedUrl(url: string, siteOrigin: string): string {
   return trimmed.startsWith("/") ? `${origin}${trimmed}` : `${origin}/${trimmed}`;
 }
 
+function renderFeedItemXml(input: {
+  offerId: string;
+  name: string;
+  description: string;
+  link: string;
+  imageLink: string;
+  price: number;
+  inStock: boolean;
+  sku: string;
+  categorySlug: string | null;
+  productType: string | null;
+  itemGroupId?: string | null;
+  size?: string | null;
+}): string {
+  const shipping = feedShippingPriceTry();
+  const lines = [
+    `    <item>`,
+    `      <g:id>${escapeXml(input.offerId)}</g:id>`,
+    `      <g:title>${escapeXml(input.name)}</g:title>`,
+    `      <g:description>${escapeXml(input.description)}</g:description>`,
+    `      <g:link>${escapeXml(input.link)}</g:link>`,
+    `      <g:image_link>${escapeXml(input.imageLink)}</g:image_link>`,
+    `      <g:price>${escapeXml(formatFeedMoneyTry(input.price))}</g:price>`,
+    `      <g:availability>${input.inStock ? "in_stock" : "out_of_stock"}</g:availability>`,
+    `      <g:condition>new</g:condition>`,
+    `      <g:brand>${escapeXml(GOOGLE_FEED_BRAND)}</g:brand>`,
+    `      <g:identifier_exists>false</g:identifier_exists>`,
+    `      <g:mpn>${escapeXml(input.sku)}</g:mpn>`,
+    `      <g:google_product_category>${escapeXml(googleProductCategoryId(input.categorySlug))}</g:google_product_category>`,
+  ];
+
+  if (input.productType) {
+    lines.push(`      <g:product_type>${escapeXml(input.productType)}</g:product_type>`);
+  }
+  if (input.itemGroupId) {
+    lines.push(`      <g:item_group_id>${escapeXml(input.itemGroupId)}</g:item_group_id>`);
+  }
+  if (input.size) {
+    lines.push(`      <g:size>${escapeXml(input.size)}</g:size>`);
+  }
+
+  lines.push(
+    `      <g:shipping>`,
+    `        <g:country>TR</g:country>`,
+    `        <g:service>Standart</g:service>`,
+    `        <g:price>${escapeXml(formatFeedMoneyTry(shipping))}</g:price>`,
+    `      </g:shipping>`,
+    `    </item>`,
+  );
+
+  return lines.join("\n");
+}
+
 export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string): GoogleFeedItemResult {
   const slug = String(p.slug ?? "").trim();
   const name = String(p.name ?? "").trim();
@@ -163,6 +243,11 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
   }
   if (!slug || !name) {
     return { ok: false, reason: "invalid", slug, name };
+  }
+
+  const sku = String(p.sku ?? "").trim().replace(/\s+/g, "");
+  if (!sku) {
+    return { ok: false, reason: "no_sku", slug, name };
   }
 
   const rawImage = pickProductCoverImageUrl(p.product_images, "");
@@ -175,15 +260,11 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
   const categoryName = String(category?.name ?? "").trim() || null;
   const categorySlug = String(category?.slug ?? "").trim() || null;
   const material = String(p.material ?? "").trim() || null;
-  const sku = String(p.sku ?? "").trim();
-  const hasVariants = (p.product_variants ?? []).some((v) => v?.is_active !== false);
 
   // sale_price kapalı: Google 10 günlük fiyat geçmişi ister.
   // product_price_history en az 10 gün birikince compare_at / geçmiş
   // fiyattan sale_price tekrar açılacak (price = eski, sale_price = güncel).
   const currentPrice = Number(p.price ?? 0);
-  const shipping = feedShippingPriceTry();
-  const inStock = Number(p.stock_quantity ?? 0) > 0;
   const description = resolveFeedDescription({
     name,
     shortDescription: p.short_description,
@@ -193,50 +274,52 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
   });
   const productType = googleProductType(categorySlug, categoryName);
   const link = `${siteOrigin.replace(/\/+$/, "")}/urunler/${slug}`;
+  const variants = activeFeedVariants(p);
 
-  const lines = [
-    `    <item>`,
-    `      <g:id>${escapeXml(slug)}</g:id>`,
-    `      <g:title>${escapeXml(name)}</g:title>`,
-    `      <g:description>${escapeXml(description)}</g:description>`,
-    `      <g:link>${escapeXml(link)}</g:link>`,
-    `      <g:image_link>${escapeXml(imageLink)}</g:image_link>`,
-    `      <g:price>${escapeXml(formatFeedMoneyTry(currentPrice))}</g:price>`,
-  ];
+  const offerInputs =
+    variants.length > 0
+      ? variants.map((v) => {
+          const label = String(v.label ?? "").trim();
+          return {
+            offerId: buildFeedOfferId(sku, label),
+            inStock: Number(v.stock_quantity ?? 0) > 0,
+            itemGroupId: sku,
+            size: label,
+          };
+        })
+      : [
+          {
+            offerId: buildFeedOfferId(sku),
+            inStock: Number(p.stock_quantity ?? 0) > 0,
+            itemGroupId: null as string | null,
+            size: null as string | null,
+          },
+        ];
 
-  lines.push(
-    `      <g:availability>${inStock ? "in_stock" : "out_of_stock"}</g:availability>`,
-    `      <g:condition>new</g:condition>`,
-    `      <g:brand>${escapeXml(GOOGLE_FEED_BRAND)}</g:brand>`,
-    `      <g:identifier_exists>false</g:identifier_exists>`,
-  );
-
-  if (sku) {
-    lines.push(`      <g:mpn>${escapeXml(sku)}</g:mpn>`);
+  const tooLong = offerInputs.find((o) => o.offerId.length > GOOGLE_FEED_ID_MAX_LENGTH);
+  if (tooLong) {
+    return { ok: false, reason: "id_too_long", slug, name };
   }
 
-  lines.push(
-    `      <g:google_product_category>${escapeXml(googleProductCategoryId(categorySlug))}</g:google_product_category>`,
-  );
+  const offers = offerInputs.map((o) => ({
+    id: o.offerId,
+    xml: renderFeedItemXml({
+      offerId: o.offerId,
+      name,
+      description,
+      link,
+      imageLink,
+      price: currentPrice,
+      inStock: o.inStock,
+      sku,
+      categorySlug,
+      productType,
+      itemGroupId: o.itemGroupId,
+      size: o.size,
+    }),
+  }));
 
-  if (productType) {
-    lines.push(`      <g:product_type>${escapeXml(productType)}</g:product_type>`);
-  }
-
-  if (hasVariants) {
-    lines.push(`      <g:item_group_id>${escapeXml(slug)}</g:item_group_id>`);
-  }
-
-  lines.push(
-    `      <g:shipping>`,
-    `        <g:country>TR</g:country>`,
-    `        <g:service>Standart</g:service>`,
-    `        <g:price>${escapeXml(formatFeedMoneyTry(shipping))}</g:price>`,
-    `      </g:shipping>`,
-    `    </item>`,
-  );
-
-  return { ok: true, xml: lines.join("\n"), slug };
+  return { ok: true, offers, slug };
 }
 
 export function buildGoogleMerchantFeed(
@@ -244,21 +327,32 @@ export function buildGoogleMerchantFeed(
   siteOrigin: string,
 ): GoogleFeedBuildResult {
   const skippedNoImageSlugs: string[] = [];
+  const skippedNoSkuSlugs: string[] = [];
+  const offerIds: string[] = [];
   let included = 0;
   let skippedGiftCard = 0;
   let skippedInvalid = 0;
   let skippedNoImage = 0;
+  let skippedNoSku = 0;
+  let skippedIdTooLong = 0;
   const items: string[] = [];
 
   for (const product of products) {
     const result = buildGoogleFeedItem(product, siteOrigin);
     if (result.ok) {
-      included += 1;
-      items.push(result.xml);
+      included += result.offers.length;
+      for (const offer of result.offers) {
+        items.push(offer.xml);
+        offerIds.push(offer.id);
+      }
       continue;
     }
     if (result.reason === "gift_card") skippedGiftCard += 1;
     else if (result.reason === "invalid") skippedInvalid += 1;
+    else if (result.reason === "no_sku") {
+      skippedNoSku += 1;
+      skippedNoSkuSlugs.push(result.slug || result.name || "(adsız)");
+    } else if (result.reason === "id_too_long") skippedIdTooLong += 1;
     else {
       skippedNoImage += 1;
       skippedNoImageSlugs.push(result.slug || result.name || "(adsız)");
@@ -268,10 +362,14 @@ export function buildGoogleMerchantFeed(
   return {
     itemsXml: items.join("\n"),
     included,
+    offerIds,
     skippedGiftCard,
     skippedInvalid,
     skippedNoImage,
+    skippedNoSku,
+    skippedIdTooLong,
     skippedNoImageSlugs,
+    skippedNoSkuSlugs,
   };
 }
 

@@ -6,7 +6,8 @@ import {
   type GoogleFeedProductRow,
 } from "@/lib/feeds/google-merchant";
 
-export const dynamic = "force-dynamic";
+/** CDN: 30 dk taze, ardından 1 saat stale. force-dynamic Cache-Control'ü ezer. */
+export const revalidate = 1800;
 
 const SITE_URL = getSiteOrigin();
 
@@ -24,7 +25,7 @@ const FEED_SELECT = [
   "product_kind",
   "category:categories(name,slug)",
   "product_images(image_url,is_cover,sort_order)",
-  "product_variants(id,is_active)",
+  "product_variants(id,label,stock_quantity,is_active)",
 ].join(",");
 
 export async function GET() {
@@ -45,9 +46,14 @@ export async function GET() {
   for (const slug of result.skippedNoImageSlugs) {
     console.warn("[google-feed] image_link yok, ürün elendi", { slug });
   }
+  for (const slug of result.skippedNoSkuSlugs) {
+    console.warn("[google-feed] SKU yok, ürün elendi", { slug });
+  }
   console.info("[google-feed] özet", {
     included: result.included,
     skippedNoImage: result.skippedNoImage,
+    skippedNoSku: result.skippedNoSku,
+    skippedIdTooLong: result.skippedIdTooLong,
     skippedInvalid: result.skippedInvalid,
     skippedGiftCard: result.skippedGiftCard,
   });
@@ -58,7 +64,7 @@ export async function GET() {
     status: 200,
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600",
       "X-Feed-Included": String(result.included),
       "X-Feed-Skipped-No-Image": String(result.skippedNoImage),
     },
