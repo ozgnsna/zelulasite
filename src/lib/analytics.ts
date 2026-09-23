@@ -58,6 +58,40 @@ function analyticsConsentGranted(): boolean {
   return getCookieConsent()?.analytics === true;
 }
 
+function marketingConsentGranted(): boolean {
+  if (typeof window === "undefined") return false;
+  return getCookieConsent()?.marketing === true;
+}
+
+function googleAdsPurchaseSendTo(): string | null {
+  const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim() ?? "";
+  const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL?.trim() ?? "";
+  if (!adsId || !label) return null;
+  if (label.includes("/")) return label;
+  return `${adsId}/${label}`;
+}
+
+function fireGoogleAdsPurchaseConversion(params: { value: number; transaction_id: string }) {
+  const sendTo = googleAdsPurchaseSendTo();
+  if (!sendTo) return;
+  if (!marketingConsentGranted()) {
+    if (isDebug()) console.info("[ads:skipped] conversion marketing consent off or unset");
+    return;
+  }
+  if (typeof window.gtag !== "function") {
+    if (isDebug()) console.info("[ads:skipped] conversion gtag not loaded");
+    return;
+  }
+  const payload = {
+    send_to: sendTo,
+    value: params.value,
+    currency: "TRY" as const,
+    transaction_id: params.transaction_id,
+  };
+  if (isDebug()) console.info("[ads:conversion]", payload);
+  window.gtag("event", "conversion", payload);
+}
+
 function eventKey(name: string, params: EventParams) {
   return `${name}:${JSON.stringify(params)}`;
 }
@@ -282,11 +316,45 @@ export function trackPurchase(params: {
   items: AnalyticsItem[];
 }) {
   trackMetaPurchase(params);
-  trackEcommerceEvent(
-    "purchase",
-    { currency: "TRY", ...params },
-    { dedupeKey: `purchase:${params.transaction_id}`, dedupe: true },
-  );
+  if (typeof window === "undefined") return;
+  if (isAnalyticsExcludedPath(window.location.pathname)) return;
+  ensureAdminGuardListener();
+  void (async () => {
+    if (await shouldExcludeStorefrontAnalytics()) {
+      if (isDebug()) console.info("[analytics:skipped]", "purchase", "admin session");
+      return;
+    }
+    if (shouldSkipDuplicate("purchase", params as EventParams, `purchase:${params.transaction_id}`)) {
+      return;
+    }
+
+    const ga4Items = params.items.map(toGa4Item);
+    const ecommerce = {
+      currency: "TRY" as const,
+      value: params.value,
+      transaction_id: params.transaction_id,
+      tax: params.tax,
+      shipping: params.shipping,
+      items: ga4Items,
+    };
+
+    if (analyticsConsentGranted()) {
+      if (isDebug()) console.info("[analytics:ecommerce]", "purchase", ecommerce);
+      window.dataLayer = window.dataLayer ?? [];
+      window.dataLayer.push({ event: "purchase", ecommerce });
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "purchase", ecommerce);
+      }
+      sendToBackend("purchase", { ecommerce });
+    } else if (isDebug()) {
+      console.info("[analytics:skipped]", "purchase", "analytics consent off or unset");
+    }
+
+    fireGoogleAdsPurchaseConversion({
+      value: params.value,
+      transaction_id: params.transaction_id,
+    });
+  })();
 }
 
 export function trackInstagramClick(params: { location: string; href?: string }) {
