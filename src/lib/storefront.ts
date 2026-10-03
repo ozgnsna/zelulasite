@@ -20,6 +20,14 @@ import {
   resolveHomeCategorySpotlights,
   type HomeCategoryCard,
 } from "@/lib/storefront/home-category-spotlights";
+import { LISTING_PAGE_SIZE, totalPagesFor } from "@/lib/storefront/listing-pagination";
+
+/** Liste kartı için dar select — sitemap / tam çekim bunu kullanmaz. */
+const LISTING_PRODUCT_SELECT =
+  "id,slug,name,price,compare_at_price,featured,new_arrival,category_id,collection_id,created_at,category:categories(id,name,slug),collection:collections(id,name,slug),product_images(image_url,is_cover,sort_order)";
+
+/** Sitemap / SEO: yalnızca slug (+ lastmod). Sayfalama uygulanmaz. */
+const SITEMAP_PRODUCT_SELECT = "id,slug,created_at";
 
 function createStorefrontReadClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -162,6 +170,18 @@ function attachCategorySlug(products: Product[]): Product[] {
   }));
 }
 
+export type GetProductsResult = {
+  products: Product[];
+  categories: Category[];
+  collections: Collection[];
+  /** Eşleşen toplam ürün (sayfalama öncesi). */
+  totalCount: number;
+  /** 1-based; sayfalama yoksa 1. */
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export async function getProducts(params: {
   category?: string;
   /** Birden fazla DB kategori slug’ı (ör. takılar hub) */
@@ -181,15 +201,34 @@ export async function getProducts(params: {
    * Listeleme vitrinlerinde varsayılan false kalır.
    */
   includeOutOfStock?: boolean;
-}) {
+  /**
+   * 1-based sayfa. Verilmezse (veya pageSize yoksa) tüm sonuçlar döner — sitemap güvenli.
+   * Listing sayfaları `page` + `pageSize: LISTING_PAGE_SIZE` geçmeli.
+   */
+  page?: number;
+  /** Sayfa boyutu. Yoksa limit uygulanmaz (geriye uyumlu / sitemap). */
+  pageSize?: number;
+}): Promise<GetProductsResult> {
+  const empty = (categories: Category[] = [], collections: Collection[] = []): GetProductsResult => ({
+    products: [],
+    categories,
+    collections,
+    totalCount: 0,
+    page: 1,
+    pageSize: params.pageSize ?? 0,
+    totalPages: 0,
+  });
+
   try {
-    const supabase = await createServerClient();
+    // Public katalog: anon client (cookie yok) — sitemap / listing SSR güvenli.
+    const supabase = createStorefrontReadClient();
+    if (!supabase) return empty();
     const [categoriesRes, collectionsRes] = await Promise.all([
       supabase.from("categories").select("*").order("name"),
       supabase.from("collections").select("*").order("name"),
     ]);
-    const categories = categoriesRes.data ?? [];
-    const collections = collectionsRes.data ?? [];
+    const categories = (categoriesRes.data ?? []) as Category[];
+    const collections = (collectionsRes.data ?? []) as Collection[];
     const categoryId = categories.find((c) => c.slug === params.category)?.id;
     const collectionId = collections.find((c) => c.slug === params.collection)?.id;
 
@@ -200,72 +239,133 @@ export async function getProducts(params: {
         : [];
 
     if (slugList.length > 0 && categoryIdsFromSlugs.length === 0) {
-      return { products: [], categories, collections };
+      return empty(categories, collections);
     }
 
-    let query = supabase
-      .from("products")
-      .select("*, category:categories(*), collection:collections(*), product_images(*)")
-      .eq("is_active", true);
+    const paginate =
+      typeof params.pageSize === "number" &&
+      Number.isFinite(params.pageSize) &&
+      params.pageSize > 0;
+    const pageSize = paginate ? Math.trunc(params.pageSize!) : 0;
+    const page = paginate
+      ? Math.max(1, Math.trunc(params.page && params.page > 0 ? params.page : 1))
+      : 1;
 
-    if (!params.includeOutOfStock) {
-      query = query.gt("stock_quantity", 0);
-    }
+    const selectCols = paginate
+      ? LISTING_PRODUCT_SELECT
+      : params.includeOutOfStock
+        ? SITEMAP_PRODUCT_SELECT
+        : LISTING_PRODUCT_SELECT;
 
-    if (categoryIdsFromSlugs.length > 0) {
-      query = query.in("category_id", categoryIdsFromSlugs);
-    } else if (categoryId) {
-      query = query.eq("category_id", categoryId);
-    }
-    if (collectionId) query = query.eq("collection_id", collectionId);
-    if (params.audience) {
-      query = query.in("target_audience", audienceMatchValues(params.audience));
-    }
-    if (params.featuredOnly) query = query.eq("featured", true);
-    if (params.min) query = query.gte("price", params.min);
-    if (params.max) query = query.lte("price", params.max);
+    // Select string değişkeni Supabase Generated Types parser’ına literal gitmez — runtime OK.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const applyProductFilters = (q: any) => {
+      let query = q.eq("is_active", true);
+      if (!params.includeOutOfStock) {
+        query = query.gt("stock_quantity", 0);
+      }
+      if (categoryIdsFromSlugs.length > 0) {
+        query = query.in("category_id", categoryIdsFromSlugs);
+      } else if (categoryId) {
+        query = query.eq("category_id", categoryId);
+      }
+      if (collectionId) query = query.eq("collection_id", collectionId);
+      if (params.audience) {
+        query = query.in("target_audience", audienceMatchValues(params.audience));
+      }
+      if (params.featuredOnly) query = query.eq("featured", true);
+      if (params.min) query = query.gte("price", params.min);
+      if (params.max) query = query.lte("price", params.max);
 
-    // Serbest metin araması: PostgREST or() sözdizimini bozan karakterleri temizle.
-    const rawQuery = (params.q ?? "").trim();
-    const safeQuery = rawQuery.replace(/[,()*%]/g, " ").trim().slice(0, 80);
-    if (safeQuery) {
-      const pattern = `%${safeQuery}%`;
-      query = query.or(
-        [
-          `name.ilike.${pattern}`,
-          `short_description.ilike.${pattern}`,
-          `full_description.ilike.${pattern}`,
-          `material.ilike.${pattern}`,
-          `color.ilike.${pattern}`,
-        ].join(","),
+      // Serbest metin araması: PostgREST or() sözdizimini bozan karakterleri temizle.
+      const rawQuery = (params.q ?? "").trim();
+      const safeQuery = rawQuery.replace(/[,()*%]/g, " ").trim().slice(0, 80);
+      if (safeQuery) {
+        const pattern = `%${safeQuery}%`;
+        query = query.or(
+          [
+            `name.ilike.${pattern}`,
+            `short_description.ilike.${pattern}`,
+            `full_description.ilike.${pattern}`,
+            `material.ilike.${pattern}`,
+            `color.ilike.${pattern}`,
+          ].join(","),
+        );
+      }
+      return query;
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const applySort = (q: any) => {
+      switch (params.sort) {
+        case "oldest":
+          return q.order("created_at", { ascending: true });
+        case "price_asc":
+          return q.order("price", { ascending: true });
+        case "price_desc":
+          return q.order("price", { ascending: false });
+        case "featured":
+          return q.order("featured", { ascending: false });
+        default:
+          return q.order("created_at", { ascending: false });
+      }
+    };
+
+    // Sayfalarken önce count — taşan .range() Supabase'de 416 verip sayımı düşürür.
+    let totalCount = 0;
+    if (paginate) {
+      let countQuery = applyProductFilters(
+        supabase.from("products").select("id", { count: "exact", head: true }),
       );
+      const countRes = await countQuery;
+      totalCount = typeof countRes.count === "number" ? countRes.count : 0;
+      const totalPages = totalPagesFor(totalCount, pageSize);
+      if (totalPages === 0 || page > totalPages) {
+        return {
+          products: [],
+          categories,
+          collections,
+          totalCount,
+          page,
+          pageSize,
+          totalPages,
+        };
+      }
     }
 
-    switch (params.sort) {
-      case "oldest":
-        query = query.order("created_at", { ascending: true });
-        break;
-      case "price_asc":
-        query = query.order("price", { ascending: true });
-        break;
-      case "price_desc":
-        query = query.order("price", { ascending: false });
-        break;
-      case "featured":
-        query = query.order("featured", { ascending: false });
-        break;
-      default:
-        query = query.order("created_at", { ascending: false });
+    let query = applySort(
+      applyProductFilters(supabase.from("products").select(selectCols as "*")),
+    );
+
+    if (paginate) {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) {
+      console.error("[getProducts]", error.message);
+      return empty(categories, collections);
+    }
+    const products = attachCategorySlug((data ?? []) as Product[]);
+    if (!paginate) {
+      totalCount = products.length;
+    }
+    const totalPages = paginate ? totalPagesFor(totalCount, pageSize) : totalCount > 0 ? 1 : 0;
+
     return {
-      products: attachCategorySlug((data ?? []) as Product[]),
+      products,
       categories,
       collections,
+      totalCount,
+      page: paginate ? page : 1,
+      pageSize: paginate ? pageSize : totalCount,
+      totalPages,
     };
-  } catch {
-    return { products: [] as Product[], categories: [], collections: [] };
+  } catch (err) {
+    console.error("[getProducts] unexpected", err instanceof Error ? err.message : err);
+    return empty();
   }
 }
 
@@ -277,6 +377,10 @@ export type CategoryPageData =
       products: Product[];
       categories: Category[];
       collections: Collection[];
+      totalCount: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
     }
   | {
       mode: "list";
@@ -285,6 +389,10 @@ export type CategoryPageData =
       categories: Category[];
       collections: Collection[];
       listCaption?: string;
+      totalCount: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
     };
 
 export type CategoryListingOptions = {
@@ -292,6 +400,8 @@ export type CategoryListingOptions = {
   collection?: string;
   min?: number;
   max?: number;
+  page?: number;
+  pageSize?: number;
 };
 
 /** `/kategori/[slug]` için ürün listesi veya hub verisi */
@@ -304,6 +414,10 @@ export async function getCategoryPageData(
 
   if (taxon.kind === "parent") {
     const ch = childrenOf(taxon.id);
+    const pageOpts = {
+      page: options.page,
+      pageSize: options.pageSize ?? LISTING_PAGE_SIZE,
+    };
     if (taxon.slug === "takilar") {
       const r = await getProducts({
         categorySlugs: [...TAKILAR_PRODUCT_DB_SLUGS],
@@ -312,6 +426,7 @@ export async function getCategoryPageData(
         collection: options.collection,
         min: options.min,
         max: options.max,
+        ...pageOpts,
       });
       return {
         mode: "hub",
@@ -320,6 +435,10 @@ export async function getCategoryPageData(
         products: r.products,
         categories: r.categories,
         collections: r.collections,
+        totalCount: r.totalCount,
+        page: r.page,
+        pageSize: r.pageSize,
+        totalPages: r.totalPages,
       };
     }
     if (taxon.slug === "aksesuar") {
@@ -330,6 +449,7 @@ export async function getCategoryPageData(
         collection: options.collection,
         min: options.min,
         max: options.max,
+        ...pageOpts,
       });
       return {
         mode: "hub",
@@ -338,6 +458,10 @@ export async function getCategoryPageData(
         products: r.products,
         categories: r.categories,
         collections: r.collections,
+        totalCount: r.totalCount,
+        page: r.page,
+        pageSize: r.pageSize,
+        totalPages: r.totalPages,
       };
     }
     return null;
@@ -351,6 +475,8 @@ export async function getCategoryPageData(
       collection: options.collection,
       min: options.min,
       max: options.max,
+      page: options.page,
+      pageSize: options.pageSize ?? LISTING_PAGE_SIZE,
     });
     const listCaption =
       taxon.slug === "setler" ? "Kolye, küpe, bileklik ve kombin takı setleri." : undefined;
@@ -361,6 +487,10 @@ export async function getCategoryPageData(
       categories: r.categories,
       collections: r.collections,
       listCaption,
+      totalCount: r.totalCount,
+      page: r.page,
+      pageSize: r.pageSize,
+      totalPages: r.totalPages,
     };
   }
 
@@ -374,6 +504,10 @@ export type ErkekPageData =
       categories: Category[];
       collections: Collection[];
       children: Array<{ slug: ErkekCategorySlug; name: string }>;
+      totalCount: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
     }
   | {
       mode: "list";
@@ -382,6 +516,10 @@ export type ErkekPageData =
       products: Product[];
       categories: Category[];
       collections: Collection[];
+      totalCount: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
     };
 
 export async function getErkekPageData(
@@ -389,6 +527,11 @@ export async function getErkekPageData(
   options: CategoryListingOptions = {},
 ): Promise<ErkekPageData | null> {
   if (slug && !ERKEK_CATEGORY_SLUGS.includes(slug as ErkekCategorySlug)) return null;
+
+  const pageOpts = {
+    page: options.page,
+    pageSize: options.pageSize ?? LISTING_PAGE_SIZE,
+  };
 
   if (!slug) {
     const r = await getProducts({
@@ -398,6 +541,7 @@ export async function getErkekPageData(
       collection: options.collection,
       min: options.min,
       max: options.max,
+      ...pageOpts,
     });
     return {
       mode: "hub",
@@ -405,6 +549,10 @@ export async function getErkekPageData(
       categories: r.categories,
       collections: r.collections,
       children: ERKEK_CATEGORY_SLUGS.map((s) => ({ slug: s, name: erkekCategoryLabel(s) })),
+      totalCount: r.totalCount,
+      page: r.page,
+      pageSize: r.pageSize,
+      totalPages: r.totalPages,
     };
   }
 
@@ -416,6 +564,7 @@ export async function getErkekPageData(
     collection: options.collection,
     min: options.min,
     max: options.max,
+    ...pageOpts,
   });
   return {
     mode: "list",
@@ -424,6 +573,10 @@ export async function getErkekPageData(
     products: r.products,
     categories: r.categories,
     collections: r.collections,
+    totalCount: r.totalCount,
+    page: r.page,
+    pageSize: r.pageSize,
+    totalPages: r.totalPages,
   };
 }
 

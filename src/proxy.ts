@@ -7,8 +7,24 @@ import {
 } from "@/lib/seo/legacy-product-redirect";
 import { resolveUrlRedirect } from "@/lib/seo/url-redirects";
 
+const LISTING_PATH_RE =
+  /^\/(urunler|cok-satanlar|erkek)(\/[^/]+)?$|^\/kategori\/[^/]+$/;
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // Liste sayfalarında ?sayfa=0 / negatif → sayfa paramını düşür (301)
+  if (LISTING_PATH_RE.test(pathname)) {
+    const sayfaRaw = request.nextUrl.searchParams.get("sayfa");
+    if (sayfaRaw != null && sayfaRaw !== "") {
+      const n = Number(sayfaRaw);
+      if (!Number.isFinite(n) || n <= 0) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.searchParams.delete("sayfa");
+        return NextResponse.redirect(redirectUrl, 301);
+      }
+    }
+  }
 
   const legacySlug = parseLegacyProductSlugCandidate(pathname);
   if (legacySlug && (await activeProductSlugExists(legacySlug))) {

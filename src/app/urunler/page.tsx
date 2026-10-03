@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import { ProductListingGrid } from "@/components/product/ProductListingGrid";
+import { ListingPagination } from "@/components/product/ListingPagination";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getProducts } from "@/lib/storefront";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { SearchUsageTracker } from "@/components/analytics/SearchUsageTracker";
 import { CategoryClickLink } from "@/components/analytics/CategoryClickLink";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
-import { absoluteUrl } from "@/lib/seo/site";
-
-export const metadata: Metadata = {
-  title: "Tüm ürünler",
-  description: "Zelula Design takı ve aksesuar seçkisini keşfedin.",
-  alternates: { canonical: absoluteUrl("/urunler") },
-};
+import {
+  FILTERED_LISTING_ROBOTS,
+  LISTING_PAGE_SIZE,
+  listingCanonicalUrl,
+  listingDescriptionWithPage,
+  listingHasNoindexFilters,
+  listingTitleWithPage,
+  parseSayfaParam,
+} from "@/lib/storefront/listing-pagination";
 
 type Props = {
   searchParams: Promise<{
@@ -22,25 +26,76 @@ type Props = {
     sirala?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
     min?: string;
     max?: string;
+    sayfa?: string;
   }>;
 };
 
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const sp = await searchParams;
+  const parsed = parseSayfaParam(sp.sayfa);
+  if (parsed.kind === "invalid") notFound();
+  const page = parsed.kind === "ok" ? parsed.page : 1;
+  if (page > 1) {
+    const { totalPages } = await getProducts({
+      category: sp.kategori,
+      collection: sp.koleksiyon,
+      sort: sp.sirala ?? "newest",
+      min: sp.min ? Number(sp.min) : undefined,
+      max: sp.max ? Number(sp.max) : undefined,
+      q: sp.q,
+      page: 1,
+      pageSize: LISTING_PAGE_SIZE,
+    });
+    if (totalPages === 0 || page > totalPages) notFound();
+  }
+  const baseTitle = "Tüm ürünler";
+  const baseDescription = "Zelula Design takı ve aksesuar seçkisini keşfedin.";
+  const noindex = listingHasNoindexFilters(sp);
+  return {
+    title: listingTitleWithPage(baseTitle, page),
+    description: listingDescriptionWithPage(baseDescription, page),
+    alternates: { canonical: listingCanonicalUrl("/urunler", page) },
+    ...(noindex ? { robots: FILTERED_LISTING_ROBOTS } : {}),
+  };
+}
+
 export default async function ProductsPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const parsed = parseSayfaParam(sp.sayfa);
+  if (parsed.kind === "redirect_page1") {
+    const qs = new URLSearchParams();
+    if (sp.q?.trim()) qs.set("q", sp.q.trim());
+    if (sp.kategori) qs.set("kategori", sp.kategori);
+    if (sp.koleksiyon) qs.set("koleksiyon", sp.koleksiyon);
+    if (sp.sirala) qs.set("sirala", sp.sirala);
+    if (sp.min) qs.set("min", sp.min);
+    if (sp.max) qs.set("max", sp.max);
+    const s = qs.toString();
+    redirect(s ? `/urunler?${s}` : "/urunler");
+  }
+  if (parsed.kind === "invalid") notFound();
+
+  const page = parsed.page;
   const categorySlug = sp.kategori ?? "";
   const collectionSlug = sp.koleksiyon ?? "";
   const searchQuery = (sp.q ?? "").trim();
   const sort = sp.sirala ?? "newest";
   const min = sp.min ? Number(sp.min) : undefined;
   const max = sp.max ? Number(sp.max) : undefined;
-  const { categories, collections, products } = await getProducts({
+
+  const { categories, collections, products, totalCount, totalPages } = await getProducts({
     category: categorySlug,
     collection: collectionSlug,
     sort,
     min,
     max,
     q: searchQuery,
+    page,
+    pageSize: LISTING_PAGE_SIZE,
   });
+
+  if (page > 1 && (totalPages === 0 || page > totalPages)) notFound();
+
   const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
   const activeCategoryName = categorySlug
     ? categories.find((c) => c.slug === categorySlug)?.name
@@ -49,12 +104,21 @@ export default async function ProductsPage({ searchParams }: Props) {
     ? `“${searchQuery}” için sonuçlar`
     : activeCategoryName ?? "Tüm ürünler";
 
+  const listingSp = {
+    q: searchQuery || undefined,
+    kategori: categorySlug || undefined,
+    koleksiyon: collectionSlug || undefined,
+    sirala: sp.sirala,
+    min: sp.min,
+    max: sp.max,
+  };
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <SearchUsageTracker
         location="products_page"
         query={sp.q ?? ""}
-        resultsCount={products.length}
+        resultsCount={totalCount}
         filters={{
           kategori: categorySlug || null,
           koleksiyon: collectionSlug || null,
@@ -78,10 +142,13 @@ export default async function ProductsPage({ searchParams }: Props) {
       <header className="max-w-2xl">
         <h1 className="font-serif text-3xl font-medium text-stone-900 sm:text-4xl">
           {pageTitle}
+          {page > 1 ? (
+            <span className="ml-2 text-lg font-normal text-stone-500">· Sayfa {page}</span>
+          ) : null}
         </h1>
         <p className="mt-3 text-stone-600">
           {searchQuery
-            ? `${products.length} ürün bulundu. Kategori ve filtrelerle daraltabilirsiniz.`
+            ? `${totalCount} ürün bulundu. Kategori ve filtrelerle daraltabilirsiniz.`
             : "Kategori ve arama ile daraltın. Her ürün için özet, detay ve sepet akışı aynı yerde."}
         </p>
       </header>
@@ -177,13 +244,22 @@ export default async function ProductsPage({ searchParams }: Props) {
               Bu filtreye uygun ürün yok. Filtreleri temizleyip tekrar deneyin.
             </p>
           ) : (
-            <ProductListingGrid
-              products={products}
-              isSignedIn={isSignedIn}
-              favoriteIds={favoriteIds}
-              conversionOverlay
-              fallbackImage="https://picsum.photos/id/90/900/900"
-            />
+            <>
+              <ProductListingGrid
+                products={products}
+                isSignedIn={isSignedIn}
+                favoriteIds={favoriteIds}
+                conversionOverlay
+                fallbackImage="https://picsum.photos/id/90/900/900"
+              />
+              <ListingPagination
+                path="/urunler"
+                current={listingSp}
+                page={page}
+                totalPages={totalPages}
+                totalCount={totalCount}
+              />
+            </>
           )}
         </div>
       </div>

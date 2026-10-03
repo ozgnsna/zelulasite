@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { ProductListingGrid } from "@/components/product/ProductListingGrid";
+import { ListingPagination } from "@/components/product/ListingPagination";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { ERKEK_HUB_HREF, erkekCategoryHref } from "@/lib/products/audience";
 import { getErkekPageData } from "@/lib/storefront";
-import { absoluteUrl } from "@/lib/seo/site";
+import {
+  FILTERED_LISTING_ROBOTS,
+  LISTING_PAGE_SIZE,
+  listingCanonicalUrl,
+  listingDescriptionWithPage,
+  listingHasNoindexFilters,
+  listingTitleWithPage,
+  parseSayfaParam,
+} from "@/lib/storefront/listing-pagination";
 
 type Props = {
   searchParams: Promise<{
@@ -13,26 +23,64 @@ type Props = {
     sirala?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
     min?: string;
     max?: string;
+    sayfa?: string;
   }>;
 };
 
-export const metadata: Metadata = {
-  title: "Erkek Takı",
-  description:
-    "Erkek çelik bileklik ve yüzük modelleri — maskülen, günlük ve statement Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.",
-  alternates: { canonical: absoluteUrl(ERKEK_HUB_HREF) },
-  openGraph: {
-    title: "Erkek Takı | Zelula Design",
-    description: "Erkek çelik bileklik ve yüzük koleksiyonu — Zelula Design.",
-    url: absoluteUrl(ERKEK_HUB_HREF),
-    type: "website",
-    locale: "tr_TR",
-    siteName: "Zelula Design",
-  },
-};
+const BASE_TITLE = "Erkek Takı";
+const BASE_DESCRIPTION =
+  "Erkek çelik bileklik ve yüzük modelleri — maskülen, günlük ve statement Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.";
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const sp = await searchParams;
+  const parsed = parseSayfaParam(sp.sayfa);
+  if (parsed.kind === "invalid") notFound();
+  const page = parsed.kind === "ok" ? parsed.page : 1;
+  if (page > 1) {
+    const data = await getErkekPageData(undefined, {
+      sort: sp.sirala ?? "newest",
+      collection: sp.koleksiyon || undefined,
+      min: sp.min ? Number(sp.min) : undefined,
+      max: sp.max ? Number(sp.max) : undefined,
+      page: 1,
+      pageSize: LISTING_PAGE_SIZE,
+    });
+    if (!data || data.totalPages === 0 || page > data.totalPages) notFound();
+  }
+  const noindex = listingHasNoindexFilters(sp);
+  const title = listingTitleWithPage(BASE_TITLE, page);
+  const description = listingDescriptionWithPage(BASE_DESCRIPTION, page);
+  return {
+    title,
+    description,
+    alternates: { canonical: listingCanonicalUrl(ERKEK_HUB_HREF, page) },
+    ...(noindex ? { robots: FILTERED_LISTING_ROBOTS } : {}),
+    openGraph: {
+      title: `${title} | Zelula Design`,
+      description,
+      url: listingCanonicalUrl(ERKEK_HUB_HREF, page),
+      type: "website",
+      locale: "tr_TR",
+      siteName: "Zelula Design",
+    },
+  };
+}
 
 export default async function ErkekHubPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const parsed = parseSayfaParam(sp.sayfa);
+  if (parsed.kind === "redirect_page1") {
+    const qs = new URLSearchParams();
+    if (sp.koleksiyon) qs.set("koleksiyon", sp.koleksiyon);
+    if (sp.sirala) qs.set("sirala", sp.sirala);
+    if (sp.min) qs.set("min", sp.min);
+    if (sp.max) qs.set("max", sp.max);
+    const s = qs.toString();
+    redirect(s ? `${ERKEK_HUB_HREF}?${s}` : ERKEK_HUB_HREF);
+  }
+  if (parsed.kind === "invalid") notFound();
+
+  const page = parsed.page;
   const collectionSlug = sp.koleksiyon ?? "";
   const sort = sp.sirala ?? "newest";
   const min = sp.min ? Number(sp.min) : undefined;
@@ -43,11 +91,20 @@ export default async function ErkekHubPage({ searchParams }: Props) {
     collection: collectionSlug || undefined,
     min,
     max,
+    page,
+    pageSize: LISTING_PAGE_SIZE,
   });
   if (!data || data.mode !== "hub") return null;
+  if (page > 1 && (data.totalPages === 0 || page > data.totalPages)) notFound();
 
   const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
   const hasActiveFilters = Boolean(collectionSlug || sp.sirala || sp.min || sp.max);
+  const listingSp = {
+    koleksiyon: collectionSlug || undefined,
+    sirala: sp.sirala,
+    min: sp.min,
+    max: sp.max,
+  };
 
   const trackerItems = data.products.map((p) => ({
     product_id: p.id,
@@ -70,7 +127,12 @@ export default async function ErkekHubPage({ searchParams }: Props) {
           <span className="mx-2 text-stone-300">/</span>
           <span className="text-stone-700">Erkek</span>
         </nav>
-        <h1 className="mt-4 font-serif text-3xl font-light tracking-tight text-stone-900 sm:text-4xl">Erkek</h1>
+        <h1 className="mt-4 font-serif text-3xl font-light tracking-tight text-stone-900 sm:text-4xl">
+          Erkek
+          {page > 1 ? (
+            <span className="ml-2 text-lg font-normal text-stone-500">· Sayfa {page}</span>
+          ) : null}
+        </h1>
         <p className="mt-3 text-sm leading-relaxed text-stone-600">
           Bileklik ve yüzük seçkisi. İleride saat ve gözlük de bu bölüme eklenecek.
         </p>
@@ -99,7 +161,9 @@ export default async function ErkekHubPage({ searchParams }: Props) {
         <div className="mb-4 flex flex-col gap-4 sm:mb-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
             Tüm erkek ürünleri
-            <span className="ml-2 font-normal normal-case tracking-normal text-stone-400">({data.products.length})</span>
+            <span className="ml-2 font-normal normal-case tracking-normal text-stone-400">
+              ({data.totalCount})
+            </span>
           </p>
           <form className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" action={ERKEK_HUB_HREF} method="get">
             <select
@@ -149,7 +213,16 @@ export default async function ErkekHubPage({ searchParams }: Props) {
             )}
           </p>
         ) : (
-          <ProductListingGrid products={data.products} isSignedIn={isSignedIn} favoriteIds={favoriteIds} />
+          <>
+            <ProductListingGrid products={data.products} isSignedIn={isSignedIn} favoriteIds={favoriteIds} />
+            <ListingPagination
+              path={ERKEK_HUB_HREF}
+              current={listingSp}
+              page={data.page}
+              totalPages={data.totalPages}
+              totalCount={data.totalCount}
+            />
+          </>
         )}
       </section>
     </main>

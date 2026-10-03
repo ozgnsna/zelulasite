@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ProductListingGrid } from "@/components/product/ProductListingGrid";
+import { ListingPagination } from "@/components/product/ListingPagination";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getCategoryPageData } from "@/lib/storefront";
 import { UNIQUE_PIECE_CATEGORY_NOTE } from "@/lib/storefront/unique-piece-copy";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
-import { absoluteUrl } from "@/lib/seo/site";
+import {
+  FILTERED_LISTING_ROBOTS,
+  LISTING_PAGE_SIZE,
+  listingCanonicalUrl,
+  listingDescriptionWithPage,
+  listingHasNoindexFilters,
+  listingTitleWithPage,
+  parseSayfaParam,
+} from "@/lib/storefront/listing-pagination";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -16,24 +25,43 @@ type Props = {
     sirala?: "newest" | "oldest" | "price_asc" | "price_desc" | "featured";
     min?: string;
     max?: string;
+    sayfa?: string;
   }>;
 };
 
-export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const sp = await searchParams;
   if (!isKnownCategorySlug(slug)) return { title: "Kategori" };
-  const data = await getCategoryPageData(slug);
+  const parsed = parseSayfaParam(sp.sayfa);
+  if (parsed.kind === "invalid") notFound();
+  const page = parsed.kind === "ok" ? parsed.page : 1;
+  const data = await getCategoryPageData(slug, {
+    sort: sp.sirala ?? "newest",
+    collection: sp.koleksiyon || undefined,
+    min: sp.min ? Number(sp.min) : undefined,
+    max: sp.max ? Number(sp.max) : undefined,
+    page: 1,
+    pageSize: LISTING_PAGE_SIZE,
+  });
   if (!data) return { title: "Kategori" };
+  if (page > 1 && (data.totalPages === 0 || page > data.totalPages)) notFound();
   const name = data.taxon.name;
-  const description = `${name} modelleri — paslanmaz çelik ve zamansız Zelula Design takı seçkisi. 650₺ üzeri ücretsiz kargo.`;
+  const description = listingDescriptionWithPage(
+    `${name} modelleri — paslanmaz çelik ve zamansız Zelula Design takı seçkisi. 650₺ üzeri ücretsiz kargo.`,
+    page,
+  );
+  const path = `/kategori/${slug}`;
+  const noindex = listingHasNoindexFilters(sp);
   return {
-    title: name,
+    title: listingTitleWithPage(name, page),
     description,
-    alternates: { canonical: absoluteUrl(`/kategori/${slug}`) },
+    alternates: { canonical: listingCanonicalUrl(path, page) },
+    ...(noindex ? { robots: FILTERED_LISTING_ROBOTS } : {}),
     openGraph: {
-      title: `${name} | Zelula Design`,
+      title: `${listingTitleWithPage(name, page)} | Zelula Design`,
       description,
-      url: absoluteUrl(`/kategori/${slug}`),
+      url: listingCanonicalUrl(path, page),
       type: "website",
       locale: "tr_TR",
       siteName: "Zelula Design",
@@ -46,6 +74,20 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   if (!isKnownCategorySlug(slug)) notFound();
 
+  const path = `/kategori/${slug}`;
+  const parsed = parseSayfaParam(sp.sayfa);
+  if (parsed.kind === "redirect_page1") {
+    const qs = new URLSearchParams();
+    if (sp.koleksiyon) qs.set("koleksiyon", sp.koleksiyon);
+    if (sp.sirala) qs.set("sirala", sp.sirala);
+    if (sp.min) qs.set("min", sp.min);
+    if (sp.max) qs.set("max", sp.max);
+    const s = qs.toString();
+    redirect(s ? `${path}?${s}` : path);
+  }
+  if (parsed.kind === "invalid") notFound();
+
+  const page = parsed.page;
   const collectionSlug = sp.koleksiyon ?? "";
   const sort = sp.sirala ?? "newest";
   const min = sp.min ? Number(sp.min) : undefined;
@@ -56,12 +98,20 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     collection: collectionSlug || undefined,
     min,
     max,
+    page,
+    pageSize: LISTING_PAGE_SIZE,
   });
   if (!data) notFound();
+  if (page > 1 && (data.totalPages === 0 || page > data.totalPages)) notFound();
 
   const { isSignedIn, favoriteIds } = await loadFavoriteUiContext();
-
   const hasActiveFilters = Boolean(collectionSlug || sp.sirala || sp.min || sp.max);
+  const listingSp = {
+    koleksiyon: collectionSlug || undefined,
+    sirala: sp.sirala,
+    min: sp.min,
+    max: sp.max,
+  };
 
   const trackerItems = data.products.map((p) => ({
     product_id: p.id,
@@ -90,6 +140,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         </nav>
         <h1 className="mt-4 font-serif text-3xl font-light tracking-tight text-stone-900 sm:text-4xl">
           {data.taxon.name}
+          {page > 1 ? (
+            <span className="ml-2 text-lg font-normal text-stone-500">· Sayfa {page}</span>
+          ) : null}
         </h1>
         <p className="mt-2 text-[11px] leading-relaxed text-stone-500">{UNIQUE_PIECE_CATEGORY_NOTE}</p>
         {data.mode === "list" && data.listCaption ? (
@@ -132,11 +185,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
               {data.mode === "hub" ? "Tüm ürünler" : "Ürünler"}
               <span className="ml-2 font-normal normal-case tracking-normal text-stone-400">
-                ({data.products.length})
+                ({data.totalCount})
               </span>
             </p>
           </div>
-          <form className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" action={`/kategori/${slug}`} method="get">
+          <form className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" action={path} method="get">
             <select
               name="koleksiyon"
               defaultValue={collectionSlug}
@@ -190,7 +243,16 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             )}
           </p>
         ) : (
-          <ProductListingGrid products={data.products} isSignedIn={isSignedIn} favoriteIds={favoriteIds} />
+          <>
+            <ProductListingGrid products={data.products} isSignedIn={isSignedIn} favoriteIds={favoriteIds} />
+            <ListingPagination
+              path={path}
+              current={listingSp}
+              page={data.page}
+              totalPages={data.totalPages}
+              totalCount={data.totalCount}
+            />
+          </>
         )}
       </section>
     </main>
