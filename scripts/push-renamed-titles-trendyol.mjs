@@ -1,6 +1,6 @@
 /**
  * Kaplama→renk turunda adı değişen ürünlerin Trendyol başlığını günceller.
- * Mevcut syncProductToTrendyol kullanır (yeni payload mantığı yok).
+ * Yol: content-bulk-update (contentId + title only). Create POST YASAK.
  *
  *   node scripts/push-renamed-titles-trendyol.mjs
  *   node scripts/push-renamed-titles-trendyol.mjs --apply
@@ -19,6 +19,8 @@ const APPLY = process.argv.includes("--apply");
 const SKU_FILTER = process.argv.find((a) => a.startsWith("--sku="))?.slice("--sku=".length) ?? null;
 /** Trendyol rate limit — istekler arası bekleme */
 const DELAY_MS = 2000;
+/** update-audits QC limiti 100/dk → audit çağrıları arası min boşluk */
+const AUDIT_MIN_GAP_MS = 700;
 
 /** Bu turda adı değişen 45 SKU (rename-plating-wording apply) */
 const NAME_CHANGED_SKUS = [
@@ -97,62 +99,26 @@ function trim(v) {
   return String(v ?? "").trim();
 }
 
-function tyBase(integration) {
-  return integration.environment === "prod" ? "https://apigw.trendyol.com" : "https://stageapigw.trendyol.com";
-}
-
-function tyHeaders(integration) {
-  const auth = Buffer.from(`${integration.api_key}:${integration.api_secret}`).toString("base64");
-  return {
-    Authorization: `Basic ${auth}`,
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    "User-Agent": `${integration.seller_id} - Self Integration`,
-  };
-}
-
-async function fetchRemoteByBarcode(integration, barcode) {
-  if (!barcode) return null;
-  const sellerId = encodeURIComponent(integration.seller_id);
-  const qs = new URLSearchParams({ barcode, size: "5", page: "0" });
-  const url = `${tyBase(integration)}/integration/product/sellers/${sellerId}/products?${qs}`;
-  const res = await fetch(url, { headers: tyHeaders(integration) });
-  const text = await res.text();
-  let body = null;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = null;
-  }
-  if (!res.ok) {
-    return { error: `HTTP ${res.status}`, title: null, onSale: null, quantity: null, approved: null };
-  }
-  const item = (body?.content ?? [])[0] ?? null;
-  if (!item) return { error: null, title: null, onSale: null, quantity: null, approved: null, missing: true };
-  return {
-    error: null,
-    missing: false,
-    title: trim(item.title) || null,
-    onSale: item.onSale ?? item.onsale ?? null,
-    quantity: item.quantity ?? null,
-    approved: item.approved ?? null,
-    archived: item.archived ?? null,
-    barcode: trim(item.barcode) || barcode,
-  };
-}
-
-function loadSyncProductToTrendyol() {
+function loadContentUpdateApi() {
   const require = createRequire(import.meta.url);
   const jitiFactory = require("jiti");
   const jiti = jitiFactory(path.join(ROOT, "scripts", "push-renamed-titles-trendyol.mjs"), {
     interopDefault: true,
     alias: { "@": path.join(ROOT, "src") },
   });
-  const mod = jiti(path.join(ROOT, "src/lib/marketplaces/trendyol/products.ts"));
-  if (typeof mod.syncProductToTrendyol !== "function") {
-    throw new Error("syncProductToTrendyol yüklenemedi");
+  const mod = jiti(path.join(ROOT, "src/lib/marketplaces/trendyol/content-update.ts"));
+  for (const name of [
+    "resolveTrendyolListing",
+    "updateTrendyolProductContent",
+    "awaitTrendyolBatch",
+    "getTrendyolContentUpdateAudits",
+    "waitForTrendyolTitleAudit",
+  ]) {
+    if (typeof mod[name] !== "function") {
+      throw new Error(`${name} yüklenemedi`);
+    }
   }
-  return mod.syncProductToTrendyol;
+  return mod;
 }
 
 loadEnvFile(path.join(ROOT, ".env.local"));
@@ -191,103 +157,196 @@ if (prodErr) {
   process.exit(1);
 }
 
+const {
+  resolveTrendyolListing,
+  updateTrendyolProductContent,
+  awaitTrendyolBatch,
+  waitForTrendyolTitleAudit,
+} = loadContentUpdateApi();
+
 const rows = products ?? [];
 console.log(`MODE=${APPLY ? "APPLY" : "DRY_RUN"}`);
+console.log(`Yol: content-bulk-update (title-only) — create POST yok`);
 console.log(`Kapsam: adı değişen ∩ is_active ∩ trendyol_active → ${rows.length} ürün`);
 if (SKU_FILTER) console.log(`Filtre: --sku=${SKU_FILTER}`);
 console.log(`Gecikme: ${DELAY_MS}ms / istek`);
 console.log("");
-console.log("SKU\tyeni başlık (p.name)\teski TY başlığı\tTY onSale\tTY qty");
+console.log("SKU\tcontentId\tTY başlığı\tyeni başlık");
 
 const plan = [];
 for (let i = 0; i < rows.length; i += 1) {
   const p = rows[i];
   const barcode = trim(p.trendyol_barcode) || trim(p.sku);
-  const remote = await fetchRemoteByBarcode(integration, barcode);
-  const oldTitle = remote?.title ?? (remote?.missing ? "(TY'de bulunamadı)" : remote?.error ? `(çekilemedi: ${remote.error})` : "(yok)");
-  const onSale = remote?.onSale == null ? "?" : String(remote.onSale);
-  const qty = remote?.quantity == null ? "?" : String(remote.quantity);
-  console.log([p.sku, p.name, oldTitle, onSale, qty].join("\t"));
+  let listing = null;
+  let errMsg = null;
+  try {
+    listing = await resolveTrendyolListing(integration, barcode);
+  } catch (err) {
+    errMsg = err instanceof Error ? err.message : String(err);
+  }
+  const contentId = listing?.contentId != null ? String(listing.contentId) : errMsg ? `(hata)` : "(yok)";
+  const tyTitle = listing?.title || (errMsg ? `(çekilemedi: ${errMsg.slice(0, 80)})` : "(TY'de bulunamadı)");
+  console.log([p.sku, contentId, tyTitle, p.name].join("\t"));
   plan.push({
     id: p.id,
     sku: p.sku,
     newTitle: p.name,
-    oldTitle,
     barcode,
-    remote,
+    listing,
+    errMsg,
   });
   if (i < rows.length - 1) await sleep(DELAY_MS);
 }
 
 if (!APPLY) {
   console.log("\nDB/TY yazılmadı. Göndermek için: node scripts/push-renamed-titles-trendyol.mjs --apply");
-  console.log(JSON.stringify({ mode: "DRY_RUN", count: plan.length, skus: plan.map((p) => p.sku) }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        mode: "DRY_RUN",
+        count: plan.length,
+        withContentId: plan.filter((p) => p.listing?.contentId).length,
+        skus: plan.map((p) => p.sku),
+      },
+      null,
+      2,
+    ),
+  );
   process.exit(0);
 }
 
-async function fetchBatchOutcome(batchRequestId) {
-  if (!batchRequestId) return { ok: false, message: "batchRequestId yok" };
-  // Trendyol async işler — kısa poll
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    await sleep(attempt === 0 ? 2500 : 1500);
-    const sellerId = encodeURIComponent(integration.seller_id);
-    const url = `${tyBase(integration)}/integration/product/sellers/${sellerId}/products/batch-requests/${encodeURIComponent(batchRequestId)}`;
-    const res = await fetch(url, { headers: tyHeaders(integration) });
-    const body = await res.json().catch(() => null);
-    const status = String(body?.status ?? "");
-    if (!status || status === "IN_PROGRESS" || status === "PENDING") continue;
-    const items = Array.isArray(body?.items) ? body.items : [];
-    const failed = items.filter((it) => String(it.status ?? "").toUpperCase() === "FAILED");
-    const reasons = failed.flatMap((it) => {
-      const fr = it.failureReasons;
-      if (Array.isArray(fr)) return fr.map(String);
-      if (fr) return [String(fr)];
-      return [];
-    });
-    const failedCount = Number(body?.failedItemCount ?? failed.length);
-    if (failedCount > 0 || failed.length > 0) {
-      return {
-        ok: false,
-        message: reasons[0] || `batch FAILED (failedItemCount=${failedCount})`,
-        batchStatus: status,
-        batchRequestId,
-      };
-    }
-    return { ok: true, message: `batch ${status}`, batchStatus: status, batchRequestId };
-  }
-  return { ok: false, message: "batch sonucu zaman aşımı / hâlâ IN_PROGRESS", batchRequestId };
-}
-
-const syncProductToTrendyol = loadSyncProductToTrendyol();
 const results = [];
 
 for (let i = 0; i < plan.length; i += 1) {
   const row = plan[i];
   process.stdout.write(`[${i + 1}/${plan.length}] ${row.sku} … `);
+
+  if (!row.listing?.contentId) {
+    const msg = row.errMsg || "contentId yok / TY listing bulunamadı";
+    console.log(`HATA: ${msg}`);
+    results.push({ sku: row.sku, ok: false, message: msg });
+    if (i < plan.length - 1) await sleep(DELAY_MS);
+    continue;
+  }
+
+  if (trim(row.listing.title) === trim(row.newTitle)) {
+    console.log(`SKIP: başlık zaten aynı (contentId=${row.listing.contentId})`);
+    results.push({
+      sku: row.sku,
+      ok: true,
+      skipped: true,
+      contentId: row.listing.contentId,
+      message: "already_same_title",
+    });
+    if (i < plan.length - 1) await sleep(DELAY_MS);
+    continue;
+  }
+
   try {
-    const pr = await syncProductToTrendyol(admin, row.id);
-    if (!pr.ok) {
-      console.log(`HATA: ${pr.message || "bilinmeyen"}`);
-      results.push({ sku: row.sku, ok: false, skipped: false, message: pr.message || "error" });
-    } else if ("skipped" in pr && pr.skipped) {
-      console.log(`SKIP: inactive veya credentials`);
-      results.push({ sku: row.sku, ok: true, skipped: true, message: "skipped" });
+    const upd = await updateTrendyolProductContent(
+      integration,
+      { contentId: row.listing.contentId, title: row.newTitle },
+      { admin, productId: row.id },
+    );
+    if (!upd.ok) {
+      console.log(`HATA: ${upd.message}`);
+      results.push({
+        sku: row.sku,
+        ok: false,
+        contentId: row.listing.contentId,
+        message: upd.message,
+      });
+      if (i < plan.length - 1) await sleep(DELAY_MS);
+      continue;
+    }
+
+    const batch = await awaitTrendyolBatch(integration, upd.batchRequestId);
+    if (!batch.ok) {
+      console.log(`HATA: batch ${batch.message}`);
+      results.push({
+        sku: row.sku,
+        ok: false,
+        contentId: row.listing.contentId,
+        batchRequestId: upd.batchRequestId,
+        message: batch.message,
+      });
+      if (i < plan.length - 1) await sleep(DELAY_MS);
+      continue;
+    }
+
+    // QC audit — TITLE; RUNNING/yok iken poll (100/dk gap waitFor içinde)
+    const want = trim(row.newTitle);
+    const auditWait = await waitForTrendyolTitleAudit(integration, row.listing.contentId, {
+      expectedTitle: want,
+      batchRequestId: upd.batchRequestId,
+      maxAttempts: 12,
+      pollDelayMs: 5000,
+      minGapMs: AUDIT_MIN_GAP_MS,
+    });
+    const titleAudit = auditWait.audit;
+
+    // Listing bazen audit SUCCESS sonrası kısa gecikir — birkaç kez dene
+    let titleNow = "";
+    for (let t = 0; t < 4; t += 1) {
+      if (t > 0) await sleep(2000);
+      const after = await resolveTrendyolListing(integration, row.barcode);
+      titleNow = trim(after?.title);
+      if (titleNow === want) break;
+    }
+
+    if (!auditWait.ok && titleAudit?.status === "FAIL") {
+      const rejectType = titleAudit.rejectReasons?.[0]?.type || "TITLE_FAIL";
+      console.log(`HATA: audit FAIL (${rejectType}) — ${auditWait.message.slice(0, 120)}`);
+      results.push({
+        sku: row.sku,
+        ok: false,
+        contentId: row.listing.contentId,
+        batchRequestId: upd.batchRequestId,
+        auditStatus: titleAudit.status,
+        rejectType,
+        message: auditWait.message,
+        tyTitleAfter: titleNow || null,
+      });
+    } else if (titleNow !== want) {
+      console.log(
+        `HATA: batch ${batch.apiStatus} ama başlık eşleşmedi (audit=${titleAudit?.status ?? "yok"})`,
+      );
+      results.push({
+        sku: row.sku,
+        ok: false,
+        contentId: row.listing.contentId,
+        batchRequestId: upd.batchRequestId,
+        auditStatus: titleAudit?.status ?? null,
+        message: "title_mismatch_after_update",
+        tyTitleAfter: titleNow || null,
+        expected: want,
+      });
     } else {
-      const batchId = "batchRequestId" in pr ? pr.batchRequestId : null;
-      const outcome = await fetchBatchOutcome(batchId);
-      if (outcome.ok) {
-        console.log(`OK ${outcome.message}`);
-        results.push({ sku: row.sku, ok: true, skipped: false, message: outcome.message });
-      } else {
-        console.log(`HATA: ${outcome.message}`);
-        results.push({ sku: row.sku, ok: false, skipped: false, message: outcome.message });
-      }
+      console.log(
+        `OK contentId=${row.listing.contentId} batch=${batch.apiStatus} audit=${titleAudit?.status ?? "pending"}`,
+      );
+      results.push({
+        sku: row.sku,
+        ok: true,
+        skipped: false,
+        contentId: row.listing.contentId,
+        batchRequestId: upd.batchRequestId,
+        auditStatus: titleAudit?.status ?? null,
+        message: `batch ${batch.apiStatus}`,
+        tyTitleAfter: titleNow,
+      });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.log(`HATA: ${msg}`);
-    results.push({ sku: row.sku, ok: false, skipped: false, message: msg });
+    results.push({
+      sku: row.sku,
+      ok: false,
+      contentId: row.listing?.contentId,
+      message: msg,
+    });
   }
+
   if (i < plan.length - 1) await sleep(DELAY_MS);
 }
 
