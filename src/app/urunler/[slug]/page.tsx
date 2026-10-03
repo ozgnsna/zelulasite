@@ -407,8 +407,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <div className="rounded-2xl border border-[#e6dccf] bg-[#faf7f3] p-6 transition hover:shadow-[0_12px_24px_rgba(70,53,38,0.08)]">
               <h3 className="text-sm font-semibold text-stone-900">İade</h3>
               <p className="mt-3 text-sm leading-relaxed text-stone-600">
-                Teslimattan itibaren 14 gün içinde iade talebi oluşturabilirsin. İade kargo ücreti Zelula
-                tarafından karşılanır.
+                Teslimattan itibaren 14 gün içinde gerekçe göstermeden iade. Anlaşmalı kargoyla iade ücretsiz.
               </p>
             </div>
           </section>

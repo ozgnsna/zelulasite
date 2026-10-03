@@ -65,7 +65,10 @@ export default function ShippingReturnsPage() {
             <li>- Teslimattan itibaren 14 gün içinde iade talebi oluşturabilirsin.</li>
             <li>- Ürün kullanılmamış, zarar görmemiş ve orijinal haliyle gönderilmelidir.</li>
             <li>- İade kargo ücreti Zelula tarafından karşılanır.</li>
-            <li>- Hijyen nedeniyle kişisel kullanım izli ürünlerde iade kabul edilmeyebilir.</li>
+            <li>
+              - Ürünü niteliğini anlamak için deneyebilirsin; olağan inceleme sınırını aşan kullanımdan doğan
+              değer kaybından tüketici sorumludur.
+            </li>
           </ul>
         </section>
 
