@@ -3,7 +3,8 @@
  * sitedeki hukuki sayfalar bu kaynakla uyumlu tutulur.
  */
 
-export const LEGAL_CONTRACT_VERSION = "v1" as const;
+/** Sipariş anında snapshot'a yazılır; bump yalnızca yeni siparişleri etkiler. */
+export const LEGAL_CONTRACT_VERSION = "v2" as const;
 
 const SELLER = "Zelula";
 const SELLER_LEGAL_TITLE = "Özgün Sena Uğur (Zelula – Şahıs Firması)";
@@ -35,23 +36,21 @@ Sözleşme'nin konusu, Alıcı'nın Satıcı'ya ait internet sitesi üzerinden e
 
 Alıcı, ürünün kendisine veya gösterdiği adresteki üçüncü kişiye teslim tarihinden itibaren 14 (on dört) gün içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin sözleşmeden cayma hakkına sahiptir. Cayma hakkı süresi sona ermeden önce, tüketicinin onayı ile hizmetin ifasına başlanması hâlinde cayma hakkı kullanılamaz.
 
-## 4. Cayma hakkının kullanılamayacağı haller (hijyen istisnası)
+## 4. Cayma hakkının kullanılamayacağı haller
 
-Mesafeli Sözleşmeler Yönetmeliği uyarınca, sağlık veya hijyen açısından iadesi uygun olmayıp tesliminden sonra ambalajı açılmış mallar yönünden cayma hakkı kullanılamaz.
+Mesafeli Sözleşmeler Yönetmeliği uyarınca bazı ürün gruplarında cayma hakkı kullanılamaz. Zelula olarak biz, kataloğumuzdaki tüm ürünlerde teslimden itibaren 14 gün içinde gerekçe göstermeksizin iade kabul ediyoruz; küpeler de buna dahildir.
 
 :::CALLOUT
-Hijyen sebebiyle küpe ürünlerinde iade ve değişim kabul edilmemektedir. Ürün kusurlu, ayıplı veya yanlış gönderilmişse yasal haklarınız saklıdır.
+Ürünü teslim aldıktan sonra niteliğini ve çalışma şeklini anlamak için deneyebilirsin. Olağan inceleme sınırını aşan kullanımdan doğan değer kaybından tüketici sorumludur.
 
 ${RETURN_CARRIER_RULE}
 :::
 
-Ayrıca, tesliminden sonra ambalaj, bant, mühür, paket gibi koruyucu unsurları açılmış olması şartıyla; iadesi sağlık ve hijyen açısından uygun olmayan diğer ürünlerde de cayma hakkı sınırlı olabilir. Cayma hakkının kullanılamadığı durumlar sipariş öncesi açıkça bildirilir.
-
 ## 5. İade koşulları
 
-- Ürün, kullanılmamış, yeniden satılabilir durumda ve standart aksesuarlarıyla birlikte iade edilmelidir.
+- Ürün, olağan inceleme sınırları içinde kalacak şekilde ve standart aksesuarlarıyla birlikte iade edilmelidir.
 - Orijinal ambalaj ve fatura / irsaliye (varsa) ibrazı talep edilebilir.
-- Cayma hakkı kapsamı dışındaki ürünlerde iade kabul edilmeyebilir.
+- Olağan inceleme sınırını aşan kullanımdan doğan değer kaybı iade tutarından düşülebilir.
 
 ## 6. Geri ödeme
 
@@ -92,7 +91,7 @@ Teslimat süresi, siparişin onaylanmasından itibaren stok durumuna ve kargo s�
 
 ## 5. Cayma hakkı
 
-Tüketici, ürünün tesliminden itibaren 14 gün içinde hiçbir gerekçe göstermeksizin cayma hakkını kullanabilir. Hijyen sebebiyle küpe ürünlerinde iade ve değişim kabul edilmemektedir. Ürün kusurlu, ayıplı veya yanlış gönderilmişse yasal haklarınız saklıdır. Ambalajı açılmış, iadesi sağlık ve hijyen açısından uygun olmayan diğer mallar için istisnalar geçerlidir.
+Tüketici, ürünün tesliminden itibaren 14 gün içinde hiçbir gerekçe göstermeksizin cayma hakkını kullanabilir. Zelula, kataloğundaki tüm ürünlerde bu hakkı küpeler dahil olmak üzere uygular. Ürün kusurlu, ayıplı veya yanlış gönderilmişse yasal hakların saklıdır.
 
 ## 6. İade kargo masrafı
 
@@ -115,7 +114,7 @@ Zelula olarak ürünlerinden memnun kalmanı istiyoruz. Aşağıdaki bilgiler s�
 :::
 
 :::CALLOUT
-- Hijyen sebebiyle küpe ürünlerinde iade ve değişim kabul edilmemektedir.
+- Küpeler dahil tüm ürünlerde 14 gün içinde iade hakkın var.
 - Ürün kusurlu, ayıplı veya yanlış gönderilmişse yasal haklarınız saklıdır.
 - ${RETURN_CARRIER_RULE}
 :::
@@ -124,11 +123,10 @@ Zelula olarak ürünlerinden memnun kalmanı istiyoruz. Aşağıdaki bilgiler s�
 
 Yasal cayma hakkı kapsamında, siparişinin sana veya gösterdiğin adrese ulaştığı tarihten itibaren 14 gün içinde iade talebinde bulunabilirsin. Süre, ürünün eline geçtiği günden itibaren işler.
 
-## Hangi ürünler iade edilemez?
+## İade için dikkat
 
-- Küpeler: Hijyen sebebiyle küpe ürünlerinde iade ve değişim kabul edilmemektedir; bu ürünleri seçerken ölçü ve model bilgilerini dikkatle kontrol etmeni rica ederiz.
-- Kullanılmış, hasar görmüş veya yeniden satılamayacak ürünler.
-- Ambalajı açılmış ve iadesi sağlık/hijyen açısından uygun olmayan ürünler (mevzuat kapsamı).
+- Olağan inceleme sınırını aşan kullanımdan doğan değer kaybından tüketici sorumludur.
+- Hasar görmüş veya yeniden satılamayacak şekilde bozulmuş ürünlerde iade kabul edilmeyebilir.
 
 ## İade nasıl yapılır? (Adım adım)
 
@@ -146,7 +144,7 @@ Yasal cayma hakkı kapsamında, siparişinin sana veya gösterdiğin adrese ula�
 
 Stok ve ürün uygunluğuna göre değişim taleplerini değerlendiriyoruz. Değişim için önce bizimle iletişime geçmen yeterli; uygun alternatif varsa hızlıca yönlendiririz.
 
-Kampanyalı ve indirimli ürünlerde iade koşulları değişiklik gösterebilir.
+İndirimli ve kampanyalı ürünlerde de cayma hakkın aynen geçerlidir.
 
 Ayrıntılı hukuki düzenlemeler için site üzerindeki Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formu'na başvurabilirsin (${SITE_HREF}).`;
 }

@@ -21,7 +21,8 @@ export type LegalContractSnapshotDocuments = {
 };
 
 export type LegalContractSnapshot = {
-  version: typeof LEGAL_CONTRACT_VERSION;
+  /** Sipariş anındaki sürüm (örn. v1, v2); eski kayıtlar korunur. */
+  version: string;
   acceptedAt: string;
   documents: LegalContractSnapshotDocuments;
 };
@@ -53,7 +54,7 @@ export function parseLegalContractSnapshot(raw: unknown): LegalContractSnapshot 
     if (typeof d[k] !== "string") return null;
   }
   return {
-    version: o.version as LegalContractSnapshot["version"],
+    version: o.version.trim(),
     acceptedAt: o.acceptedAt,
     documents: {
       distanceSalesContract: d.distanceSalesContract as string,
