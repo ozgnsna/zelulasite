@@ -861,6 +861,15 @@ export async function getProductBySlug(slug: string) {
       return { ...p, categorySlug: p.category?.slug };
     }
 
+    // Exact slug exists but inactive → 404 (do not fuzzy-match a different product).
+    const { data: inactiveExact } = await supabase
+      .from("products")
+      .select("id")
+      .eq("slug", decodedSlug)
+      .eq("is_active", false)
+      .maybeSingle();
+    if (inactiveExact) return null;
+
     // Fallback: slug varyasyonları (Türkçe karakter/encoding/ufak typo) için toleranslı eşleşme.
     const { data: allActive } = await supabase
       .from("products")

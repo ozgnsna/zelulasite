@@ -31,7 +31,6 @@ const nextConfig: NextConfig = {
     ];
   },
   experimental: {
-    inlineCss: true,
     serverActions: {
       bodySizeLimit: "8mb",
     },
