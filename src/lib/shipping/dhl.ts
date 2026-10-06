@@ -8,7 +8,7 @@ export function buildDhlTrackingUrl(trackingNumber: string): string | null {
   return `https://www.dhl.com/tr-tr/home/tracking/tracking-express.html?submit=1&tracking-id=${encodeURIComponent(id)}`;
 }
 
-function useMock(): boolean {
+function isDhlMockEnabled(): boolean {
   const v = String(process.env.DHL_USE_MOCK ?? "true").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
 }
@@ -19,7 +19,7 @@ function useMock(): boolean {
  * Real: DHL dokümantasyonu gelince env + endpoint eşlemesi burada tamamlanacak.
  */
 export async function createDhlShipment(order: OrderShippingSource): Promise<CreateShipmentResult> {
-  if (useMock()) {
+  if (isDhlMockEnabled()) {
     const suffix = randomBytes(5).toString("hex").toUpperCase();
     const trackingNumber = `DHL-MOCK-${suffix}`;
     const labelUrl = `https://example.invalid/dhl/labels/mock/${order.id}.pdf`;

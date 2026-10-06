@@ -329,7 +329,19 @@ type TrendyolCategoryAttributesPickerProps = {
   initialProductAttributes: unknown;
 };
 
-export function TrendyolCategoryAttributesPicker({
+export function TrendyolCategoryAttributesPicker(props: TrendyolCategoryAttributesPickerProps) {
+  const remountKey = useMemo(
+    () =>
+      JSON.stringify({
+        rows: props.initialRows.map((r) => r.attributeId),
+        attrs: props.initialProductAttributes,
+      }),
+    [props.initialRows, props.initialProductAttributes],
+  );
+  return <TrendyolCategoryAttributesPickerInner key={remountKey} {...props} />;
+}
+
+function TrendyolCategoryAttributesPickerInner({
   initialRows,
   initialProductAttributes,
 }: TrendyolCategoryAttributesPickerProps) {
@@ -338,10 +350,6 @@ export function TrendyolCategoryAttributesPicker({
   const [sel, setSel] = useState<SelMap>(() => buildInitialSelection(initialRows, baseAttrs));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  useEffect(() => {
-    setRows(initialRows);
-    setSel(buildInitialSelection(initialRows, baseAttrs));
-  }, [initialRows, baseAttrs]);
 
   const syncToTextarea = useCallback((nextRows: TrendyolCategoryAttributePickerRow[], nextSel: SelMap) => {
     if (nextRows.length === 0) return;

@@ -232,7 +232,6 @@ export function computeNeckAnchor(params: {
   const mirror = Boolean(params.mirrorX);
   const mx = (v: number) => (mirror ? 1 - v : v);
 
-  const chinX = mx(chin.x);
   const chinY = chin.y;
 
   const faceHeight = Math.abs(chinY - forehead.y);

@@ -31,6 +31,10 @@ export function GiftCardPurchaseForm({ denominations }: Props) {
   const canPurchase = Boolean(selected?.isConfigured);
   const coverImageUrl = selected?.imageUrl ?? getGiftCardProductImagePublicUrl();
 
+  useEffect(() => {
+    if (state?.ok) router.push("/sepet");
+  }, [state, router]);
+
   if (denominations.length === 0) {
     return (
       <p className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
@@ -38,10 +42,6 @@ export function GiftCardPurchaseForm({ denominations }: Props) {
       </p>
     );
   }
-
-  useEffect(() => {
-    if (state?.ok) router.push("/sepet");
-  }, [state, router]);
 
   if (state?.ok) {
     return (

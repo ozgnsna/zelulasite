@@ -16,7 +16,41 @@ function greetingFirstNameFromProfile(fullName: string | null | undefined): stri
   return first ?? null;
 }
 
+type HeaderModel = {
+  isLoggedIn: boolean;
+  greetingFirstName: string | null;
+  impersonationActive: boolean;
+  count: number;
+  drawerLines: Array<{
+    productId: string;
+    slug: string;
+    name: string;
+    imageUrl: string;
+    quantity: number;
+    price: number;
+  }>;
+  drawerUpsellItems: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    price: number;
+    imageUrl: string;
+    stock: number;
+  }>;
+};
+
+const emptyHeader: HeaderModel = {
+  isLoggedIn: false,
+  greetingFirstName: null,
+  impersonationActive: false,
+  count: 0,
+  drawerLines: [],
+  drawerUpsellItems: [],
+};
+
 export async function Header() {
+  let model: HeaderModel = emptyHeader;
+
   try {
     const cookieStore = await cookies();
     const supabase = await createClient();
@@ -71,26 +105,28 @@ export async function Header() {
       stock: p.stock_quantity,
     }));
 
-    return (
-      <header className="overflow-visible bg-white">
-        <HeaderShell
-          isLoggedIn={Boolean(user)}
-          greetingFirstName={greetingFirstName}
-          impersonationActive={impersonationActive}
-          cartSlot={<CartDrawer count={count} lines={drawerLines} upsellItems={drawerUpsellItems} />}
-        />
-      </header>
-    );
+    model = {
+      isLoggedIn: Boolean(user),
+      greetingFirstName,
+      impersonationActive,
+      count,
+      drawerLines,
+      drawerUpsellItems,
+    };
   } catch {
-    return (
-      <header className="overflow-visible bg-white">
-        <HeaderShell
-          isLoggedIn={false}
-          greetingFirstName={null}
-          impersonationActive={false}
-          cartSlot={<CartDrawer count={0} lines={[]} upsellItems={[]} />}
-        />
-      </header>
-    );
+    model = emptyHeader;
   }
+
+  return (
+    <header className="overflow-visible bg-white">
+      <HeaderShell
+        isLoggedIn={model.isLoggedIn}
+        greetingFirstName={model.greetingFirstName}
+        impersonationActive={model.impersonationActive}
+        cartSlot={
+          <CartDrawer count={model.count} lines={model.drawerLines} upsellItems={model.drawerUpsellItems} />
+        }
+      />
+    </header>
+  );
 }

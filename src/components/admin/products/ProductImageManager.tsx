@@ -119,7 +119,7 @@ export function ProductImageManager({
   const [dragOver, setDragOver] = useState(false);
   const [clientError, setClientError] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
-  const [setUploadAsCover, setSetUploadAsCover] = useState(false);
+  const [userWantsCover, setUserWantsCover] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingInputRef = useRef<HTMLInputElement | null>(null);
@@ -127,6 +127,7 @@ export function ProductImageManager({
   const uploadEnabled = serverUploadEnabled || stagingMode;
   const useExternalUploadForm = Boolean(uploadFormId && serverUploadEnabled);
   const sortedImages = useMemo(() => sortImages(images), [images]);
+  const setUploadAsCover = sortedImages.length + pendingMedia.length === 0 || userWantsCover;
   const displayImages = useMemo(() => {
     const pendingRows: Img[] = pendingMedia.map((item, index) => ({
       id: item.id,
@@ -146,10 +147,6 @@ export function ProductImageManager({
   const selectedPreview = isLikelyImageUrl(selectedUrl) ? selectedUrl.trim() : (coverImage?.image_url ?? "");
   const selectedImage = displayImages.find((img) => img.image_url === selectedPreview);
   const selectedIsCover = Boolean(selectedImage?.is_cover);
-
-  useEffect(() => {
-    setSetUploadAsCover(displayImages.length === 0);
-  }, [displayImages.length]);
 
   useEffect(() => {
     const includePending = stagingMode && !productId;
@@ -310,7 +307,7 @@ export function ProductImageManager({
               <input
                 type="checkbox"
                 checked={setUploadAsCover}
-                onChange={(e) => setSetUploadAsCover(e.target.checked)}
+                onChange={(e) => setUserWantsCover(e.target.checked)}
                 className="size-3.5 rounded border-stone-300"
               />
               Yüklenen fotoğrafı kapak yap (video için geçerli değil)

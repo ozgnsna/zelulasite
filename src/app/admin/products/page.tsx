@@ -670,7 +670,6 @@ export default async function AdminProductsPage({
                 const stock = Number(p.stock_quantity ?? 0);
                 const importedNeedsReview = importedNeedsReviewFn(p);
                 const missingTrendyolFields = missingTrendyolFieldLabels(p);
-                const stockLow = stock > 0 && stock <= 3;
                 const salesQty = salesByProduct.get(String(p.id)) ?? 0;
                 const views = viewsByProduct.get(String(p.id)) ?? 0;
                 const listed = isListedOnTrendyol(p);

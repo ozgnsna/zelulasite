@@ -127,10 +127,32 @@ function QnbPayFlowEnvDiagnostics({
   );
 }
 
+type QnbPrepResult =
+  | { kind: "error"; title: string; detail: string }
+  | {
+      kind: "demo";
+      orderId: string;
+      orderNumber: string;
+      orderTotal: number;
+      currency: string;
+      customerName: string;
+      customerEmail: string;
+      showDebugBadge: boolean;
+      missingQnbKeys: string[];
+    }
+  | {
+      kind: "form";
+      orderId: string;
+      gatewayRoutingDebug: ReturnType<typeof getQnbGatewayRoutingDebug> | null;
+      qnbPayFlowDiagMissing: string[];
+      qnbPayFlowDiagHints: string[];
+    };
+
 export default async function QnbPaymentStartPage({ params }: { params: Promise<{ orderId: string }> }) {
   const incidentId = `PF-${randomBytes(5).toString("hex")}`;
   const flowDebug = isPaymentFlowDebugEnabled();
   const showCustomerDebug = isQnbCustomerFacingDebugVisible();
+  let result: QnbPrepResult;
 
   try {
     const { orderId } = await params;
@@ -154,109 +176,89 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
     const qnbPayFlowDiagHints = getQnbLiveConfigurationEnvHintNames();
     if (!siteUrl) {
       logPayment("error", "qnb-baslat: NEXT_PUBLIC_SITE_URL eksik.", { incidentId, ...getQnbPaymentConfig() });
-      return (
-        <PrepError
-          title="Sunucu yapılandırması eksik"
-          detail="NEXT_PUBLIC_SITE_URL tanımlı değil. Ödeme dönüşü için bu değer gereklidir."
-          incidentId={incidentId}
-          showTechnical={flowDebug}
-        />
-      );
+      result = {
+        kind: "error",
+        title: "Sunucu yapılandırması eksik",
+        detail: "NEXT_PUBLIC_SITE_URL tanımlı değil. Ödeme dönüşü için bu değer gereklidir.",
+      };
+    } else {
+      const cred = getQnbCredentials();
+      if (isBankReviewMode() && !cred.ok) {
+        logPayment("info", "qnb-baslat: bank review demo (QNB env eksik, gerçek ödeme yok).", {
+          orderId: String(order.id),
+          bankReviewMode: true,
+        });
+        const showCheckoutDebug = process.env.NEXT_PUBLIC_CHECKOUT_DEBUG === "1";
+        result = {
+          kind: "demo",
+          orderId: String(order.id),
+          orderNumber: String(order.order_number ?? ""),
+          orderTotal: Number(order.total ?? 0),
+          currency: String(order.currency ?? "TRY"),
+          customerName: String(order.customer_name ?? ""),
+          customerEmail: String(order.email ?? ""),
+          showDebugBadge: showCheckoutDebug,
+          missingQnbKeys: getMissingQnbCredentialEnvNames(),
+        };
+      } else {
+        const okUrl = `${siteUrl}/api/payments/qnb-return`;
+        const built = buildQnbCheckoutFormFields({
+          orderId: String(order.id),
+          purchAmount: Number(order.total ?? 0).toFixed(2),
+          okUrl,
+          failUrl: okUrl,
+          customerName: String(order.customer_name ?? ""),
+          customerEmail: String(order.email ?? ""),
+          customerPhone: String(order.phone ?? ""),
+        });
+
+        if ("error" in built) {
+          logPayment("error", "qnb-baslat: form alanları üretilemedi.", {
+            incidentId,
+            error: built.error,
+            ...getQnbFlowDebugMeta(),
+            ...getQnbPaymentConfig(),
+          });
+          result = {
+            kind: "error",
+            title: "Ödeme başlatılamadı",
+            detail: built.error,
+          };
+        } else {
+          const gatewayRoutingDebug = showCustomerDebug ? getQnbGatewayRoutingDebug(built.secureType) : null;
+
+          if (flowDebug) {
+            logPayment("info", "qnb-baslat: ödeme ekranı seçimi.", {
+              orderId,
+              incidentId,
+              ...getQnbFlowDebugMeta(),
+              ...getQnbPaymentConfig(),
+              uiBranch: built.secureType === "3DPay" ? "Qnb3DPayForm" : "unsupported",
+              gatewayUrl: built.gatewayUrl,
+              initiatePath: qnbInitiateApiPath(),
+              missingEnvNamesOnly: qnbPayFlowDiagMissing,
+              liveConfigHintEnvNamesOnly: qnbPayFlowDiagHints,
+            });
+          }
+
+          if (built.secureType === "3DPay") {
+            result = {
+              kind: "form",
+              orderId: String(order.id),
+              gatewayRoutingDebug,
+              qnbPayFlowDiagMissing,
+              qnbPayFlowDiagHints,
+            };
+          } else {
+            result = {
+              kind: "error",
+              title: "Ödeme yöntemi yapılandırılmamış",
+              detail: "Canlı ödeme için QNB_SECURE_TYPE=3DPay kullanın. 3DHost şu an devre dışıdır.",
+            };
+          }
+        }
+      }
     }
-
-    const cred = getQnbCredentials();
-    if (isBankReviewMode() && !cred.ok) {
-      logPayment("info", "qnb-baslat: bank review demo (QNB env eksik, gerçek ödeme yok).", {
-        orderId: String(order.id),
-        bankReviewMode: true,
-      });
-      const showCheckoutDebug = process.env.NEXT_PUBLIC_CHECKOUT_DEBUG === "1";
-      return (
-        <main className="min-h-[50vh] bg-[#f9f6f2]">
-          <BankReviewDemoCardPage
-            orderId={String(order.id)}
-            orderNumber={String(order.order_number ?? "")}
-            orderTotal={Number(order.total ?? 0)}
-            currency={String(order.currency ?? "TRY")}
-            customerName={String(order.customer_name ?? "")}
-            customerEmail={String(order.email ?? "")}
-            showDebugBadge={showCheckoutDebug}
-            missingQnbKeys={getMissingQnbCredentialEnvNames()}
-          />
-        </main>
-      );
-    }
-
-    const okUrl = `${siteUrl}/api/payments/qnb-return`;
-    const built = buildQnbCheckoutFormFields({
-      orderId: String(order.id),
-      purchAmount: Number(order.total ?? 0).toFixed(2),
-      okUrl,
-      failUrl: okUrl,
-      customerName: String(order.customer_name ?? ""),
-      customerEmail: String(order.email ?? ""),
-      customerPhone: String(order.phone ?? ""),
-    });
-
-    if ("error" in built) {
-      logPayment("error", "qnb-baslat: form alanları üretilemedi.", {
-        incidentId,
-        error: built.error,
-        ...getQnbFlowDebugMeta(),
-        ...getQnbPaymentConfig(),
-      });
-      return (
-        <PrepError
-          title="Ödeme başlatılamadı"
-          detail={built.error}
-          incidentId={incidentId}
-          showTechnical={flowDebug}
-        />
-      );
-    }
-
-    const gatewayRoutingDebug = showCustomerDebug ? getQnbGatewayRoutingDebug(built.secureType) : null;
-
-    if (flowDebug) {
-      logPayment("info", "qnb-baslat: ödeme ekranı seçimi.", {
-        orderId,
-        incidentId,
-        ...getQnbFlowDebugMeta(),
-        ...getQnbPaymentConfig(),
-        uiBranch: built.secureType === "3DPay" ? "Qnb3DPayForm" : "unsupported",
-        gatewayUrl: built.gatewayUrl,
-        initiatePath: qnbInitiateApiPath(),
-        missingEnvNamesOnly: qnbPayFlowDiagMissing,
-        liveConfigHintEnvNamesOnly: qnbPayFlowDiagHints,
-      });
-    }
-
-    if (built.secureType === "3DPay") {
-      return (
-        <main className="min-h-[50vh] bg-[#f9f6f2]">
-          {showCustomerDebug ? (
-            <div className="space-y-2 px-4 pt-4">
-              <QnbGatewayRoutingDebugPanel flowDebug={showCustomerDebug} meta={gatewayRoutingDebug} />
-              <QnbPayFlowEnvDiagnostics
-                flowDebug={showCustomerDebug}
-                missing={qnbPayFlowDiagMissing}
-                hints={qnbPayFlowDiagHints}
-              />
-            </div>
-          ) : null}
-          <Qnb3DPayForm orderId={String(order.id)} initiatePath={qnbInitiateApiPath()} incidentId={incidentId} />
-        </main>
-      );
-    }
-
-    return (
-      <PrepError
-        title="Ödeme yöntemi yapılandırılmamış"
-        detail="Canlı ödeme için QNB_SECURE_TYPE=3DPay kullanın. 3DHost şu an devre dışıdır."
-        incidentId={incidentId}
-        showTechnical={flowDebug}
-      />
-    );
   } catch (e) {
     if (isNextNotFound(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
@@ -266,13 +268,53 @@ export default async function QnbPaymentStartPage({ params }: { params: Promise<
       ...getQnbFlowDebugMeta(),
       ...getQnbPaymentConfig(),
     });
-    return (
-      <PrepError
-        title="Ödeme adımı yüklenemedi"
-        detail={flowDebug ? msg : "Geçici bir hata oluştu. Lütfen bir süre sonra tekrar deneyin."}
-        incidentId={incidentId}
-        showTechnical={flowDebug}
-      />
-    );
+    result = {
+      kind: "error",
+      title: "Ödeme adımı yüklenemedi",
+      detail: flowDebug ? msg : "Geçici bir hata oluştu. Lütfen bir süre sonra tekrar deneyin.",
+    };
+  }
+
+  switch (result.kind) {
+    case "error":
+      return (
+        <PrepError
+          title={result.title}
+          detail={result.detail}
+          incidentId={incidentId}
+          showTechnical={flowDebug}
+        />
+      );
+    case "demo":
+      return (
+        <main className="min-h-[50vh] bg-[#f9f6f2]">
+          <BankReviewDemoCardPage
+            orderId={result.orderId}
+            orderNumber={result.orderNumber}
+            orderTotal={result.orderTotal}
+            currency={result.currency}
+            customerName={result.customerName}
+            customerEmail={result.customerEmail}
+            showDebugBadge={result.showDebugBadge}
+            missingQnbKeys={result.missingQnbKeys}
+          />
+        </main>
+      );
+    case "form":
+      return (
+        <main className="min-h-[50vh] bg-[#f9f6f2]">
+          {showCustomerDebug ? (
+            <div className="space-y-2 px-4 pt-4">
+              <QnbGatewayRoutingDebugPanel flowDebug={showCustomerDebug} meta={result.gatewayRoutingDebug} />
+              <QnbPayFlowEnvDiagnostics
+                flowDebug={showCustomerDebug}
+                missing={result.qnbPayFlowDiagMissing}
+                hints={result.qnbPayFlowDiagHints}
+              />
+            </div>
+          ) : null}
+          <Qnb3DPayForm orderId={result.orderId} initiatePath={qnbInitiateApiPath()} incidentId={incidentId} />
+        </main>
+      );
   }
 }

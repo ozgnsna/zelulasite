@@ -5,7 +5,7 @@ import type { CreateShipmentResult, OrderShippingSource } from "@/lib/shipping/t
 type TokenCache = { token: string; expiresAtMs: number };
 let tokenCache: TokenCache | null = null;
 
-function useMock(): boolean {
+function isNavlungoMockEnabled(): boolean {
   const v = String(process.env.NAVLUNGO_USE_MOCK ?? "false").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
 }
@@ -103,7 +103,7 @@ function pickCreatePostResult(body: unknown): NavlungoCreatePostResponse | null 
  * @see https://domestic-docs.navlungo.com/tr/v2-1
  */
 export async function createNavlungoShipment(order: OrderShippingSource): Promise<CreateShipmentResult> {
-  if (useMock()) {
+  if (isNavlungoMockEnabled()) {
     const suffix = randomBytes(5).toString("hex").toUpperCase();
     return {
       ok: true,

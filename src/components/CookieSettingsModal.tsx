@@ -3,14 +3,12 @@
 import { useEffect, useId, useState } from "react";
 import type { CookieConsent } from "@/lib/cookies/consent";
 
-export function CookieSettingsModal({
-  open,
+function CookieSettingsModalInner({
   initialAnalytics,
   initialMarketing,
   onClose,
   onSave,
 }: {
-  open: boolean;
   initialAnalytics: boolean;
   initialMarketing: boolean;
   onClose: () => void;
@@ -21,30 +19,20 @@ export function CookieSettingsModal({
   const [marketing, setMarketing] = useState(initialMarketing);
 
   useEffect(() => {
-    if (!open) return;
-    setAnalytics(initialAnalytics);
-    setMarketing(initialMarketing);
-  }, [open, initialAnalytics, initialMarketing]);
-
-  useEffect(() => {
-    if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [open]);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
     const esc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center sm:p-4" role="presentation">
@@ -131,5 +119,31 @@ export function CookieSettingsModal({
         </div>
       </div>
     </div>
+  );
+}
+
+export function CookieSettingsModal({
+  open,
+  initialAnalytics,
+  initialMarketing,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  initialAnalytics: boolean;
+  initialMarketing: boolean;
+  onClose: () => void;
+  onSave: (next: Pick<CookieConsent, "analytics" | "marketing">) => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <CookieSettingsModalInner
+      key={`${initialAnalytics}-${initialMarketing}`}
+      initialAnalytics={initialAnalytics}
+      initialMarketing={initialMarketing}
+      onClose={onClose}
+      onSave={onSave}
+    />
   );
 }

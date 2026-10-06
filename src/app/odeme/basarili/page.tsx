@@ -14,6 +14,41 @@ type Props = { searchParams: Promise<{ oid?: string; pm?: string }> };
 
 export const dynamic = "force-dynamic";
 
+type OrderSelect = {
+  id: string;
+  order_number: string;
+  payment_status: string | null;
+  order_status: string | null;
+  payment_provider: string | null;
+  total: number | string | null;
+  currency: string | null;
+  customer_name: string | null;
+  email: string | null;
+  user_id: string | null;
+};
+
+type OrderItemRow = {
+  quantity: number;
+  total_price: number | string;
+  unit_price: number | string | null;
+  product_id: string;
+  product: Array<{
+    name: string;
+    slug: string;
+    category: Array<{ name: string }> | null;
+    collection: Array<{ name: string }> | null;
+  }> | null;
+};
+
+type SuccessData = {
+  oidParam: string;
+  order: OrderSelect | null;
+  items: OrderItemRow[] | null;
+  paidShareUrl: string;
+  isBankTransferFlow: boolean;
+  prematureCardOrder: OrderSelect | null;
+};
+
 export default async function PaymentSuccessPage({ searchParams }: Props) {
   const sp = await searchParams;
   const orderId = sp.oid;
@@ -30,6 +65,9 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
       </main>
     );
   }
+
+  let data: SuccessData | null = null;
+  let loadFailed = false;
 
   try {
     const admin = createAdminClient();
@@ -52,7 +90,7 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
           .eq("order_id", order.id)
       : { data: null };
 
-    const firstItem = (items ?? [])[0];
+    const firstItem = (items ?? [])[0] as OrderItemRow | undefined;
     const firstProductSlug = firstItem?.product?.[0]?.slug ?? null;
     const base = siteBaseUrl();
     const path = firstProductSlug ? `/urunler/${firstProductSlug}` : "/";
@@ -63,18 +101,49 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
       if (refCode) paidShareUrl = withReferralQuery(cleanShareUrl, refCode);
     }
     const isBankTransferFlow = paymentMethod === "bank_transfer" || order?.payment_provider === "bank_transfer";
-    const bank = getBankTransferDetails();
 
     const prematureCardOrder =
       order &&
       !isBankTransferFlow &&
       order.payment_status === "pending" &&
       order.payment_provider === "qnb_finansbank"
-        ? order
+        ? (order as OrderSelect)
         : null;
 
+    data = {
+      oidParam,
+      order: order as OrderSelect | null,
+      items: (items ?? null) as OrderItemRow[] | null,
+      paidShareUrl,
+      isBankTransferFlow,
+      prematureCardOrder,
+    };
+  } catch {
+    loadFailed = true;
+  }
+
+  if (loadFailed || !data) {
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
+        <h1 className="font-serif text-2xl text-stone-900">Geçici bir sorun oluştu</h1>
+        <p className="mt-3 text-sm text-stone-600">
+          Sipariş referansı: <span className="font-mono">{orderId}</span>
+        </p>
+        <p className="mt-2 text-sm text-stone-600">
+          Ödeme onaylandıysa bilgiler e-posta ile de iletilebilir. Birkaç dakika sonra sayfayı yenileyin.
+        </p>
+        <Link href="/urunler" className="mt-8 inline-flex rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white hover:bg-stone-800">
+          Alışverişe devam et
+        </Link>
+      </main>
+    );
+  }
+
+  const { oidParam, order, items, paidShareUrl, isBankTransferFlow, prematureCardOrder } = data;
+  const bank = getBankTransferDetails();
+
+  return (
+    <main className="mx-auto max-w-lg px-4 py-20 text-center">
       {prematureCardOrder ? (
         <div className="mb-6 rounded-xl border-2 border-rose-500 bg-rose-50 px-4 py-3 text-left text-sm text-rose-950 shadow-sm">
           <p className="font-semibold text-rose-900">Bu sayfa ödeme tamamlanmadan açıldı</p>
@@ -182,21 +251,5 @@ export default async function PaymentSuccessPage({ searchParams }: Props) {
         Alışverişe devam et
       </Link>
     </main>
-    );
-  } catch {
-    return (
-      <main className="mx-auto max-w-lg px-4 py-20 text-center">
-        <h1 className="font-serif text-2xl text-stone-900">Geçici bir sorun oluştu</h1>
-        <p className="mt-3 text-sm text-stone-600">
-          Sipariş referansı: <span className="font-mono">{orderId}</span>
-        </p>
-        <p className="mt-2 text-sm text-stone-600">
-          Ödeme onaylandıysa bilgiler e-posta ile de iletilebilir. Birkaç dakika sonra sayfayı yenileyin.
-        </p>
-        <Link href="/urunler" className="mt-8 inline-flex rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white hover:bg-stone-800">
-          Alışverişe devam et
-        </Link>
-      </main>
-    );
-  }
+  );
 }

@@ -21,6 +21,11 @@ import { fetchAnalyticsSectionData } from "@/lib/admin/fetch-analytics-section";
 
 export const dynamic = "force-dynamic";
 
+/** Wall-clock “now” for unmatched-orders lookback on the force-dynamic admin dashboard. */
+function unmatchedOrdersSinceIso() {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+}
+
 function splitTryParts(n: number): { main: string; decimals: string } {
   const full = n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const i = full.lastIndexOf(",");
@@ -136,7 +141,7 @@ export default async function AdminPage({
   });
   const { start: dayStart, end: dayEnd } = istanbulDayUtcRange();
   const { start: yStart, end: yEnd } = istanbulYesterdayUtcRange();
-  const unmatchedSinceIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const unmatchedSinceIso = unmatchedOrdersSinceIso();
 
   const [
     todayOrdersRes,
@@ -229,7 +234,7 @@ export default async function AdminPage({
   }
   const pendingReviewsCount = pendingReviewsCountRes.count ?? 0;
 
-  const { activeProductsCount, outOfStockCount, lowStockCount, notListedOnMarketplaceCount } = productCounts;
+  const { outOfStockCount, lowStockCount, notListedOnMarketplaceCount } = productCounts;
 
   const ordersToday = todayOrders.length;
   const revenueToday = todayOrders

@@ -314,7 +314,7 @@ export async function getProducts(params: {
     // Sayfalarken önce count — taşan .range() Supabase'de 416 verip sayımı düşürür.
     let totalCount = 0;
     if (paginate) {
-      let countQuery = applyProductFilters(
+      const countQuery = applyProductFilters(
         supabase.from("products").select("id", { count: "exact", head: true }),
       );
       const countRes = await countQuery;

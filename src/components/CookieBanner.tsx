@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   CONSENT_UPDATED_EVENT,
   getCookieConsent,
-  hasConsent,
   OPEN_COOKIE_SETTINGS_EVENT,
   setCookieConsent,
   type CookieConsent,
@@ -16,69 +15,55 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function subscribeConsent(onStoreChange: () => void) {
+  window.addEventListener(CONSENT_UPDATED_EVENT, onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+  return () => {
+    window.removeEventListener(CONSENT_UPDATED_EVENT, onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
+
+function useClientMounted() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
 export function CookieBanner() {
   const pathname = usePathname() ?? "";
   const isAdmin = pathname.startsWith("/admin");
 
-  const [mounted, setMounted] = useState(false);
-  const [consentExists, setConsentExists] = useState(false);
+  const mounted = useClientMounted();
+  const consent = useSyncExternalStore(subscribeConsent, getCookieConsent, () => null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [draftAnalytics, setDraftAnalytics] = useState(false);
-  const [draftMarketing, setDraftMarketing] = useState(false);
 
-  const syncFromStorage = useCallback(() => {
-    const c = getCookieConsent();
-    setConsentExists(hasConsent());
-    if (c) {
-      setDraftAnalytics(c.analytics);
-      setDraftMarketing(c.marketing);
-    } else {
-      setDraftAnalytics(false);
-      setDraftMarketing(false);
-    }
+  useEffect(() => {
+    const onOpenSettings = () => setSettingsOpen(true);
+    window.addEventListener(OPEN_COOKIE_SETTINGS_EVENT, onOpenSettings);
+    return () => window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, onOpenSettings);
   }, []);
 
-  useEffect(() => {
-    setMounted(true);
-    syncFromStorage();
-  }, [syncFromStorage]);
-
-  useEffect(() => {
-    const onConsent = () => syncFromStorage();
-    const onOpenSettings = () => {
-      syncFromStorage();
-      setSettingsOpen(true);
+  const saveConsent = useCallback((analytics: boolean, marketing: boolean) => {
+    const next: CookieConsent = {
+      necessary: true,
+      analytics,
+      marketing,
+      updatedAt: nowIso(),
     };
-    window.addEventListener(CONSENT_UPDATED_EVENT, onConsent);
-    window.addEventListener(OPEN_COOKIE_SETTINGS_EVENT, onOpenSettings);
-    window.addEventListener("storage", onConsent);
-    return () => {
-      window.removeEventListener(CONSENT_UPDATED_EVENT, onConsent);
-      window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, onOpenSettings);
-      window.removeEventListener("storage", onConsent);
-    };
-  }, [syncFromStorage]);
-
-  const saveConsent = useCallback(
-    (analytics: boolean, marketing: boolean) => {
-      const next: CookieConsent = {
-        necessary: true,
-        analytics,
-        marketing,
-        updatedAt: nowIso(),
-      };
-      setCookieConsent(next);
-      setSettingsOpen(false);
-      syncFromStorage();
-    },
-    [syncFromStorage],
-  );
+    setCookieConsent(next);
+    setSettingsOpen(false);
+  }, []);
 
   if (isAdmin) return null;
 
   if (!mounted) return null;
 
-  const showBar = !consentExists;
+  const showBar = consent === null;
+  const draftAnalytics = consent?.analytics ?? false;
+  const draftMarketing = consent?.marketing ?? false;
 
   return (
     <>

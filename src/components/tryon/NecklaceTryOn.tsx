@@ -180,13 +180,15 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
     [],
   );
 
+  const loopRef = useRef<() => void>(() => {});
+
   const loop = useCallback(() => {
     const video = videoRef.current;
     const stage = stageRef.current;
     const face = faceRef.current;
     const pose = poseRef.current;
     if (!video || !face || !pose || video.readyState < 2) {
-      rafRef.current = requestAnimationFrame(loop);
+      rafRef.current = requestAnimationFrame(() => loopRef.current());
       return;
     }
 
@@ -238,8 +240,12 @@ export function NecklaceTryOn({ productName, necklaceImageUrl, onClose }: Neckla
       applyOverlay(smoothed);
     }
 
-    rafRef.current = requestAnimationFrame(loop);
+    rafRef.current = requestAnimationFrame(() => loopRef.current());
   }, [applyOverlay, applySilhouetteGuide]);
+
+  useEffect(() => {
+    loopRef.current = loop;
+  }, [loop]);
 
   useEffect(() => {
     let cancelled = false;

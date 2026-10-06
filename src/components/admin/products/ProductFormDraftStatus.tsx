@@ -13,24 +13,15 @@ function formatTr(iso: string) {
   }
 }
 
-export function ProductFormDraftStatus({
+function ProductFormDraftStatusInner({
   formId,
   serverUpdatedAt,
-  baselineKey,
 }: {
   formId: string;
-  /** Sunucudaki `products.updated_at` (ISO). */
   serverUpdatedAt?: string | null;
-  /** Kayıt sonrası taslak göstergesini sıfırlamak için (UnsavedGuard ile aynı anahtar). */
-  baselineKey?: string;
 }) {
   const [dirty, setDirty] = useState(false);
   const [lastEdit, setLastEdit] = useState<number | null>(null);
-
-  useEffect(() => {
-    setDirty(false);
-    setLastEdit(null);
-  }, [baselineKey]);
 
   useEffect(() => {
     const form = document.getElementById(formId);
@@ -82,5 +73,25 @@ export function ProductFormDraftStatus({
         <span>Kaydet ile yayınlanır</span>
       )}
     </div>
+  );
+}
+
+export function ProductFormDraftStatus({
+  formId,
+  serverUpdatedAt,
+  baselineKey,
+}: {
+  formId: string;
+  /** Sunucudaki `products.updated_at` (ISO). */
+  serverUpdatedAt?: string | null;
+  /** Kayıt sonrası taslak göstergesini sıfırlamak için (UnsavedGuard ile aynı anahtar). */
+  baselineKey?: string;
+}) {
+  return (
+    <ProductFormDraftStatusInner
+      key={baselineKey ?? "default"}
+      formId={formId}
+      serverUpdatedAt={serverUpdatedAt}
+    />
   );
 }

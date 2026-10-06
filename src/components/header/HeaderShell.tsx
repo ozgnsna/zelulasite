@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, Menu, UserRound, X } from "lucide-react";
@@ -67,16 +67,18 @@ function useClickOutsideRef<T extends HTMLElement>(onOutside: () => void) {
 
 const DESKTOP_NAV_MQ = "(min-width: 1024px)";
 
+function subscribeDesktopNav(onStoreChange: () => void) {
+  const mq = window.matchMedia(DESKTOP_NAV_MQ);
+  mq.addEventListener("change", onStoreChange);
+  return () => mq.removeEventListener("change", onStoreChange);
+}
+
+function getDesktopNavSnapshot() {
+  return window.matchMedia(DESKTOP_NAV_MQ).matches;
+}
+
 function useDesktopNav(): boolean {
-  const [desktopNav, setDesktopNav] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(DESKTOP_NAV_MQ);
-    const sync = () => setDesktopNav(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  return desktopNav;
+  return useSyncExternalStore(subscribeDesktopNav, getDesktopNavSnapshot, () => false);
 }
 
 export function HeaderShell({
@@ -100,7 +102,8 @@ export function HeaderShell({
   const erkekWrapRef = useClickOutsideRef<HTMLDivElement>(() => setErkekOpen(false));
 
   useEffect(() => {
-    if (desktopNav) setMobileOpen(false);
+    if (!desktopNav) return;
+    queueMicrotask(() => setMobileOpen(false));
   }, [desktopNav]);
 
   useEffect(() => {

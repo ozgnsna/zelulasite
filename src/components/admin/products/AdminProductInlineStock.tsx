@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProductStockInline } from "@/app/actions/admin";
 
-export function AdminProductInlineStock({
+function AdminProductInlineStockInner({
   productId,
   initialStock,
   hasVariants = false,
@@ -21,11 +21,6 @@ export function AdminProductInlineStock({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setStock(initialStock);
-    setValue(String(initialStock));
-  }, [initialStock]);
 
   useEffect(() => {
     if (editing) inputRef.current?.select();
@@ -152,4 +147,12 @@ export function AdminProductInlineStock({
       {error ? <span className="text-[9px] font-medium text-rose-700">{error}</span> : null}
     </span>
   );
+}
+
+export function AdminProductInlineStock(props: {
+  productId: string;
+  initialStock: number;
+  hasVariants?: boolean;
+}) {
+  return <AdminProductInlineStockInner key={props.initialStock} {...props} />;
 }

@@ -4,9 +4,9 @@ import { ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from "lucide-react";
 import {
   useCallback,
   useEffect,
-  useReducer,
   useRef,
   useState,
+  useSyncExternalStore,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -44,16 +44,34 @@ function isRenderableSrc(url: string): boolean {
   );
 }
 
-export function ProductImageLightbox({ images, initialIndex, alt, open, onClose }: Props) {
-  const [index, setIndex] = useState(initialIndex);
-  const [mounted, setMounted] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+function useClientMounted() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
 
-  // Zoom + pan: ref'ler kaynak (anlık), render için tick.
+function ProductImageLightboxContent({
+  images,
+  initialIndex,
+  alt,
+  onClose,
+}: {
+  images: LightboxImage[];
+  initialIndex: number;
+  alt: string;
+  onClose: () => void;
+}) {
+  const [index, setIndex] = useState(initialIndex);
+  const [loadError, setLoadError] = useState(false);
+  const [transform, setTransform] = useState({ scale: 1, tx: 0, ty: 0 });
+  const [pointerCount, setPointerCount] = useState(0);
+
+  // Zoom + pan: refs for event handlers; mirrored in state for render.
   const scaleRef = useRef(1);
   const txRef = useRef(0);
   const tyRef = useRef(0);
-  const [, forceRender] = useReducer((x: number) => x + 1, 0);
   const boxRef = useRef<HTMLDivElement>(null);
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchDist = useRef<number | null>(null);
@@ -63,13 +81,14 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
     scaleRef.current = s;
     txRef.current = x;
     tyRef.current = y;
-    forceRender();
+    setTransform({ scale: s, tx: x, ty: y });
   }, []);
 
   const resetZoom = useCallback(() => {
     pointers.current.clear();
     pinchDist.current = null;
     panStart.current = null;
+    setPointerCount(0);
     applyTransform(1, 0, 0);
   }, [applyTransform]);
 
@@ -103,18 +122,6 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
     [zoomAround],
   );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (open) {
-      setIndex(initialIndex);
-      setLoadError(false);
-      resetZoom();
-    }
-  }, [open, initialIndex, resetZoom]);
-
   const go = useCallback(
     (delta: number) => {
       if (images.length <= 1) return;
@@ -127,7 +134,6 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
 
   // Masaüstü: fare tekerleğiyle yakınlaştır (passive olmayan dinleyici şart).
   useEffect(() => {
-    if (!open) return;
     const box = boxRef.current;
     if (!box) return;
     const onWheel = (e: WheelEvent) => {
@@ -136,10 +142,9 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
     };
     box.addEventListener("wheel", onWheel, { passive: false });
     return () => box.removeEventListener("wheel", onWheel);
-  }, [open, mounted, index, zoomAround]);
+  }, [index, zoomAround]);
 
   useEffect(() => {
-    if (!open) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
@@ -152,10 +157,11 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose, go]);
+  }, [onClose, go]);
 
   const onPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    setPointerCount(pointers.current.size);
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
@@ -191,6 +197,7 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
 
   const onPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     pointers.current.delete(e.pointerId);
+    setPointerCount(pointers.current.size);
     if (pointers.current.size < 2) pinchDist.current = null;
     if (pointers.current.size === 0) panStart.current = null;
   }, []);
@@ -203,16 +210,14 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
     [resetZoom, zoomAround],
   );
 
-  if (!open || !mounted || images.length === 0) return null;
-
   const current = images[index] ?? images[0]!;
   const src = normalizeLightboxSrc(current.image_url);
   const srcOk = isRenderableSrc(src);
   const srcIsVideo = isProductVideoUrl(src);
-  const zoomed = scaleRef.current > 1;
-  const interacting = pointers.current.size > 0;
+  const zoomed = transform.scale > 1;
+  const interacting = pointerCount > 0;
 
-  const overlay = (
+  return (
     <div
       className="fixed inset-0 z-[200] flex flex-col bg-black/90"
       role="dialog"
@@ -300,7 +305,7 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
                 decoding="async"
                 className="max-h-[min(78vh,820px)] w-auto max-w-full object-contain"
                 style={{
-                  transform: `translate(${txRef.current}px, ${tyRef.current}px) scale(${scaleRef.current})`,
+                  transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
                   transition: interacting ? "none" : "transform 140ms ease-out",
                   willChange: "transform",
                 }}
@@ -333,8 +338,23 @@ export function ProductImageLightbox({ images, initialIndex, alt, open, onClose 
       </div>
     </div>
   );
+}
 
-  return createPortal(overlay, document.body);
+export function ProductImageLightbox({ images, initialIndex, alt, open, onClose }: Props) {
+  const mounted = useClientMounted();
+
+  if (!open || !mounted || images.length === 0) return null;
+
+  return createPortal(
+    <ProductImageLightboxContent
+      key={initialIndex}
+      images={images}
+      initialIndex={initialIndex}
+      alt={alt}
+      onClose={onClose}
+    />,
+    document.body,
+  );
 }
 
 type OpenLightboxTriggerProps = {

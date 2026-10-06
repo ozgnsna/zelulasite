@@ -3,11 +3,12 @@
 import {
   formatShippingCountdownBanner,
   getShippingCountdownState,
+  type ShippingCountdownState,
   SHIPPING_BANNER_SSR_NEUTRAL,
 } from "@/lib/storefront/pdp-shipping";
 import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const TICK_MS = 30_000;
 
@@ -16,18 +17,43 @@ type Props = {
   embedded?: boolean;
 };
 
+function subscribeClientMounted() {
+  return () => {};
+}
+
+function useClientMounted() {
+  return useSyncExternalStore(subscribeClientMounted, () => true, () => false);
+}
+
+let cachedCountdown: ShippingCountdownState | null = null;
+let cachedCountdownKey = "";
+
+function getCountdownSnapshot(): ShippingCountdownState {
+  const next = getShippingCountdownState();
+  const key = `${next.hours}:${next.minutes}:${next.urgency}:${next.tail}`;
+  if (cachedCountdown && cachedCountdownKey === key) return cachedCountdown;
+  cachedCountdown = next;
+  cachedCountdownKey = key;
+  return next;
+}
+
+function subscribeCountdown(onStoreChange: () => void) {
+  const id = window.setInterval(onStoreChange, TICK_MS);
+  return () => window.clearInterval(id);
+}
+
+function getCountdownServerSnapshot(): ShippingCountdownState {
+  return { hours: 0, minutes: 0, tail: "", urgency: "next-window" };
+}
+
 /** Canlı geri sayım — İstanbul 13:00 kesimi (SSR’de nötr metin). */
 export function ProductPdpShippingCountdown({ embedded = false }: Props) {
-  const [mounted, setMounted] = useState(false);
-  const [countdown, setCountdown] = useState(() => getShippingCountdownState());
-
-  useEffect(() => {
-    setMounted(true);
-    const tick = () => setCountdown(getShippingCountdownState());
-    tick();
-    const id = window.setInterval(tick, TICK_MS);
-    return () => window.clearInterval(id);
-  }, []);
+  const mounted = useClientMounted();
+  const countdown = useSyncExternalStore(
+    subscribeCountdown,
+    getCountdownSnapshot,
+    getCountdownServerSnapshot,
+  );
 
   const isSameDay = mounted && countdown.urgency === "same-day";
   const message = mounted ? formatShippingCountdownBanner(countdown) : SHIPPING_BANNER_SSR_NEUTRAL;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ProductImage } from "@/components/product/ProductImage";
@@ -99,7 +99,11 @@ export function CartDrawer({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [portalReady, setPortalReady] = useState(false);
+  const portalReady = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [pendingUpsellId, setPendingUpsellId] = useState<string | null>(null);
   const [holdSecondsLeft, setHoldSecondsLeft] = useState(CART_HOLD_SECONDS);
   const [, start] = useTransition();
@@ -120,10 +124,6 @@ export function CartDrawer({
     const second = (holdSecondsLeft % 60).toString().padStart(2, "0");
     return `${minute}:${second}`;
   }, [holdSecondsLeft]);
-
-  useEffect(() => {
-    setPortalReady(true);
-  }, []);
 
   useEffect(() => {
     if (!open || lines.length === 0 || holdSecondsLeft <= 0) return;

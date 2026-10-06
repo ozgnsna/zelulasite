@@ -83,11 +83,9 @@ export default async function AdminCustomersPage({
     paidCountByKey.set(k, (paidCountByKey.get(k) ?? 0) + 1);
   }
 
-  const payingKeys = new Set([...paidCountByKey.keys()]);
   const repeatKeys = new Set([...paidCountByKey.entries()].filter(([, c]) => c >= 2).map(([k]) => k));
 
   const totalCustomers = keysAll.size;
-  const payingCustomers = payingKeys.size;
   const repeatCustomers = repeatKeys.size;
 
   type RecentRow = {

@@ -26,7 +26,7 @@ export function AdminProductsSelectionToolbar({ formId }: Props) {
   useEffect(() => {
     const root = document.getElementById(formId);
     if (!root) return;
-    refresh();
+    queueMicrotask(refresh);
     root.addEventListener("change", refresh);
     return () => root.removeEventListener("change", refresh);
   }, [formId, refresh]);

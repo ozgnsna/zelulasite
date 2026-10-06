@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ProductImage } from "@/components/product/ProductImage";
 import { useRouter } from "next/navigation";
@@ -29,14 +29,12 @@ export type CartLineRow = {
 export function CartLineControls({ line }: { line: CartLineRow }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [draftQty, setDraftQty] = useState(String(line.quantity));
+  /** Local draft only while editing; otherwise show server quantity. */
+  const [draftQty, setDraftQty] = useState<string | null>(null);
+  const displayQty = draftQty ?? String(line.quantity);
   const isGiftCardLine = Boolean(line.giftCard);
   const maxQ = isGiftCardLine ? 1 : Math.max(0, Math.floor(Number(line.product.stock ?? 0)));
   const lineTotal = line.product.price * line.quantity;
-
-  useEffect(() => {
-    setDraftQty(String(line.quantity));
-  }, [line.quantity]);
 
   const applyQty = (next: number) => {
     if (next === line.quantity) return;
@@ -130,16 +128,16 @@ export function CartLineControls({ line }: { line: CartLineRow }) {
                   disabled={pending}
                   aria-label="Adet"
                   className="h-8 w-11 border-0 bg-transparent text-center text-sm font-medium text-stone-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  value={draftQty}
+                  value={displayQty}
                   onChange={(e) => {
                     const t = e.target.value.replace(/[^\d]/g, "");
                     setDraftQty(t);
                   }}
                   onBlur={() => {
-                    let n = parseInt(draftQty, 10);
+                    let n = parseInt(displayQty, 10);
                     if (!Number.isFinite(n)) n = line.quantity;
                     n = Math.min(maxQ, Math.max(1, n));
-                    setDraftQty(String(n));
+                    setDraftQty(null);
                     if (n !== line.quantity) applyQty(n);
                   }}
                 />

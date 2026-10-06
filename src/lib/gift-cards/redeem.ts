@@ -86,7 +86,7 @@ async function sumPendingHoldsForCard(
   giftCardId: string,
   excludeOrderId?: string,
 ): Promise<number> {
-  let q = admin
+  const q = admin
     .from("gift_card_holds")
     .select("amount_held,order_id")
     .eq("gift_card_id", giftCardId)

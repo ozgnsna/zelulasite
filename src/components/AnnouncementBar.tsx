@@ -8,9 +8,27 @@ import {
   getShippingCountdownState,
   SHIPPING_BANNER_SSR_NEUTRAL,
 } from "@/lib/storefront/pdp-shipping";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 const TICK_MS = 60_000;
+
+function subscribeClientMounted() {
+  return () => {};
+}
+
+function useClientMounted() {
+  return useSyncExternalStore(subscribeClientMounted, () => true, () => false);
+}
+
+function subscribeReducedMotion(onStoreChange: () => void) {
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mq.addEventListener("change", onStoreChange);
+  return () => mq.removeEventListener("change", onStoreChange);
+}
+
+function getReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 function buildTickerMessages(liveShipping: boolean) {
   const threshold = FREE_SHIPPING_THRESHOLD_TRY.toLocaleString("tr-TR");
@@ -29,25 +47,18 @@ function buildTickerMessages(liveShipping: boolean) {
 
 export function AnnouncementBar() {
   const [tick, setTick] = useState(0);
-  const [liveShipping, setLiveShipping] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const liveShipping = useClientMounted();
+  const reduceMotion = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => false);
 
   useEffect(() => {
-    setLiveShipping(true);
     const id = window.setInterval(() => setTick((n) => n + 1), TICK_MS);
     return () => window.clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduceMotion(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  const messages = useMemo(() => buildTickerMessages(liveShipping), [tick, liveShipping]);
-  const monthTheme = useMemo(() => getAnnouncementMonthTheme(), [tick]);
+  // `tick` re-renders on an interval so countdown / month theme stay fresh.
+  void tick;
+  const messages = buildTickerMessages(liveShipping);
+  const monthTheme = getAnnouncementMonthTheme();
   const loop = reduceMotion ? messages : [...messages, ...messages];
 
   return (

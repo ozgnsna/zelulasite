@@ -15,6 +15,12 @@ function isNextNotFound(e: unknown): boolean {
   return "digest" in e && (e as { digest?: unknown }).digest === "NEXT_NOT_FOUND";
 }
 
+function isNextRedirect(e: unknown): boolean {
+  if (typeof e !== "object" || e === null) return false;
+  const digest = (e as { digest?: unknown }).digest;
+  return typeof digest === "string" && digest.includes("NEXT_REDIRECT");
+}
+
 function PrepError({ title, detail, incidentId }: { title: string; detail: string; incidentId: string }) {
   return (
     <main className="mx-auto max-w-md px-4 py-20 text-center">
@@ -39,8 +45,13 @@ function clientIpFromHeaders(h: Headers): string {
   );
 }
 
+type PaytrPrepResult =
+  | { kind: "error"; title: string; detail: string }
+  | { kind: "iframe"; iframeUrl: string };
+
 export default async function PaytrPaymentStartPage({ params }: { params: Promise<{ orderId: string }> }) {
   const incidentId = `PF-${randomBytes(5).toString("hex")}`;
+  let result: PaytrPrepResult;
 
   try {
     const { orderId } = await params;
@@ -70,94 +81,94 @@ export default async function PaytrPaymentStartPage({ params }: { params: Promis
           orderId: String(order.id),
           reason: paid.reason,
         });
-        return (
-          <PrepError
-            title="Ödeme başlatılamadı"
-            detail="Hediye kartı ile ödenecek tutar sıfır; sipariş tamamlanamadı. Destek ile iletişime geçin."
-            incidentId={incidentId}
-          />
-        );
+        result = {
+          kind: "error",
+          title: "Ödeme başlatılamadı",
+          detail:
+            "Hediye kartı ile ödenecek tutar sıfır; sipariş tamamlanamadı. Destek ile iletişime geçin.",
+        };
+      } else {
+        redirect(`/odeme/basarili?oid=${encodeURIComponent(String(order.id))}`);
       }
-      redirect(`/odeme/basarili?oid=${encodeURIComponent(String(order.id))}`);
+    } else {
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
+      if (!siteUrl) {
+        logPayment("error", "paytr-baslat: NEXT_PUBLIC_SITE_URL eksik.", { incidentId });
+        result = {
+          kind: "error",
+          title: "Sunucu yapılandırması eksik",
+          detail: "NEXT_PUBLIC_SITE_URL tanımlı değil. Ödeme dönüşü için bu değer gereklidir.",
+        };
+      } else {
+        const addr = (order.shipping_address_json ?? {}) as Record<string, unknown>;
+        const userAddress = [addr.address_line, addr.district, addr.city, addr.postal_code]
+          .filter(Boolean)
+          .join(" ")
+          .slice(0, 400);
+
+        const reqHeaders = await headers();
+        const userIp = clientIpFromHeaders(reqHeaders);
+
+        const okUrl = `${siteUrl}/odeme/basarili?oid=${encodeURIComponent(String(order.id))}`;
+        const failUrl = `${siteUrl}/odeme/basarisiz?oid=${encodeURIComponent(String(order.id))}`;
+
+        const tokenResult = await createPaytrIframeToken({
+          orderId: String(order.id),
+          amount: orderTotal,
+          email: String(order.email ?? ""),
+          userName: String(order.customer_name ?? ""),
+          userPhone: String(order.phone ?? ""),
+          userAddress,
+          userIp,
+          okUrl,
+          failUrl,
+        });
+
+        if (!tokenResult.ok) {
+          logPayment("error", "paytr-baslat: token alınamadı.", {
+            incidentId,
+            orderId: String(order.id),
+            error: tokenResult.error,
+            testMode: paytrTestMode(),
+          });
+          result = {
+            kind: "error",
+            title: "Ödeme başlatılamadı",
+            detail: "Ödeme sayfası hazırlanamadı. Lütfen tekrar deneyin veya destek ile iletişime geçin.",
+          };
+        } else {
+          logPayment("info", "paytr-baslat: iframe token alındı.", {
+            orderId: String(order.id),
+            orderNumber: String(order.order_number ?? ""),
+            testMode: paytrTestMode(),
+          });
+          result = { kind: "iframe", iframeUrl: tokenResult.iframeUrl };
+        }
+      }
     }
-
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
-    if (!siteUrl) {
-      logPayment("error", "paytr-baslat: NEXT_PUBLIC_SITE_URL eksik.", { incidentId });
-      return (
-        <PrepError
-          title="Sunucu yapılandırması eksik"
-          detail="NEXT_PUBLIC_SITE_URL tanımlı değil. Ödeme dönüşü için bu değer gereklidir."
-          incidentId={incidentId}
-        />
-      );
-    }
-
-    const addr = (order.shipping_address_json ?? {}) as Record<string, unknown>;
-    const userAddress = [addr.address_line, addr.district, addr.city, addr.postal_code]
-      .filter(Boolean)
-      .join(" ")
-      .slice(0, 400);
-
-    const reqHeaders = await headers();
-    const userIp = clientIpFromHeaders(reqHeaders);
-
-    const okUrl = `${siteUrl}/odeme/basarili?oid=${encodeURIComponent(String(order.id))}`;
-    const failUrl = `${siteUrl}/odeme/basarisiz?oid=${encodeURIComponent(String(order.id))}`;
-
-    const tokenResult = await createPaytrIframeToken({
-      orderId: String(order.id),
-      amount: orderTotal,
-      email: String(order.email ?? ""),
-      userName: String(order.customer_name ?? ""),
-      userPhone: String(order.phone ?? ""),
-      userAddress,
-      userIp,
-      okUrl,
-      failUrl,
-    });
-
-    if (!tokenResult.ok) {
-      logPayment("error", "paytr-baslat: token alınamadı.", {
-        incidentId,
-        orderId: String(order.id),
-        error: tokenResult.error,
-        testMode: paytrTestMode(),
-      });
-      return (
-        <PrepError
-          title="Ödeme başlatılamadı"
-          detail="Ödeme sayfası hazırlanamadı. Lütfen tekrar deneyin veya destek ile iletişime geçin."
-          incidentId={incidentId}
-        />
-      );
-    }
-
-    logPayment("info", "paytr-baslat: iframe token alındı.", {
-      orderId: String(order.id),
-      orderNumber: String(order.order_number ?? ""),
-      testMode: paytrTestMode(),
-    });
-
-    return (
-      <main className="min-h-[60vh] bg-[#f9f6f2]">
-        <div className="mx-auto max-w-xl px-4 py-6">
-          <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <PaytrIframe iframeUrl={tokenResult.iframeUrl} />
-          </div>
-        </div>
-      </main>
-    );
   } catch (e) {
-    if (isNextNotFound(e)) throw e;
+    if (isNextNotFound(e) || isNextRedirect(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     logPayment("error", "paytr-baslat: beklenmeyen hata.", { incidentId, message: msg });
-    return (
-      <PrepError
-        title="Ödeme adımı yüklenemedi"
-        detail="Geçici bir hata oluştu. Lütfen bir süre sonra tekrar deneyin."
-        incidentId={incidentId}
-      />
-    );
+    result = {
+      kind: "error",
+      title: "Ödeme adımı yüklenemedi",
+      detail: "Geçici bir hata oluştu. Lütfen bir süre sonra tekrar deneyin.",
+    };
+  }
+
+  switch (result.kind) {
+    case "error":
+      return <PrepError title={result.title} detail={result.detail} incidentId={incidentId} />;
+    case "iframe":
+      return (
+        <main className="min-h-[60vh] bg-[#f9f6f2]">
+          <div className="mx-auto max-w-xl px-4 py-6">
+            <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+              <PaytrIframe iframeUrl={result.iframeUrl} />
+            </div>
+          </div>
+        </main>
+      );
   }
 }

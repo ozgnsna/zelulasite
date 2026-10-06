@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { ProductImage } from "@/components/product/ProductImage";
 import { ProductGalleryZoomTrigger, ProductImageLightbox } from "@/components/product/ProductImageLightbox";
 import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
@@ -39,11 +39,6 @@ export function ProductGallery({
 
   const [active, setActive] = useState(() => list[0]?.image_url ?? fallback);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-
-  useEffect(() => {
-    const first = list[0]?.image_url ?? fallback;
-    setActive((prev) => (list.some((item) => item.image_url === prev) ? prev : first));
-  }, [list, fallback]);
 
   const mainSrc = list.some((i) => i.image_url === active) ? active : (list[0]?.image_url ?? fallback);
   const mainIsVideo = isProductVideoUrl(mainSrc);
