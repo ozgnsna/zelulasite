@@ -174,7 +174,9 @@ export default async function AdminEditProductPage({
               Panel
             </Link>
             <Link
-              href={`/urunler/${product.slug}`}
+              href={`/urunler/${product.slug}?onizleme=1`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-lg bg-stone-900 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-stone-800"
             >
               Önizle

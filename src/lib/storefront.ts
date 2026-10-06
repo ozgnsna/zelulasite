@@ -796,7 +796,56 @@ export async function getCartUpsellProducts(cartItems: CartUpsellContextItem[], 
   }
 }
 
-export async function getProductBySlug(slug: string) {
+/** Genel takı kelimeleri — tek başına yanlış ürüne fuzzy eşleştirmeyi önlemek için skorlamada sayılmaz. */
+const SLUG_GENERIC_TOKENS = new Set([
+  "kupe",
+  "kolye",
+  "yuzuk",
+  "bileklik",
+  "bilezik",
+  "set",
+  "seti",
+  "zirkon",
+  "tasli",
+  "tas",
+  "altin",
+  "gumus",
+  "gold",
+  "silver",
+  "celik",
+  "renk",
+  "vip",
+  "parca",
+  "kaplama",
+  "detayli",
+  "detay",
+  "sedef",
+  "madalyon",
+  "acilir",
+  "gunes",
+]);
+
+/** Renk/varyant token’ı girdide varsa adayda da olmalı — yoksa yanlış varyanta düşer. */
+const SLUG_VARIANT_TOKENS = new Set([
+  "mavi",
+  "pembe",
+  "sari",
+  "mor",
+  "yesil",
+  "kirmizi",
+  "turkuaz",
+  "mint",
+  "beyaz",
+  "siyah",
+  "gumus",
+  "gold",
+  "silver",
+]);
+
+export async function getProductBySlug(
+  slug: string,
+  opts?: { includeInactive?: boolean },
+) {
   const normalizeSlug = (value: string) =>
     value
       .trim()
@@ -839,6 +888,9 @@ export async function getProductBySlug(slug: string) {
       .split("-")
       .filter((t) => t.length >= 2);
 
+  const productSelect =
+    "*, category:categories(*), collection:collections(*), product_images(id, image_url, is_cover, sort_order)";
+
   try {
     const supabase = await createServerClient();
     const decodedSlug = (() => {
@@ -849,9 +901,29 @@ export async function getProductBySlug(slug: string) {
       }
     })();
 
+    // Admin önizleme: pasif ürünü de getir (RLS bypass — service role).
+    if (opts?.includeInactive) {
+      try {
+        const { createAdminClient } = await import("@/lib/supabase/admin");
+        const admin = createAdminClient();
+        const { data: anyStatus } = await admin
+          .from("products")
+          .select(productSelect)
+          .eq("slug", decodedSlug)
+          .order("sort_order", { foreignTable: "product_images", ascending: true })
+          .maybeSingle();
+        if (anyStatus) {
+          const p = anyStatus as Product;
+          return { ...p, categorySlug: p.category?.slug };
+        }
+      } catch {
+        // service role yoksa aşağıda aktif/pasif akışına düş
+      }
+    }
+
     const { data } = await supabase
       .from("products")
-      .select("*, category:categories(*), collection:collections(*), product_images(id, image_url, is_cover, sort_order)")
+      .select(productSelect)
       .eq("slug", decodedSlug)
       .eq("is_active", true)
       .order("sort_order", { foreignTable: "product_images", ascending: true })
@@ -862,18 +934,30 @@ export async function getProductBySlug(slug: string) {
     }
 
     // Exact slug exists but inactive → 404 (do not fuzzy-match a different product).
-    const { data: inactiveExact } = await supabase
-      .from("products")
-      .select("id")
-      .eq("slug", decodedSlug)
-      .eq("is_active", false)
-      .maybeSingle();
-    if (inactiveExact) return null;
+    // Storefront RLS only exposes is_active=true, so this check needs service role.
+    // Admin kontrolü başarısızsa fuzzy'ye düşme — pasif URL yanlış aktif ürüne gidebilir.
+    let inactiveSlugChecked = false;
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const admin = createAdminClient();
+      const { data: inactiveExact, error: inactiveErr } = await admin
+        .from("products")
+        .select("id")
+        .eq("slug", decodedSlug)
+        .eq("is_active", false)
+        .maybeSingle();
+      if (inactiveErr) return null;
+      inactiveSlugChecked = true;
+      if (inactiveExact) return null;
+    } catch {
+      return null;
+    }
+    if (!inactiveSlugChecked) return null;
 
     // Fallback: slug varyasyonları (Türkçe karakter/encoding/ufak typo) için toleranslı eşleşme.
     const { data: allActive } = await supabase
       .from("products")
-      .select("*, category:categories(*), collection:collections(*), product_images(id, image_url, is_cover, sort_order)")
+      .select(productSelect)
       .eq("is_active", true)
       .order("sort_order", { foreignTable: "product_images", ascending: true })
       .limit(1200);
@@ -885,38 +969,48 @@ export async function getProductBySlug(slug: string) {
     if (exactNormalized) return { ...exactNormalized, categorySlug: exactNormalized.category?.slug };
 
     const inputTokens = tokenizeSlug(decodedSlug);
+    const distinctiveInput = inputTokens.filter((t) => !SLUG_GENERIC_TOKENS.has(t));
     const specialToken = inputTokens.find((t) => /\d/.test(t) && t.length >= 3) ?? null;
-    if (inputTokens.length > 0) {
+    if (distinctiveInput.length > 0) {
       let bestTokenMatch: Product | null = null;
       let bestTokenScore = -1;
+      let bestTokenTies = 0;
+      const requiredVariants = distinctiveInput.filter((t) => SLUG_VARIANT_TOKENS.has(t));
       for (const product of products) {
         const productTokens = new Set(tokenizeSlug(String(product.slug ?? "")));
         if (specialToken && !productTokens.has(specialToken)) continue;
+        if (requiredVariants.some((t) => !productTokens.has(t))) continue;
         let score = 0;
-        for (const token of inputTokens) {
+        for (const token of distinctiveInput) {
           if (productTokens.has(token)) score += 1;
         }
         if (score > bestTokenScore) {
           bestTokenScore = score;
           bestTokenMatch = product;
+          bestTokenTies = 1;
+        } else if (score === bestTokenScore && score > 0) {
+          bestTokenTies += 1;
         }
       }
-      const minScore = Math.max(3, Math.floor(inputTokens.length * 0.45));
-      if (bestTokenMatch && bestTokenScore >= minScore) {
+      // En az 2 ayırt edici token veya girdinin %60'ı — "zirkon/gold/kupe" ile yanlış eşleşmeyi keser.
+      // Aynı skorda birden fazla aday varsa (renk varyantı vb.) tahmin etme → 404.
+      const minScore = Math.max(2, Math.ceil(distinctiveInput.length * 0.6));
+      if (bestTokenMatch && bestTokenScore >= minScore && bestTokenTies === 1) {
         return { ...bestTokenMatch, categorySlug: bestTokenMatch.category?.slug };
       }
     }
 
+    // Tek harf farkı bile (gold-a-harf vs gold-y-harf) yanlış ürün olabilir — max 2.
     let best: Product | null = null;
-    let bestDistance = 5;
+    let bestDistance = 3;
     for (const product of products) {
-      const d = boundedLevenshtein(normalizedInput, normalizeSlug(String(product.slug ?? "")), 4);
+      const d = boundedLevenshtein(normalizedInput, normalizeSlug(String(product.slug ?? "")), 2);
       if (d < bestDistance) {
         bestDistance = d;
         best = product;
       }
     }
-    if (!best || bestDistance > 4) return null;
+    if (!best || bestDistance > 2) return null;
     return { ...best, categorySlug: best.category?.slug };
   } catch {
     return null;

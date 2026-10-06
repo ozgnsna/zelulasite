@@ -8,6 +8,7 @@ import { ProductGallery } from "@/components/ProductGallery";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
 import { getProductBySlug } from "@/lib/storefront";
 import { fetchRelatedProducts } from "@/lib/storefront/related-products";
+import { canAccessAdminPanel } from "@/lib/admin/auth";
 import {
   OOS_PDP_BADGE,
   OOS_PDP_CTA_NOTE,
@@ -47,7 +48,7 @@ import { isNecklaceTryOnEnabled } from "@/lib/tryon/config";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ yorum?: string }>;
+  searchParams: Promise<{ yorum?: string; onizleme?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -79,9 +80,21 @@ function splitDescriptionParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+async function resolveStorefrontProduct(slug: string, wantsPreview: boolean) {
+  if (!wantsPreview) return getProductBySlug(slug);
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const includeInactive = canAccessAdminPanel(user?.email);
+  return getProductBySlug(slug, { includeInactive });
+}
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const sp = await searchParams;
+  const wantsPreview = String(sp.onizleme ?? "").trim() === "1";
+  const product = await resolveStorefrontProduct(slug, wantsPreview);
   if (!product) return { title: "Ürün" };
   return buildProductPageMetadata(product);
 }
@@ -90,8 +103,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = await searchParams;
   const highlightReviewForm = String(sp.yorum ?? "").trim() === "1";
-  const product = await getProductBySlug(slug);
+  const wantsPreview = String(sp.onizleme ?? "").trim() === "1";
+  const product = await resolveStorefrontProduct(slug, wantsPreview);
   if (!product) notFound();
+  const isInactivePreview = wantsPreview && product.is_active === false;
 
   const galleryExtras =
     isZodiacStoryProduct(slug, product.name) ? ZODIAC_GALLERY_EXTRAS : [];
@@ -141,6 +156,11 @@ export default async function ProductPage({ params, searchParams }: Props) {
   );
   return (
     <main className="container-premium pb-28 pt-8 sm:pb-16 sm:pt-10">
+      {isInactivePreview ? (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <span className="font-semibold">Admin önizleme:</span> Bu ürün vitrinde pasif. Ziyaretçiler bu sayfayı görmez.
+        </div>
+      ) : null}
       <JsonLd
         data={[
           buildProductJsonLd({
