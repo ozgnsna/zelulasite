@@ -139,17 +139,9 @@ async function buildHeroBanners() {
 }
 
 export default async function HomePage() {
-  const [{ bestSellers, bestSellersTitle, newArrivals }, { isSignedIn, favoriteIds }, heroBanners, categoryCards] =
+  const [{ bestSellers, newArrivals }, { isSignedIn, favoriteIds }, heroBanners, categoryCards] =
     await Promise.all([getHomeData(), loadFavoriteUiContext(), buildHeroBanners(), getHomeCategoryCards()]);
 
-  const bestSellerItems = bestSellers.map((p) => ({
-    product_id: p.id,
-    product_name: p.name,
-    price: Number(p.price),
-    quantity: 1,
-    category: p.category?.name,
-    collection: p.collection?.name ?? null,
-  }));
   const newArrivalItems = newArrivals.map((p) => ({
     product_id: p.id,
     product_name: p.name,
@@ -158,9 +150,17 @@ export default async function HomePage() {
     category: p.category?.name,
     collection: p.collection?.name ?? null,
   }));
+  const bestSellerItems = bestSellers.map((p) => ({
+    product_id: p.id,
+    product_name: p.name,
+    price: Number(p.price),
+    quantity: 1,
+    category: p.category?.name,
+    collection: p.collection?.name ?? null,
+  }));
 
-  const bestSlice = bestSellers.slice(0, 8);
-  const kombinSlice = newArrivals.slice(0, 8);
+  const newSlice = newArrivals.slice(0, 8);
+  const kombinSlice = bestSellers.slice(0, 8);
   const categoryGridItems = categoryCards.map((card) => ({
     label: card.label,
     href: card.href,
@@ -170,8 +170,8 @@ export default async function HomePage() {
   return (
     <main className="bg-[#faf8f5] pb-20">
       <h1 className="sr-only">Zelula Design — çelik kolye, küpe ve takı</h1>
-      <ViewItemListTracker listName="Homepage Best Sellers" listId="home_best_sellers" items={bestSellerItems} />
       <ViewItemListTracker listName="Homepage New Arrivals" listId="home_new_arrivals" items={newArrivalItems} />
+      <ViewItemListTracker listName="Homepage Best Sellers" listId="home_best_sellers" items={bestSellerItems} />
 
       <HomeHeroBannerCarousel banners={heroBanners} />
 
@@ -180,20 +180,20 @@ export default async function HomePage() {
           <div className="container-premium">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Öne çıkan</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-stone-600">Yeni</p>
                 <h2 className="mt-2 font-serif text-2xl font-light tracking-tight text-stone-900 sm:text-3xl">
-                  {bestSellersTitle}
+                  Yeni gelenler
                 </h2>
               </div>
               <Link
-                href="/cok-satanlar"
+                href="/urunler?sirala=newest"
                 className="inline-flex min-h-11 items-center text-[11px] font-medium uppercase tracking-[0.2em] text-stone-600 underline-offset-4 transition hover:text-stone-800 hover:underline"
               >
                 Tümünü gör
               </Link>
             </div>
             <HomeProductRail className="mt-6 sm:mt-10">
-              {bestSlice.map((p) => (
+              {newSlice.map((p) => (
                 <HomeProductRailItem key={p.id}>
                   <ProductCard
                     id={p.id}
@@ -207,7 +207,7 @@ export default async function HomePage() {
                     imageForward
                     imageEmphasis="high"
                     conversionOverlay
-                    badges={{ bestseller: Boolean(p.featured), new: p.new_arrival }}
+                    badges={{ bestseller: Boolean(p.featured), new: true }}
                     isSignedIn={isSignedIn}
                     initialFavorited={favoriteIds.has(p.id)}
                   />
@@ -258,7 +258,7 @@ export default async function HomePage() {
                     imageForward
                     imageEmphasis="high"
                     conversionOverlay
-                    badges={{ bestseller: p.featured, new: true }}
+                    badges={{ bestseller: Boolean(p.featured), new: p.new_arrival }}
                     className="h-full border-[#e8e2d9] shadow-[0_12px_36px_rgba(55,48,40,0.08)]"
                     isSignedIn={isSignedIn}
                     initialFavorited={favoriteIds.has(p.id)}

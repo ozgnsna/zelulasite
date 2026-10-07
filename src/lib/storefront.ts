@@ -50,7 +50,8 @@ async function fetchHomeDataFromDb() {
   const HOME_RAIL_TARGET = 8;
   const productSelect = "*, category:categories(*), collection:collections(*), product_images(*)";
 
-  const [categoriesRes, collectionsRes, featuredRes] = await Promise.all([
+  // Üst ray: en yeni stoklu ürünler. Alt ray: featured (çok satan / öne çıkan), üsttekiler hariç.
+  const [categoriesRes, collectionsRes, newestRes] = await Promise.all([
     supabase.from("categories").select("*").order("name"),
     supabase.from("collections").select("*").order("name"),
     supabase
@@ -59,60 +60,56 @@ async function fetchHomeDataFromDb() {
       .eq("is_active", true)
       .eq("product_kind", "physical")
       .gte("stock_quantity", 1)
-      .eq("featured", true)
       .order("created_at", { ascending: false })
       .limit(HOME_RAIL_TARGET),
   ]);
 
-  const featuredInStock = (featuredRes.data ?? []) as Product[];
-  let bestSellers: Product[];
-  let bestSellersTitle: "Çok satanlar" | "Öne çıkanlar";
+  const newArrivals = (newestRes.data ?? []) as Product[];
+  const primaryIds = newArrivals.map((p) => p.id);
 
-  if (featuredInStock.length >= 4) {
-    bestSellers = featuredInStock.slice(0, HOME_RAIL_TARGET);
-    bestSellersTitle = "Çok satanlar";
-  } else {
-    bestSellersTitle = "Öne çıkanlar";
-    bestSellers = [...featuredInStock];
-    const need = HOME_RAIL_TARGET - bestSellers.length;
-    if (need > 0) {
-      const excludeIds = bestSellers.map((p) => p.id);
-      let fillQuery = supabase
-        .from("products")
-        .select(productSelect)
-        .eq("is_active", true)
-        .eq("product_kind", "physical")
-        .gte("stock_quantity", 1)
-        .order("created_at", { ascending: false })
-        .limit(need);
-      if (excludeIds.length > 0) {
-        fillQuery = fillQuery.not("id", "in", `(${excludeIds.join(",")})`);
-      }
-      const { data: fill } = await fillQuery;
-      if (fill?.length) bestSellers = [...bestSellers, ...(fill as Product[])];
-    }
-  }
-
-  const primaryIds = bestSellers.map((p) => p.id);
-  let newQuery = supabase
+  let featuredQuery = supabase
     .from("products")
     .select(productSelect)
     .eq("is_active", true)
     .eq("product_kind", "physical")
     .gte("stock_quantity", 1)
+    .eq("featured", true)
     .order("created_at", { ascending: false })
     .limit(HOME_RAIL_TARGET);
   if (primaryIds.length > 0) {
-    newQuery = newQuery.not("id", "in", `(${primaryIds.join(",")})`);
+    featuredQuery = featuredQuery.not("id", "in", `(${primaryIds.join(",")})`);
   }
-  const { data: newRows } = await newQuery;
+  const { data: featuredRows } = await featuredQuery;
+  let bestSellers = (featuredRows ?? []) as Product[];
+  let bestSellersTitle: "Çok satanlar" | "Öne çıkanlar" =
+    bestSellers.length >= 4 ? "Çok satanlar" : "Öne çıkanlar";
+
+  const need = HOME_RAIL_TARGET - bestSellers.length;
+  if (need > 0) {
+    const excludeIds = [...primaryIds, ...bestSellers.map((p) => p.id)];
+    let fillQuery = supabase
+      .from("products")
+      .select(productSelect)
+      .eq("is_active", true)
+      .eq("product_kind", "physical")
+      .gte("stock_quantity", 1)
+      .order("created_at", { ascending: false })
+      .limit(need);
+    if (excludeIds.length > 0) {
+      fillQuery = fillQuery.not("id", "in", `(${excludeIds.join(",")})`);
+    }
+    const { data: fill } = await fillQuery;
+    if (fill?.length) {
+      bestSellers = [...bestSellers, ...(fill as Product[])];
+    }
+  }
 
   return {
     categories: categoriesRes.data ?? [],
     collections: collectionsRes.data ?? [],
-    bestSellers,
+    bestSellers: bestSellers.slice(0, HOME_RAIL_TARGET),
     bestSellersTitle,
-    newArrivals: (newRows ?? []) as Product[],
+    newArrivals,
   };
 }
 
