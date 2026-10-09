@@ -1,8 +1,8 @@
 /**
- * Zelula416 — pavé zirkon segmentli serpantin form altın sallantılı küpe (çift)
- *   node scripts/import-zelula416-serpentine-drop-kupe.mjs
- *
- * Not: Marka adı / “imitasyon” metinde geçmez.
+ * Zelula420 — pavé kalp stud + merkez nazar (çift)
+ * Raf fotoğrafından; satıcı katalog görseli yok.
+ *   node scripts/import-zelula420-heart-nazar-stud-kupe.mjs
+ *   node scripts/import-zelula420-heart-nazar-stud-kupe.mjs --dry-run
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,55 +14,53 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUCKET = "product-images";
 const ASSETS_DIR = path.resolve(
   process.env.USERPROFILE ?? "",
-  ".cursor/projects/c-Users-ozgun-zelulasite/assets",
+  ".cursor/projects/d-Projeler-zelulasite/assets",
 );
 
 const DRY_RUN = process.argv.includes("--dry-run");
-const SKU = "Zelula416";
-const SITE_PRICE = 400;
-const TY_PRICE = 599;
-const COST_PRICE = 150;
+const SKU = "Zelula420";
+const SITE_PRICE = 899;
+const TY_PRICE = 999;
+const COST_PRICE = 350;
 const STOCK = 1;
 const BRAND_ID = "2489862";
-const CATEGORY_ID = "3417";
+const CATEGORY_ID = "2846"; // Bijuteri Küpe (3417 = kıkırdak)
 const VAT_RATE = 20;
 
 const TRENDYOL_ATTRIBUTES = [
   { attributeId: 433, attributeValueId: 1195128 },
   { attributeId: 1192, attributeValueId: 10617300 },
-  { attributeId: 348, attributeValueId: 6996 },
+  { attributeId: 348, attributeValueId: 7000 },
   { attributeId: 1204, attributeValueId: 10621740 },
   { attributeId: 260, attributeValueId: 2475 },
-  { attributeId: 343, attributeValueId: 4296 },
+  { attributeId: 343, attributeValueId: 4295 },
   { attributeId: 14, attributeValueId: 688 },
   { attributeId: 346, attributeValueId: 4292 },
-  { attributeId: 32, attributeValueId: 870 },
-  { attributeId: 47, customAttributeValue: "Gold" },
+  { attributeId: 32, attributeValueId: 937 }, // Çivi
+  { attributeId: 47, customAttributeValue: "Gümüş" },
 ];
 
 const PRODUCT = {
-  slug: "serpentine-glow-pave-zirkon-segmentli-altin-sallantili-kupe",
-  name: "Serpentine Glow Pavé Zirkon Segmentli Altın Kaplama Sallantılı Küpe",
-  color: "Altın",
+  slug: "nazar-heart-pave-zirkon-gumus-kalp-stud-kupe",
+  name: "Nazar Heart Pavé Zirkon Gümüş Renk Kalp Stud Küpe",
+  color: "Gümüş / Lacivert",
   material: "Paslanmaz Çelik",
   short:
-    "Üstte pavé zirkon, altta parlak altın segmentlerle incelerek sarkan form. 316L çelik küpe çifti — zarif statement ışıltı.",
-  full: `Kulak memesinde pavé zirkon kaplı trapez form; hemen altında ikinci taşlı segment ve dört kademeli, sivriye doğru incelen parlak altın kaplama halkalar sallanır. Segmentli siluet hareketle ışıltıyı çoğaltır; gündüz ve gece kombinlerine uyumlu zarif bir drop küpedir.
+    "Pavé zirkon kaplı kalp formunda merkezde lacivert nazar detayı. 316L çelik stud küpe çifti — sembolik ve ışıltılı.",
+  full: `Gümüş renk gövdede pavé zirkon taşlarla kaplı dolgun kalp formu; merkezde badem şeklinde nazar silueti, lacivert taşlarla tamamlanır. Sade stud oturumu kulakta dengeli durur — günlük kombinlerden geceye kadar hem romantik hem koruyucu bir vurgu sunar.
 
-316L paslanmaz çelik altın kaplama gövde hipoalerjeniktir; klipsli oturum dengeli durur. Ofis, davet ve tatil kombinlerinde tek parça vurgu arayanlar için tasarlanmıştır.
+316L paslanmaz çelik gümüş renk gövde hipoalerjeniktir; klipsli stud gün boyu rahat kullanılır. Tek başına statement parça veya set halinde tercih edilebilir çift küpedir.
 
 Özellikler:
-• Materyal: 316L paslanmaz çelik (altın kaplama görünüm)
-• Taş: Pavé zirkon (üst segmentler)
-• Tip: Sallantılı / drop küpe — çift
+• Materyal: 316L paslanmaz çelik (gümüş renk)
+• Taş: Pavé zirkon + lacivert nazar detay
+• Tip: Stud küpe — çift
 • Kargo: 650₺ üzeri ücretsiz
 • İade: 14 gün koşulsuz ücretsiz iade
 • Özel hediye kutusunda gönderilir`,
   images: [
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_44_09-3e4ceadd-8ecb-461a-8ea0-868d27f1499a.png",
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_42_16-822aab70-7d74-4520-80d2-59a9c1fdee6e.png",
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_43_11-3ca249e7-22fd-4573-9a71-949d182c3354.png",
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_44_24-c20e104b-f8da-4b2b-a7e1-e847c0022606.png",
+    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_d71b2a10bf7c15cb340d9c5522ff5e89_images_P_rlanta_G_z_Detayl__Kalp_K_peler-6b47772a-6ab3-4aa1-92a4-dae108063861.jpg",
+    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_d71b2a10bf7c15cb340d9c5522ff5e89_images_Kalp_Motifli_Nazar_K_peleri-a4c9d0ac-b23b-4931-8303-72f2f27378aa.jpg",
   ],
 };
 
@@ -88,6 +86,13 @@ function loadEnvFile(filePath) {
 
 function trim(v) {
   return String(v ?? "").trim();
+}
+
+function contentTypeFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  return "image/jpeg";
 }
 
 async function uploadImages(admin, productId, imageFiles) {
@@ -227,7 +232,7 @@ async function run() {
   const imageUrls = await uploadImages(admin, inserted.id, imagePaths);
   console.log(`✓ DB: ${inserted.sku} — ${inserted.name}`);
   console.log(`  https://www.zeluladesign.com/urunler/${inserted.slug}`);
-  console.log(`  site ${SITE_PRICE}₺ · TY ${TY_PRICE}₺ · alış ${COST_PRICE}₺+KDV · stok ${STOCK}`);
+  console.log(`  site ${SITE_PRICE}₺ · TY ${TY_PRICE}₺ · alış ${COST_PRICE}₺ (tahmini) · stok ${STOCK}`);
 
   const { data: integration } = await admin
     .from("marketplace_integrations")

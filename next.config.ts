@@ -25,6 +25,8 @@ function supabaseStorageRemotePattern(): { protocol: "https"; hostname: string; 
 }
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["sharp"],
+
   async redirects() {
     return [
       { source: "/favicon.ico", destination: "/icon-96.png", permanent: true },

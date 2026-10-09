@@ -1,0 +1,1 @@
+export const REVIEW_IMAGE_MAX_BYTES = 4_000_000;

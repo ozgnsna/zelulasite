@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { uploadLocalProductImages, uploadOneLocalProductImage } from "./lib/upload-product-images.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -132,27 +133,7 @@ async function fetchNextSku(admin) {
 }
 
 async function uploadImages(admin, productId, imageFiles) {
-  const urls = [];
-  for (let i = 0; i < imageFiles.length; i += 1) {
-    const localPath = imageFiles[i];
-    const bytes = fs.readFileSync(localPath);
-    const storagePath = `products/${productId}/${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-    const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, bytes, {
-      contentType: "image/jpeg",
-      upsert: false,
-    });
-    if (uploadError) throw new Error(`Görsel yüklenemedi: ${uploadError.message}`);
-    const { data } = admin.storage.from(BUCKET).getPublicUrl(storagePath);
-    const { error: insertError } = await admin.from("product_images").insert({
-      product_id: productId,
-      image_url: data.publicUrl,
-      is_cover: i === 0,
-      sort_order: i,
-    });
-    if (insertError) throw new Error(`Görsel kaydı eklenemedi: ${insertError.message}`);
-    urls.push(data.publicUrl);
-  }
-  return urls;
+  return uploadLocalProductImages(admin, productId, imageFiles);
 }
 
 function tyBase(integration) {

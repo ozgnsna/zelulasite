@@ -1,8 +1,7 @@
 /**
- * Zelula416 — pavé zirkon segmentli serpantin form altın sallantılı küpe (çift)
- *   node scripts/import-zelula416-serpentine-drop-kupe.mjs
- *
- * Not: Marka adı / “imitasyon” metinde geçmez.
+ * Zelula421 — pavé zirkon + altın bantlı C/J halka küpe (çift)
+ *   node scripts/import-zelula421-pave-gold-band-hoop-kupe.mjs
+ *   node scripts/import-zelula421-pave-gold-band-hoop-kupe.mjs --dry-run
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,17 +13,23 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUCKET = "product-images";
 const ASSETS_DIR = path.resolve(
   process.env.USERPROFILE ?? "",
-  ".cursor/projects/c-Users-ozgun-zelulasite/assets",
+  ".cursor/projects/d-Projeler-zelulasite/assets",
 );
 
 const DRY_RUN = process.argv.includes("--dry-run");
-const SKU = "Zelula416";
-const SITE_PRICE = 400;
-const TY_PRICE = 599;
-const COST_PRICE = 150;
-const STOCK = 1;
+const SKU = "Zelula421";
+const SITE_PRICE = 499;
+const COMPARE_AT = 599;
+/**
+ * TY fiyatı: komisyon %22.5 + stopaj %1 + kargo min 150₺
+ * net ≈ 0.765×satış − 148.5 − alış  → site netine yakın için ~899
+ */
+const TY_SALE = 899;
+const TY_LIST = 999;
+const COST_PRICE = 135;
+const STOCK = 2;
 const BRAND_ID = "2489862";
-const CATEGORY_ID = "3417";
+const CATEGORY_ID = "2846"; // Bijuteri Küpe (3417 = kıkırdak)
 const VAT_RATE = 20;
 
 const TRENDYOL_ATTRIBUTES = [
@@ -33,37 +38,32 @@ const TRENDYOL_ATTRIBUTES = [
   { attributeId: 348, attributeValueId: 6996 },
   { attributeId: 1204, attributeValueId: 10621740 },
   { attributeId: 260, attributeValueId: 2475 },
-  { attributeId: 343, attributeValueId: 4296 },
+  { attributeId: 343, attributeValueId: 4295 },
   { attributeId: 14, attributeValueId: 688 },
   { attributeId: 346, attributeValueId: 4292 },
-  { attributeId: 32, attributeValueId: 870 },
-  { attributeId: 47, customAttributeValue: "Gold" },
+  { attributeId: 32, attributeValueId: 938 }, // Halka
+  { attributeId: 47, customAttributeValue: "Altın" },
 ];
 
 const PRODUCT = {
-  slug: "serpentine-glow-pave-zirkon-segmentli-altin-sallantili-kupe",
-  name: "Serpentine Glow Pavé Zirkon Segmentli Altın Kaplama Sallantılı Küpe",
-  color: "Altın",
+  slug: "lumen-band-pave-zirkon-altin-bantli-c-halka-kupe",
+  name: "Lumen Band Pavé Zirkon Altın Bantlı C Halka Küpe",
+  color: "Gümüş / Altın",
   material: "Paslanmaz Çelik",
   short:
-    "Üstte pavé zirkon, altta parlak altın segmentlerle incelerek sarkan form. 316L çelik küpe çifti — zarif statement ışıltı.",
-  full: `Kulak memesinde pavé zirkon kaplı trapez form; hemen altında ikinci taşlı segment ve dört kademeli, sivriye doğru incelen parlak altın kaplama halkalar sallanır. Segmentli siluet hareketle ışıltıyı çoğaltır; gündüz ve gece kombinlerine uyumlu zarif bir drop küpedir.
+    "Pavé zirkon kaplı kalın C halka, üç altın renk bant detayı. 316L çelik stud oturumlu küpe çifti — ışıltılı ve modern.",
+  full: `Gümüş ton gövdede pavé zirkon taşlarla kaplı dolgun C/J form halka; üç adet parlak altın renk metal bant halkayı böler ve iki tonlu bir ışıltı sunar. Uçlarda pürüzsüz metal bitiş, üstte pimli stud oturumu kulakta dengeli durur.
 
-316L paslanmaz çelik altın kaplama gövde hipoalerjeniktir; klipsli oturum dengeli durur. Ofis, davet ve tatil kombinlerinde tek parça vurgu arayanlar için tasarlanmıştır.
+316L paslanmaz çelik altyapı hipoalerjeniktir; günlük ve özel gün kombinlerine uyumlu statement halka küpe çiftidir.
 
 Özellikler:
-• Materyal: 316L paslanmaz çelik (altın kaplama görünüm)
-• Taş: Pavé zirkon (üst segmentler)
-• Tip: Sallantılı / drop küpe — çift
+• Materyal: 316L paslanmaz çelik (gümüş ton + altın bant)
+• Taş: Pavé zirkon
+• Tip: C/J halka stud küpe — çift
 • Kargo: 650₺ üzeri ücretsiz
 • İade: 14 gün koşulsuz ücretsiz iade
 • Özel hediye kutusunda gönderilir`,
-  images: [
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_44_09-3e4ceadd-8ecb-461a-8ea0-868d27f1499a.png",
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_42_16-822aab70-7d74-4520-80d2-59a9c1fdee6e.png",
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_43_11-3ca249e7-22fd-4573-9a71-949d182c3354.png",
-    "c__Users_ozgun_AppData_Roaming_Cursor_User_workspaceStorage_420a7a4f1dbc57494cb0d50a403fc873_images_ChatGPT_Image_9_A_u_2026_23_44_24-c20e104b-f8da-4b2b-a7e1-e847c0022606.png",
-  ],
+  images: ["zelula421-cover.png"],
 };
 
 function loadEnvFile(filePath) {
@@ -88,6 +88,13 @@ function loadEnvFile(filePath) {
 
 function trim(v) {
   return String(v ?? "").trim();
+}
+
+function contentTypeFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  return "image/jpeg";
 }
 
 async function uploadImages(admin, productId, imageFiles) {
@@ -120,8 +127,8 @@ async function pushTrendyol(integration, admin, product, imageUrls) {
         dimensionalWeight: 1,
         description: product.full_description,
         currencyType: "TRY",
-        listPrice: TY_PRICE,
-        salePrice: TY_PRICE,
+        listPrice: TY_LIST,
+        salePrice: TY_SALE,
         vatRate: VAT_RATE,
         images: imageUrls.slice(0, 8).map((url) => ({ url })),
         attributes: TRENDYOL_ATTRIBUTES,
@@ -188,7 +195,7 @@ async function run() {
     short_description: PRODUCT.short,
     full_description: PRODUCT.full,
     price: SITE_PRICE,
-    compare_at_price: TY_PRICE,
+    compare_at_price: COMPARE_AT,
     cost_price: COST_PRICE,
     sku: SKU,
     stock_quantity: STOCK,
@@ -205,8 +212,8 @@ async function run() {
     trendyol_brand: BRAND_ID,
     trendyol_category_id: CATEGORY_ID,
     trendyol_category_attributes: TRENDYOL_ATTRIBUTES,
-    trendyol_sale_price: TY_PRICE,
-    trendyol_list_price: TY_PRICE,
+    trendyol_sale_price: TY_SALE,
+    trendyol_list_price: TY_LIST,
     trendyol_vat_rate: VAT_RATE,
     trendyol_dimensional_weight: 1,
     trendyol_quantity: STOCK,
@@ -227,7 +234,9 @@ async function run() {
   const imageUrls = await uploadImages(admin, inserted.id, imagePaths);
   console.log(`✓ DB: ${inserted.sku} — ${inserted.name}`);
   console.log(`  https://www.zeluladesign.com/urunler/${inserted.slug}`);
-  console.log(`  site ${SITE_PRICE}₺ · TY ${TY_PRICE}₺ · alış ${COST_PRICE}₺+KDV · stok ${STOCK}`);
+  console.log(
+    `  site ${SITE_PRICE}₺ (üstü çizili ${COMPARE_AT}₺) · TY ${TY_SALE}/${TY_LIST}₺ · alış ${COST_PRICE}₺ · stok ${STOCK}`,
+  );
 
   const { data: integration } = await admin
     .from("marketplace_integrations")

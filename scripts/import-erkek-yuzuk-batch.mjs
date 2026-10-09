@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { uploadLocalProductImages, uploadOneLocalProductImage } from "./lib/upload-product-images.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -252,22 +253,7 @@ async function fetchNextSkuStart(admin) {
 }
 
 async function uploadProductImage(admin, productId, localPath) {
-  const bytes = fs.readFileSync(localPath);
-  const storagePath = `products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
-  const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, bytes, {
-    contentType: "image/png",
-    upsert: false,
-  });
-  if (uploadError) throw new Error(`Görsel yüklenemedi: ${uploadError.message}`);
-  const { data } = admin.storage.from(BUCKET).getPublicUrl(storagePath);
-  const { error: insertError } = await admin.from("product_images").insert({
-    product_id: productId,
-    image_url: data.publicUrl,
-    is_cover: true,
-    sort_order: 0,
-  });
-  if (insertError) throw new Error(`Görsel kaydı eklenemedi: ${insertError.message}`);
-  return data.publicUrl;
+  return uploadOneLocalProductImage(admin, productId, localPath);
 }
 
 async function run() {

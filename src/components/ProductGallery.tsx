@@ -6,7 +6,13 @@ import { ProductGalleryZoomTrigger, ProductImageLightbox } from "@/components/pr
 import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
 import { isProductVideoUrl } from "@/lib/products/media-url";
 
-type Img = { id: string; image_url: string; is_cover?: boolean | null; sort_order?: number | null };
+type Img = {
+  id: string;
+  image_url: string;
+  is_cover?: boolean | null;
+  sort_order?: number | null;
+  derivative_widths?: number[] | null;
+};
 
 function dedupeByUrl(items: Img[]): Img[] {
   const seen = new Set<string>();
@@ -69,6 +75,8 @@ export function ProductGallery({
                 priority
                 className="bg-white object-cover object-center transition duration-[680ms] ease-out motion-safe:group-hover:scale-[1.02]"
                 sizes="(max-width: 1024px) 100vw, 50vw"
+                derivativeWidths={list.find((item) => item.image_url === mainSrc)?.derivative_widths}
+                derivativeUse="gallery"
               />
             </div>
 
@@ -138,6 +146,8 @@ export function ProductGallery({
                       fill
                       className="object-contain bg-white p-0.5"
                       sizes="120px"
+                      derivativeWidths={img.derivative_widths}
+                      derivativeUse="card"
                     />
                   )}
                 </button>

@@ -1,5 +1,5 @@
 import { ProductCard } from "@/components/ProductCard";
-import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
+import { pickProductCoverImage } from "@/lib/products/cover-image";
 import type { Product } from "@/lib/types";
 
 /** Kategori / ürün listelerinde mobil 2 sütun, kompakt kart. */
@@ -22,13 +22,16 @@ export function ProductListingGrid({
 }) {
   return (
     <ul className={PRODUCT_LISTING_GRID_CLASS}>
-      {products.map((p) => (
+      {products.map((p) => {
+        const cover = pickProductCoverImage(p.product_images, fallbackImage);
+        return (
         <li key={p.id}>
           <ProductCard
             id={p.id}
             slug={p.slug}
             name={p.name}
-            imageUrl={pickProductCoverImageUrl(p.product_images, fallbackImage)}
+            imageUrl={cover.url}
+            derivativeWidths={cover.derivativeWidths}
             price={Number(p.price)}
             compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
             category={p.category?.name}
@@ -40,7 +43,8 @@ export function ProductListingGrid({
             initialFavorited={favoriteIds.has(p.id)}
           />
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }

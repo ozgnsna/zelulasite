@@ -16,6 +16,8 @@ import {
 import { updateZelulaSkuSeriesFromCatalogIdentifiers } from "@/lib/marketplaces/trendyol/zelula-sku-cache";
 import { fetchProductVariants } from "@/lib/products/variants";
 import type { ProductVariant } from "@/lib/types";
+import { storageObjectPathFromPublicUrl } from "@/lib/images/derivative-url";
+import { mirrorRemoteProductImage } from "@/lib/images/generate-product-derivatives.mjs";
 
 /** DB row shape used to build the Trendyol v2/products POST body (single item in `items`). */
 export type TrendyolProductPayloadInput = {
@@ -562,6 +564,42 @@ function resolveTrendyolBrandIdForImport(rawBrand: unknown): string | null {
   return null;
 }
 
+async function materializeImportedImage(
+  admin: SupabaseClient,
+  productId: string,
+  remoteUrl: string,
+): Promise<{ image_url: string; derivative_widths: number[] }> {
+  if (storageObjectPathFromPublicUrl(remoteUrl)) {
+    return { image_url: remoteUrl, derivative_widths: [] };
+  }
+  const mirrored = await mirrorRemoteProductImage(admin.storage, productId, remoteUrl);
+  if (!mirrored) return { image_url: remoteUrl, derivative_widths: [] };
+  return { image_url: mirrored.publicUrl, derivative_widths: mirrored.derivativeWidths };
+}
+
+async function insertMirroredProductImages(
+  admin: SupabaseClient,
+  productId: string,
+  imageUrls: string[],
+) {
+  if (imageUrls.length === 0) return;
+  const rows = [];
+  for (let index = 0; index < imageUrls.length; index += 1) {
+    const remoteUrl = imageUrls[index];
+    if (!remoteUrl) continue;
+    const stored = await materializeImportedImage(admin, productId, remoteUrl);
+    rows.push({
+      product_id: productId,
+      image_url: stored.image_url,
+      derivative_widths: stored.derivative_widths,
+      is_cover: index === 0,
+      sort_order: index,
+    });
+  }
+  if (rows.length === 0) return;
+  await admin.from("product_images").insert(rows);
+}
+
 function normalizeRemoteImages(images: unknown): string[] {
   if (!Array.isArray(images)) return [];
   return images
@@ -839,16 +877,16 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
             })
             .eq("id", existing.id);
 
-          await admin.from("product_images").delete().eq("product_id", existing.id);
-          if (imageUrls.length > 0) {
-            await admin.from("product_images").insert(
-              imageUrls.map((imageUrl, index) => ({
-                product_id: existing.id,
-                image_url: imageUrl,
-                is_cover: index === 0,
-                sort_order: index,
-              })),
-            );
+          const { data: currentImages } = await admin
+            .from("product_images")
+            .select("image_url")
+            .eq("product_id", existing.id);
+          const alreadyMirrored = (currentImages ?? []).some((row) =>
+            Boolean(storageObjectPathFromPublicUrl(String((row as { image_url?: string }).image_url ?? ""))),
+          );
+          if (!alreadyMirrored) {
+            await admin.from("product_images").delete().eq("product_id", existing.id);
+            await insertMirroredProductImages(admin, existing.id, imageUrls);
           }
           updated += 1;
           continue;
@@ -881,16 +919,7 @@ export async function importApprovedProductsFromTrendyol(admin: SupabaseClient, 
           .maybeSingle();
         if (insertError || !inserted?.id) continue;
 
-        if (imageUrls.length > 0) {
-          await admin.from("product_images").insert(
-            imageUrls.map((imageUrl, index) => ({
-              product_id: inserted.id,
-              image_url: imageUrl,
-              is_cover: index === 0,
-              sort_order: index,
-            })),
-          );
-        }
+        await insertMirroredProductImages(admin, inserted.id, imageUrls);
         existingByBarcode.set(barcode, { id: inserted.id });
         imported += 1;
       }

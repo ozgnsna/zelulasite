@@ -5,7 +5,7 @@ import Link from "next/link";
 import { submitProductReview } from "@/app/actions/reviews";
 import type { ProductReviewRow } from "@/lib/account/reviews";
 import { reviewStatusLabelTr } from "@/lib/account/reviews";
-import { REVIEW_IMAGE_MAX_BYTES } from "@/lib/reviews/review-image-upload";
+import { REVIEW_IMAGE_MAX_BYTES } from "@/lib/reviews/review-image-limits";
 import { ReviewPhoto } from "@/components/reviews/ReviewPhoto";
 import { StarRatingInput } from "@/components/reviews/StarRating";
 

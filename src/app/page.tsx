@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ProductCard } from "@/components/ProductCard";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { getHomeData, getProductPageHrefByName, getHomeCategoryCards } from "@/lib/storefront";
-import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
+import { pickProductCoverImage } from "@/lib/products/cover-image";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { FadeIn } from "@/components/home/FadeIn";
 import { HomeHeroBannerCarousel } from "@/components/home/HomeHeroBannerCarousel";
@@ -199,7 +199,8 @@ export default async function HomePage() {
                     id={p.id}
                     slug={p.slug}
                     name={p.name}
-                    imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/99/900/900")}
+                    imageUrl={pickProductCoverImage(p.product_images, "https://picsum.photos/id/99/900/900").url}
+                    derivativeWidths={pickProductCoverImage(p.product_images, "https://picsum.photos/id/99/900/900").derivativeWidths}
                     price={Number(p.price)}
                     compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                     category={p.category?.name}
@@ -250,7 +251,8 @@ export default async function HomePage() {
                     id={p.id}
                     slug={p.slug}
                     name={p.name}
-                    imageUrl={pickProductCoverImageUrl(p.product_images, "https://picsum.photos/id/90/900/900")}
+                    imageUrl={pickProductCoverImage(p.product_images, "https://picsum.photos/id/90/900/900").url}
+                    derivativeWidths={pickProductCoverImage(p.product_images, "https://picsum.photos/id/90/900/900").derivativeWidths}
                     price={Number(p.price)}
                     compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
                     category={p.category?.name}

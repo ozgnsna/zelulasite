@@ -10,6 +10,8 @@ type ProductCardProps = {
   slug: string;
   name: string;
   imageUrl: string;
+  /** product_images.derivative_widths — boşsa orijinal görsel. */
+  derivativeWidths?: number[] | null;
   price: number;
   compareAtPrice?: number | null;
   category?: string;
@@ -38,6 +40,7 @@ export function ProductCard({
   slug,
   name,
   imageUrl,
+  derivativeWidths,
   price,
   compareAtPrice,
   category,
@@ -101,6 +104,8 @@ export function ProductCard({
           alt={name}
           fill
           sizes={imageSizes}
+          derivativeWidths={derivativeWidths}
+          derivativeUse="card"
           className={
             imageForward
               ? "object-contain p-2 transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"

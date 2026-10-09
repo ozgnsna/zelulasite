@@ -1,11 +1,14 @@
 /** Ürün görselleri: kapak (is_cover) ve sort_order ile doğru URL seçimi. */
 
+import { normalizeDerivativeWidths } from "@/lib/images/derivative-url";
 import { isProductVideoUrl } from "@/lib/products/media-url";
 
 export type ProductImageRow = {
   image_url?: string | null;
   is_cover?: boolean | null;
   sort_order?: number | null;
+  /** Backfill veya yükleme yazdıysa 400 ve/veya 800. Boşsa srcset yok. */
+  derivative_widths?: number[] | null;
 };
 
 export function sortProductImages<T extends ProductImageRow>(imgs: T[] | null | undefined): T[] {
@@ -17,15 +20,24 @@ export function sortProductImages<T extends ProductImageRow>(imgs: T[] | null | 
   });
 }
 
+export function pickProductCoverImage(
+  imgs: ProductImageRow[] | null | undefined,
+  fallback?: string,
+): { url: string; derivativeWidths: number[] } {
+  const sorted = sortProductImages(normalizeProductImages(imgs));
+  const still = sorted.find((row) => !isProductVideoUrl(String(row.image_url ?? "")));
+  const url = String(still?.image_url ?? "").trim();
+  return {
+    url: url || fallback || "",
+    derivativeWidths: normalizeDerivativeWidths(still?.derivative_widths),
+  };
+}
+
 export function pickProductCoverImageUrl(
   imgs: ProductImageRow[] | null | undefined,
   fallback?: string,
 ): string {
-  const sorted = sortProductImages(normalizeProductImages(imgs));
-  const still = sorted.find((row) => !isProductVideoUrl(String(row.image_url ?? "")));
-  const url = String(still?.image_url ?? "").trim();
-  if (url) return url;
-  return fallback ?? "";
+  return pickProductCoverImage(imgs, fallback).url;
 }
 
 export function pickFirstProductVideoUrl(imgs: ProductImageRow[] | null | undefined): string | null {

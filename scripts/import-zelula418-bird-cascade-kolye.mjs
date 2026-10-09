@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { uploadLocalProductImages, uploadOneLocalProductImage } from "./lib/upload-product-images.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUCKET = "product-images";
@@ -98,27 +99,7 @@ function contentTypeFor(filePath) {
 }
 
 async function uploadImages(admin, productId, imageFiles) {
-  const urls = [];
-  for (let i = 0; i < imageFiles.length; i += 1) {
-    const bytes = fs.readFileSync(imageFiles[i]);
-    const ext = path.extname(imageFiles[i]).toLowerCase() || ".png";
-    const storagePath = `products/${productId}/${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-    const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, bytes, {
-      contentType: contentTypeFor(imageFiles[i]),
-      upsert: false,
-    });
-    if (uploadError) throw new Error(uploadError.message);
-    const { data } = admin.storage.from(BUCKET).getPublicUrl(storagePath);
-    const { error: insertError } = await admin.from("product_images").insert({
-      product_id: productId,
-      image_url: data.publicUrl,
-      is_cover: i === 0,
-      sort_order: i,
-    });
-    if (insertError) throw new Error(insertError.message);
-    urls.push(data.publicUrl);
-  }
-  return urls;
+  return uploadLocalProductImages(admin, productId, imageFiles);
 }
 
 function tyHeaders(integration) {

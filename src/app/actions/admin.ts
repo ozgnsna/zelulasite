@@ -31,6 +31,11 @@ import { issueGiftCardsForPaidOrder } from "@/lib/gift-cards/fulfillment";
 import { captureGiftCardRedemptionForOrder } from "@/lib/gift-cards/redeem";
 import { PRODUCT_IMAGE_MAX_BYTES } from "@/lib/images/product-image-upload";
 import {
+  buildDerivativeBuffers,
+  removeDerivativeSiblings,
+  uploadDerivativeBuffers,
+} from "@/lib/images/generate-product-derivatives.mjs";
+import {
   isAllowedProductMediaFile,
   isProductVideoFile,
   isProductVideoUrl,
@@ -1070,6 +1075,10 @@ export async function uploadTaxonomyImage(formData: FormData) {
   const { error: uploadError } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
     .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
+  if (!uploadError) {
+    const derivatives = await buildDerivativeBuffers(bytes);
+    await uploadDerivativeBuffers(supabase.storage, path, derivatives);
+  }
   if (uploadError) {
     redirect(
       withQueryParam(
@@ -1480,6 +1489,10 @@ async function persistProductMediaFileToDb(
     return uploadError.message || "Depolama yüklemesi başarısız (kota, izin veya dosya boyutu).";
   }
 
+  const derivativeWidths = isVideo
+    ? []
+    : await uploadDerivativeBuffers(supabase.storage, path, await buildDerivativeBuffers(bytes));
+
   const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
 
   const { data: existingRows } = await supabase
@@ -1499,6 +1512,7 @@ async function persistProductMediaFileToDb(
     image_url: data.publicUrl,
     is_cover: setAsCover,
     sort_order: maxSort + 1,
+    derivative_widths: derivativeWidths,
   });
   if (insertError) {
     return insertError.message || "Veritabanına kayıt eklenemedi.";
@@ -1583,6 +1597,7 @@ export async function deleteProductImage(formData: FormData) {
   const url = String(row.image_url ?? "");
   const objectPath = storageObjectPathFromPublicUrl(url, PRODUCT_IMAGES_BUCKET);
   if (objectPath) {
+    await removeDerivativeSiblings(supabase.storage, objectPath);
     await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([objectPath]);
   }
 

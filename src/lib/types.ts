@@ -56,7 +56,7 @@ export type Product = {
   created_at: string;
   category?: Category;
   collection?: Collection | null;
-  product_images?: { id: string; image_url: string; is_cover: boolean }[];
+  product_images?: { id: string; image_url: string; is_cover: boolean; derivative_widths?: number[] | null }[];
   /** Ölçü/varyant satırları (örn. yüzük ölçüsü). Boşsa ürün varyantsızdır. */
   variants?: ProductVariant[];
   /** `category?.slug` ile aynı; liste/grid kolaylığı için */

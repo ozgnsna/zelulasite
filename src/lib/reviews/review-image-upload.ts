@@ -1,7 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildDerivativeBuffers,
+  removeDerivativeSiblings,
+  uploadDerivativeBuffers,
+} from "@/lib/images/generate-product-derivatives.mjs";
+import { REVIEW_IMAGE_MAX_BYTES } from "@/lib/reviews/review-image-limits";
 
 export const REVIEW_IMAGES_BUCKET = "product-images";
-export const REVIEW_IMAGE_MAX_BYTES = 4_000_000;
+export { REVIEW_IMAGE_MAX_BYTES };
 
 export function isAllowedReviewImageFile(file: File): boolean {
   if (file.type.startsWith("image/")) return true;
@@ -48,6 +54,8 @@ export async function uploadReviewImage(
     return { ok: false, error: "Fotoğraf yüklenemedi. Lütfen tekrar dene." };
   }
 
+  await uploadDerivativeBuffers(admin.storage, path, await buildDerivativeBuffers(bytes));
+
   const { data } = admin.storage.from(REVIEW_IMAGES_BUCKET).getPublicUrl(path);
   const url = String(data.publicUrl ?? "").trim();
   if (!url) return { ok: false, error: "Fotoğraf adresi oluşturulamadı." };
@@ -59,5 +67,6 @@ export async function removeReviewImageIfStored(admin: SupabaseClient, imageUrl:
   if (!url) return;
   const objectPath = storageObjectPathFromPublicUrl(url, REVIEW_IMAGES_BUCKET);
   if (!objectPath || !objectPath.startsWith("reviews/")) return;
+  await removeDerivativeSiblings(admin.storage, objectPath);
   await admin.storage.from(REVIEW_IMAGES_BUCKET).remove([objectPath]);
 }

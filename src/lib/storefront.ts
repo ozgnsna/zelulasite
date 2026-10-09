@@ -34,7 +34,7 @@ import {
 
 /** Liste kartı için dar select — sitemap / tam çekim bunu kullanmaz. */
 const LISTING_PRODUCT_SELECT =
-  "id,slug,name,price,compare_at_price,featured,new_arrival,category_id,collection_id,created_at,category:categories(id,name,slug),collection:collections(id,name,slug),product_images(image_url,is_cover,sort_order)";
+  "id,slug,name,price,compare_at_price,featured,new_arrival,category_id,collection_id,created_at,category:categories(id,name,slug),collection:collections(id,name,slug),product_images(image_url,is_cover,sort_order,derivative_widths)";
 
 /** Sitemap / SEO: yalnızca slug (+ lastmod). Sayfalama uygulanmaz. */
 const SITEMAP_PRODUCT_SELECT = "id,slug,created_at";
@@ -435,7 +435,20 @@ export async function getProducts(params: {
       query = query.range(from, to);
     }
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error && String(error.message).includes("derivative_widths")) {
+      const fallbackSelect = selectCols.replace(",derivative_widths", "");
+      let fallbackQuery = applySort(
+        applyProductFilters(supabase.from("products").select(fallbackSelect as "*")),
+      );
+      if (paginate) {
+        const from = (page - 1) * pageSize;
+        fallbackQuery = fallbackQuery.range(from, from + pageSize - 1);
+      }
+      const retry = await fallbackQuery;
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) {
       console.error("[getProducts]", error.message);
       return empty(categories, collections);
