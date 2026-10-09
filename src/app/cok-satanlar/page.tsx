@@ -2,44 +2,37 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ProductListingGrid } from "@/components/product/ProductListingGrid";
+import { ListingIntro, ListingSeoBody } from "@/components/product/ListingSeoCopy";
 import { ListingPagination } from "@/components/product/ListingPagination";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
-import { getProducts } from "@/lib/storefront";
+import { getBestsellersListingMeta, getProducts } from "@/lib/storefront";
 import {
   LISTING_PAGE_SIZE,
-  listingCanonicalUrl,
-  listingDescriptionWithPage,
-  listingTitleWithPage,
+  buildSliceListingMetadata,
   parseSayfaParam,
+  totalPagesFor,
 } from "@/lib/storefront/listing-pagination";
 
 type Props = {
   searchParams: Promise<{ sayfa?: string }>;
 };
 
-const BASE_TITLE = "Çok satanlar";
-const BASE_DESCRIPTION = "Zelula’da en çok tercih edilen öne çıkan parçalar.";
-
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const sp = await searchParams;
   const parsed = parseSayfaParam(sp.sayfa);
   if (parsed.kind === "invalid") notFound();
   const page = parsed.kind === "ok" ? parsed.page : 1;
-  if (page > 1) {
-    const { totalPages } = await getProducts({
-      sort: "featured",
-      featuredOnly: true,
-      page: 1,
-      pageSize: LISTING_PAGE_SIZE,
-    });
-    if (totalPages === 0 || page > totalPages) notFound();
-  }
-  return {
-    title: listingTitleWithPage(BASE_TITLE, page),
-    description: listingDescriptionWithPage(BASE_DESCRIPTION, page),
-    alternates: { canonical: listingCanonicalUrl("/cok-satanlar", page) },
-  };
+  const meta = await getBestsellersListingMeta();
+  const totalPages = totalPagesFor(meta.filteredCount, LISTING_PAGE_SIZE);
+  if (page > 1 && (totalPages === 0 || page > totalPages)) notFound();
+  return buildSliceListingMetadata({
+    titleSegment: meta.titleSegment,
+    description: meta.description,
+    path: "/cok-satanlar",
+    page,
+    noindex: meta.inStockCount === 0,
+  });
 }
 
 export default async function BestSellersPage({ searchParams }: Props) {
@@ -49,6 +42,7 @@ export default async function BestSellersPage({ searchParams }: Props) {
   if (parsed.kind === "invalid") notFound();
 
   const page = parsed.page;
+  const metaCopy = await getBestsellersListingMeta();
   const { products, totalCount, totalPages } = await getProducts({
     sort: "featured",
     featuredOnly: true,
@@ -86,9 +80,11 @@ export default async function BestSellersPage({ searchParams }: Props) {
             <span className="ml-2 text-lg font-normal text-stone-500">· Sayfa {page}</span>
           ) : null}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-stone-600">
-          Öne çıkan, en çok sevilen Zelula parçaları — hızlıca sepete ekle.
-        </p>
+        <ListingIntro text={metaCopy.intro}>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600">
+            Öne çıkan, en çok sevilen Zelula parçaları — hızlıca sepete ekle.
+          </p>
+        </ListingIntro>
       </header>
 
       <section className="mt-12">
@@ -112,6 +108,7 @@ export default async function BestSellersPage({ searchParams }: Props) {
           </>
         )}
       </section>
+      <ListingSeoBody text={metaCopy.body} />
     </main>
   );
 }

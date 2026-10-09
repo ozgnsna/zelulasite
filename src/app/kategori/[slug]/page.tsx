@@ -2,20 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ProductListingGrid } from "@/components/product/ProductListingGrid";
+import { ListingIntro, ListingSeoBody } from "@/components/product/ListingSeoCopy";
 import { ListingPagination } from "@/components/product/ListingPagination";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
-import { getCategoryPageData } from "@/lib/storefront";
+import { getCategoryListingMeta, getCategoryPageData } from "@/lib/storefront";
 import { UNIQUE_PIECE_CATEGORY_NOTE } from "@/lib/storefront/unique-piece-copy";
 import { categoryHref, isKnownCategorySlug } from "@/lib/categories/taxonomy";
 import {
-  FILTERED_LISTING_ROBOTS,
   LISTING_PAGE_SIZE,
-  listingCanonicalUrl,
-  listingDescriptionWithPage,
+  buildSliceListingMetadata,
   listingHasNoindexFilters,
-  listingTitleWithPage,
   parseSayfaParam,
+  totalPagesFor,
 } from "@/lib/storefront/listing-pagination";
 
 type Props = {
@@ -36,37 +35,21 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const parsed = parseSayfaParam(sp.sayfa);
   if (parsed.kind === "invalid") notFound();
   const page = parsed.kind === "ok" ? parsed.page : 1;
-  const data = await getCategoryPageData(slug, {
-    sort: sp.sirala ?? "newest",
+  const meta = await getCategoryListingMeta(slug, {
     collection: sp.koleksiyon || undefined,
     min: sp.min ? Number(sp.min) : undefined,
     max: sp.max ? Number(sp.max) : undefined,
-    page: 1,
-    pageSize: LISTING_PAGE_SIZE,
   });
-  if (!data) return { title: "Kategori" };
-  if (page > 1 && (data.totalPages === 0 || page > data.totalPages)) notFound();
-  const name = data.taxon.name;
-  const description = listingDescriptionWithPage(
-    `${name} modelleri — paslanmaz çelik ve zamansız Zelula Design takı seçkisi. 650₺ üzeri ücretsiz kargo.`,
+  if (!meta) return { title: "Kategori" };
+  const totalPages = totalPagesFor(meta.filteredCount, LISTING_PAGE_SIZE);
+  if (page > 1 && (totalPages === 0 || page > totalPages)) notFound();
+  return buildSliceListingMetadata({
+    titleSegment: meta.titleSegment,
+    description: meta.description,
+    path: `/kategori/${slug}`,
     page,
-  );
-  const path = `/kategori/${slug}`;
-  const noindex = listingHasNoindexFilters(sp);
-  return {
-    title: listingTitleWithPage(name, page),
-    description,
-    alternates: { canonical: listingCanonicalUrl(path, page) },
-    ...(noindex ? { robots: FILTERED_LISTING_ROBOTS } : {}),
-    openGraph: {
-      title: `${listingTitleWithPage(name, page)} | Zelula Design`,
-      description,
-      url: listingCanonicalUrl(path, page),
-      type: "website",
-      locale: "tr_TR",
-      siteName: "Zelula Design",
-    },
-  };
+    noindex: listingHasNoindexFilters(sp) || meta.inStockCount === 0,
+  });
 }
 
 export default async function CategoryPage({ params, searchParams }: Props) {
@@ -145,17 +128,17 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           ) : null}
         </h1>
         <p className="mt-2 text-[11px] leading-relaxed text-stone-500">{UNIQUE_PIECE_CATEGORY_NOTE}</p>
-        {data.mode === "list" && data.listCaption ? (
-          <p className="mt-3 text-sm leading-relaxed text-stone-600">{data.listCaption}</p>
-        ) : data.mode === "hub" ? (
-          <p className="mt-3 text-sm leading-relaxed text-stone-600">
-            Alt kategorilere geç veya aşağıdaki tüm ürünleri incele.
-          </p>
-        ) : (
-          <p className="mt-3 text-sm leading-relaxed text-stone-600">
-            Bu kategorideki ürünleri keşfet.
-          </p>
-        )}
+        <ListingIntro text={data.intro}>
+          {data.mode === "list" && data.listCaption ? (
+            <p className="mt-3 text-sm leading-relaxed text-stone-600">{data.listCaption}</p>
+          ) : data.mode === "hub" ? (
+            <p className="mt-3 text-sm leading-relaxed text-stone-600">
+              Alt kategorilere geç veya aşağıdaki tüm ürünleri incele.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm leading-relaxed text-stone-600">Bu kategorideki ürünleri keşfet.</p>
+          )}
+        </ListingIntro>
       </header>
 
       {data.mode === "hub" ? (
@@ -255,6 +238,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           </>
         )}
       </section>
+      <ListingSeoBody text={data.body} />
     </main>
   );
 }

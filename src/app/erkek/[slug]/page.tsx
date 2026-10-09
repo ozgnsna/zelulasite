@@ -2,25 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ProductListingGrid } from "@/components/product/ProductListingGrid";
+import { ListingIntro, ListingSeoBody } from "@/components/product/ListingSeoCopy";
 import { ListingPagination } from "@/components/product/ListingPagination";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import {
   ERKEK_HUB_HREF,
   erkekCategoryHref,
-  erkekCategoryLabel,
   isErkekCategorySlug,
   type ErkekCategorySlug,
 } from "@/lib/products/audience";
-import { getErkekPageData } from "@/lib/storefront";
+import { getErkekListingMeta, getErkekPageData } from "@/lib/storefront";
 import {
-  FILTERED_LISTING_ROBOTS,
   LISTING_PAGE_SIZE,
-  listingCanonicalUrl,
-  listingDescriptionWithPage,
+  buildSliceListingMetadata,
   listingHasNoindexFilters,
-  listingTitleWithPage,
   parseSayfaParam,
+  totalPagesFor,
 } from "@/lib/storefront/listing-pagination";
 
 type Props = {
@@ -41,40 +39,21 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const parsed = parseSayfaParam(sp.sayfa);
   if (parsed.kind === "invalid") notFound();
   const page = parsed.kind === "ok" ? parsed.page : 1;
-  if (page > 1) {
-    const data = await getErkekPageData(slug, {
-      sort: sp.sirala ?? "newest",
-      collection: sp.koleksiyon || undefined,
-      min: sp.min ? Number(sp.min) : undefined,
-      max: sp.max ? Number(sp.max) : undefined,
-      page: 1,
-      pageSize: LISTING_PAGE_SIZE,
-    });
-    if (!data || data.totalPages === 0 || page > data.totalPages) notFound();
-  }
-  const name = erkekCategoryLabel(slug);
-  const path = erkekCategoryHref(slug);
-  const lower = name.toLocaleLowerCase("tr-TR");
-  const description = listingDescriptionWithPage(
-    `Erkek ${lower} modelleri — paslanmaz çelik Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.`,
+  const meta = await getErkekListingMeta(slug, {
+    collection: sp.koleksiyon || undefined,
+    min: sp.min ? Number(sp.min) : undefined,
+    max: sp.max ? Number(sp.max) : undefined,
+  });
+  if (!meta) return { title: "Erkek" };
+  const totalPages = totalPagesFor(meta.filteredCount, LISTING_PAGE_SIZE);
+  if (page > 1 && (totalPages === 0 || page > totalPages)) notFound();
+  return buildSliceListingMetadata({
+    titleSegment: meta.titleSegment,
+    description: meta.description,
+    path: erkekCategoryHref(slug),
     page,
-  );
-  const title = listingTitleWithPage(`Erkek ${name}`, page);
-  const noindex = listingHasNoindexFilters(sp);
-  return {
-    title,
-    description,
-    alternates: { canonical: listingCanonicalUrl(path, page) },
-    ...(noindex ? { robots: FILTERED_LISTING_ROBOTS } : {}),
-    openGraph: {
-      title: `${title} | Zelula Design`,
-      description,
-      url: listingCanonicalUrl(path, page),
-      type: "website",
-      locale: "tr_TR",
-      siteName: "Zelula Design",
-    },
-  };
+    noindex: listingHasNoindexFilters(sp) || meta.inStockCount === 0,
+  });
 }
 
 export function generateStaticParams() {
@@ -156,9 +135,11 @@ export default async function ErkekCategoryPage({ params, searchParams }: Props)
             <span className="ml-2 text-lg font-normal text-stone-500">· Sayfa {page}</span>
           ) : null}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-stone-600">
-          Erkek {data.name.toLocaleLowerCase("tr-TR")} seçkisi.
-        </p>
+        <ListingIntro text={data.intro}>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600">
+            Erkek {data.name.toLocaleLowerCase("tr-TR")} seçkisi.
+          </p>
+        </ListingIntro>
       </header>
 
       <section className="mt-12">
@@ -235,6 +216,7 @@ export default async function ErkekCategoryPage({ params, searchParams }: Props)
           </>
         )}
       </section>
+      <ListingSeoBody text={data.body} />
     </main>
   );
 }

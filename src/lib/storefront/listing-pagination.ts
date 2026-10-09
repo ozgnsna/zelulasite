@@ -54,6 +54,32 @@ export function listingCanonicalUrl(path: string, page: number): string {
   return absoluteUrl(`${base}?sayfa=${page}`);
 }
 
+export function buildSliceListingMetadata(input: {
+  titleSegment: string;
+  description: string;
+  path: string;
+  page: number;
+  noindex: boolean;
+}): Metadata {
+  const title = listingTitleWithPage(input.titleSegment, input.page);
+  const description = listingDescriptionWithPage(input.description, input.page);
+  const canonical = listingCanonicalUrl(input.path, input.page);
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    ...(input.noindex ? { robots: FILTERED_LISTING_ROBOTS } : {}),
+    openGraph: {
+      title: `${title} | Zelula Design`,
+      description,
+      url: canonical,
+      type: "website",
+      locale: "tr_TR",
+      siteName: "Zelula Design",
+    },
+  };
+}
+
 export function listingTitleWithPage(baseTitle: string, page: number): string {
   if (page <= 1) return baseTitle;
   return `${baseTitle} - Sayfa ${page}`;

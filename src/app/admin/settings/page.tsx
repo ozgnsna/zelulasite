@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminInstallHint } from "@/components/admin/AdminInstallHint";
+import { saveCategorySeo } from "@/app/actions/admin";
 import { TaxonomyImageUploader } from "@/components/admin/TaxonomyImageUploader";
 import { ADMIN_OPERATIONS_MAIN } from "@/lib/admin/admin-shell-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,11 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ taxonomyImageOk?: string; taxonomyImageError?: string }>;
+  searchParams: Promise<{ taxonomyImageOk?: string; taxonomyImageError?: string; seoOk?: string; seoError?: string }>;
 }) {
   const sp = await searchParams;
   const taxonomyImageOk = sp.taxonomyImageOk === "1";
   const taxonomyImageError = sp.taxonomyImageError ?? "";
+  const seoOk = sp.seoOk === "1";
+  const seoError = sp.seoError ?? "";
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,7 +33,7 @@ export default async function AdminSettingsPage({
 
   const admin = createAdminClient();
   const [categoriesRes, collectionsRes] = await Promise.all([
-    admin.from("categories").select("id,name,slug,image_url").order("name", { ascending: true }).limit(100),
+    admin.from("categories").select("*").order("name", { ascending: true }).limit(100),
     admin.from("collections").select("id,name,slug,description,image_url").order("name", { ascending: true }).limit(100),
   ]);
 
@@ -59,6 +62,16 @@ export default async function AdminSettingsPage({
             <span className="font-medium">Görsel yüklenemedi:</span> {taxonomyImageError}
           </div>
         ) : null}
+        {seoOk ? (
+          <div className="mb-4 rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
+            SEO metni kaydedildi.
+          </div>
+        ) : null}
+        {seoError ? (
+          <div className="mb-4 rounded-xl border border-rose-200/90 bg-rose-50/90 px-4 py-3 text-sm text-rose-950">
+            <span className="font-medium">SEO metni kaydedilemedi:</span> {seoError}
+          </div>
+        ) : null}
 
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-stone-200/70 bg-white/95 p-5 shadow-sm">
@@ -76,6 +89,61 @@ export default async function AdminSettingsPage({
                     id={c.id}
                     currentImageUrl={String((c as { image_url?: string | null }).image_url ?? "")}
                   />
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                      SEO metinleri
+                    </summary>
+                    <form action={saveCategorySeo} className="mt-3 space-y-2">
+                      <input type="hidden" name="id" value={c.id} />
+                      <input type="hidden" name="slug" value={c.slug} />
+                      <label className="block text-[11px] text-stone-500">
+                        Başlık parçası
+                        <input
+                          name="seo_title"
+                          defaultValue={String((c as { seo_title?: string | null }).seo_title ?? "")}
+                          placeholder="Boşsa kategori adı"
+                          className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900"
+                        />
+                        <span className="mt-1 block text-[10px] leading-relaxed text-stone-400">
+                          Tam başlık değil. Site şablonu sonuna “ | Zelula” ekler.
+                        </span>
+                      </label>
+                      <label className="block text-[11px] text-stone-500">
+                        Açıklama
+                        <textarea
+                          name="seo_description"
+                          rows={2}
+                          defaultValue={String((c as { seo_description?: string | null }).seo_description ?? "")}
+                          className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900"
+                        />
+                      </label>
+                      <label className="block text-[11px] text-stone-500">
+                        H1 altı kısa metin
+                        <textarea
+                          name="seo_intro"
+                          rows={2}
+                          defaultValue={String((c as { seo_intro?: string | null }).seo_intro ?? "")}
+                          className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900"
+                        />
+                      </label>
+                      <label className="block text-[11px] text-stone-500">
+                        Sayfa altı metin
+                        <textarea
+                          name="seo_body"
+                          rows={4}
+                          defaultValue={String((c as { seo_body?: string | null }).seo_body ?? "")}
+                          placeholder="Paragrafları boş satırla ayırın"
+                          className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900"
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800"
+                      >
+                        SEO kaydet
+                      </button>
+                    </form>
+                  </details>
                 </div>
               ))}
             </div>

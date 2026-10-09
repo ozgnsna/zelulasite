@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { Category, Collection, Product } from "@/lib/types";
 import {
@@ -21,6 +22,15 @@ import {
   type HomeCategoryCard,
 } from "@/lib/storefront/home-category-spotlights";
 import { LISTING_PAGE_SIZE, totalPagesFor } from "@/lib/storefront/listing-pagination";
+import {
+  BESTSELLERS_FALLBACK_DESCRIPTION,
+  BESTSELLERS_FALLBACK_TITLE,
+  categoryFallbackDescription,
+  erkekHubFallbackDescription,
+  erkekLeafFallbackDescription,
+  resolveListingCopy,
+  type ResolvedListingCopy,
+} from "@/lib/categories/listing-copy";
 
 /** Liste kartı için dar select — sitemap / tam çekim bunu kullanmaz. */
 const LISTING_PRODUCT_SELECT =
@@ -35,6 +45,88 @@ function createStorefrontReadClient() {
   if (!url || !key) return null;
   return createClient(url, key);
 }
+
+/** İstek başına bir kez. generateMetadata ve sayfa aynı listeyi paylaşır. */
+const loadListingCategories = cache(async (): Promise<Category[]> => {
+  const supabase = createStorefrontReadClient();
+  if (!supabase) return [];
+  const { data } = await supabase.from("categories").select("*").order("name");
+  return (data ?? []) as Category[];
+});
+
+const loadListingCollections = cache(async (): Promise<Collection[]> => {
+  const supabase = createStorefrontReadClient();
+  if (!supabase) return [];
+  const { data } = await supabase.from("collections").select("*").order("name");
+  return (data ?? []) as Collection[];
+});
+
+type StorefrontCountFilters = {
+  categoryIds: string[];
+  audience: TargetAudience | null;
+  collectionId: string | null;
+  featuredOnly: boolean;
+  min: number | null;
+  max: number | null;
+  q: string | null;
+  includeOutOfStock: boolean;
+};
+
+export function storefrontCountKey(input: {
+  categoryIds?: string[];
+  audience?: TargetAudience | null;
+  collectionId?: string | null;
+  featuredOnly?: boolean;
+  min?: number | null;
+  max?: number | null;
+  q?: string | null;
+  includeOutOfStock?: boolean;
+}): string {
+  const filters: StorefrontCountFilters = {
+    categoryIds: [...(input.categoryIds ?? [])].filter(Boolean).sort(),
+    audience: input.audience ?? null,
+    collectionId: input.collectionId ?? null,
+    featuredOnly: Boolean(input.featuredOnly),
+    min: input.min ?? null,
+    max: input.max ?? null,
+    q: sanitizeListingQuery(input.q ?? "") || null,
+    includeOutOfStock: Boolean(input.includeOutOfStock),
+  };
+  return JSON.stringify(filters);
+}
+
+function sanitizeListingQuery(raw: string): string {
+  return raw.replace(/[,()*%]/g, " ").trim().slice(0, 80);
+}
+
+/** Aktif stok sayımı. Aynı anahtar, metadata ve sayfa gövdesinde bir kez çalışır. */
+const countStorefrontProducts = cache(async (key: string): Promise<number> => {
+  const supabase = createStorefrontReadClient();
+  if (!supabase) return 0;
+  const filters = JSON.parse(key) as StorefrontCountFilters;
+  let query = supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true);
+  if (!filters.includeOutOfStock) query = query.gt("stock_quantity", 0);
+  if (filters.categoryIds.length > 0) query = query.in("category_id", filters.categoryIds);
+  if (filters.audience) query = query.in("target_audience", audienceMatchValues(filters.audience));
+  if (filters.collectionId) query = query.eq("collection_id", filters.collectionId);
+  if (filters.featuredOnly) query = query.eq("featured", true);
+  if (filters.min) query = query.gte("price", filters.min);
+  if (filters.max) query = query.lte("price", filters.max);
+  if (filters.q) {
+    const pattern = `%${filters.q}%`;
+    query = query.or(
+      [
+        `name.ilike.${pattern}`,
+        `short_description.ilike.${pattern}`,
+        `full_description.ilike.${pattern}`,
+        `material.ilike.${pattern}`,
+        `color.ilike.${pattern}`,
+      ].join(","),
+    );
+  }
+  const { count } = await query;
+  return typeof count === "number" ? count : 0;
+});
 
 async function fetchHomeDataFromDb() {
   const supabase = createStorefrontReadClient();
@@ -220,12 +312,7 @@ export async function getProducts(params: {
     // Public katalog: anon client (cookie yok) — sitemap / listing SSR güvenli.
     const supabase = createStorefrontReadClient();
     if (!supabase) return empty();
-    const [categoriesRes, collectionsRes] = await Promise.all([
-      supabase.from("categories").select("*").order("name"),
-      supabase.from("collections").select("*").order("name"),
-    ]);
-    const categories = (categoriesRes.data ?? []) as Category[];
-    const collections = (collectionsRes.data ?? []) as Collection[];
+    const [categories, collections] = await Promise.all([loadListingCategories(), loadListingCollections()]);
     const categoryId = categories.find((c) => c.slug === params.category)?.id;
     const collectionId = collections.find((c) => c.slug === params.collection)?.id;
 
@@ -274,9 +361,7 @@ export async function getProducts(params: {
       if (params.min) query = query.gte("price", params.min);
       if (params.max) query = query.lte("price", params.max);
 
-      // Serbest metin araması: PostgREST or() sözdizimini bozan karakterleri temizle.
-      const rawQuery = (params.q ?? "").trim();
-      const safeQuery = rawQuery.replace(/[,()*%]/g, " ").trim().slice(0, 80);
+      const safeQuery = sanitizeListingQuery(params.q ?? "");
       if (safeQuery) {
         const pattern = `%${safeQuery}%`;
         query = query.or(
@@ -308,14 +393,24 @@ export async function getProducts(params: {
       }
     };
 
+    const listingCategoryIds =
+      categoryIdsFromSlugs.length > 0 ? categoryIdsFromSlugs : categoryId ? [categoryId] : [];
+
     // Sayfalarken önce count — taşan .range() Supabase'de 416 verip sayımı düşürür.
     let totalCount = 0;
     if (paginate) {
-      const countQuery = applyProductFilters(
-        supabase.from("products").select("id", { count: "exact", head: true }),
+      totalCount = await countStorefrontProducts(
+        storefrontCountKey({
+          categoryIds: listingCategoryIds,
+          audience: params.audience ?? null,
+          collectionId: collectionId ?? null,
+          featuredOnly: Boolean(params.featuredOnly),
+          min: params.min ?? null,
+          max: params.max ?? null,
+          q: params.q ?? null,
+          includeOutOfStock: Boolean(params.includeOutOfStock),
+        }),
       );
-      const countRes = await countQuery;
-      totalCount = typeof countRes.count === "number" ? countRes.count : 0;
       const totalPages = totalPagesFor(totalCount, pageSize);
       if (totalPages === 0 || page > totalPages) {
         return {
@@ -378,6 +473,8 @@ export type CategoryPageData =
       page: number;
       pageSize: number;
       totalPages: number;
+      intro: string | null;
+      body: string | null;
     }
   | {
       mode: "list";
@@ -390,6 +487,8 @@ export type CategoryPageData =
       page: number;
       pageSize: number;
       totalPages: number;
+      intro: string | null;
+      body: string | null;
     };
 
 export type CategoryListingOptions = {
@@ -400,6 +499,126 @@ export type CategoryListingOptions = {
   page?: number;
   pageSize?: number;
 };
+
+export type ListingIndexMeta = ResolvedListingCopy & {
+  /** Filtresiz aktif stok. 0 ise sayfa noindex. */
+  inStockCount: number;
+  /** Koleksiyon / fiyat filtresi uygulanmış sayım. Sayfalama bunu kullanır. */
+  filteredCount: number;
+};
+
+function categoryCopy(taxon: CategoryTaxon, categories: Category[]): ResolvedListingCopy {
+  const dbSlug =
+    taxon.kind === "parent" && taxon.slug === "aksesuar" ? "aksesuar" : taxon.dbCategorySlug;
+  const db = dbSlug ? categories.find((c) => c.slug === dbSlug) : undefined;
+  return resolveListingCopy({
+    db,
+    codeKey: taxon.slug,
+    fallbackTitle: taxon.name,
+    fallbackDescription: categoryFallbackDescription(taxon.name),
+  });
+}
+
+async function indexMetaForSlugs(input: {
+  categorySlugs: string[];
+  audience: TargetAudience;
+  copy: ResolvedListingCopy;
+  options: CategoryListingOptions;
+}): Promise<ListingIndexMeta> {
+  const categories = await loadListingCategories();
+  const categoryIds = input.categorySlugs
+    .map((slug) => categories.find((c) => c.slug === slug)?.id)
+    .filter((id): id is string => Boolean(id));
+  if (input.categorySlugs.length > 0 && categoryIds.length === 0) {
+    return { ...input.copy, inStockCount: 0, filteredCount: 0 };
+  }
+  const collections = input.options.collection ? await loadListingCollections() : [];
+  const collectionId = input.options.collection
+    ? (collections.find((c) => c.slug === input.options.collection)?.id ?? null)
+    : null;
+  const base = {
+    categoryIds,
+    audience: input.audience,
+    featuredOnly: false as const,
+    includeOutOfStock: false as const,
+  };
+  const unfilteredKey = storefrontCountKey(base);
+  const filteredKey = storefrontCountKey({
+    ...base,
+    collectionId,
+    min: input.options.min ?? null,
+    max: input.options.max ?? null,
+  });
+  const inStockCount = await countStorefrontProducts(unfilteredKey);
+  const filteredCount =
+    filteredKey === unfilteredKey ? inStockCount : await countStorefrontProducts(filteredKey);
+  return { ...input.copy, inStockCount, filteredCount };
+}
+
+/** Metadata için: ürün satırı yok. Kategori listesi ve sayım sayfa gövdesiyle paylaşılır. */
+export async function getCategoryListingMeta(
+  slug: string,
+  options: CategoryListingOptions = {},
+): Promise<ListingIndexMeta | null> {
+  const taxon = getTaxonBySlug(slug);
+  if (!taxon) return null;
+  const categories = await loadListingCategories();
+  const copy = categoryCopy(taxon, categories);
+  if (taxon.kind === "parent" && taxon.slug === "takilar") {
+    return indexMetaForSlugs({
+      categorySlugs: [...TAKILAR_PRODUCT_DB_SLUGS],
+      audience: "kadin",
+      copy,
+      options,
+    });
+  }
+  if (taxon.kind === "parent" && taxon.slug === "aksesuar") {
+    return indexMetaForSlugs({
+      categorySlugs: ["bros", "sapka", "anahtarlik", "aksesuar"],
+      audience: "kadin",
+      copy,
+      options,
+    });
+  }
+  if (taxon.dbCategorySlug) {
+    return indexMetaForSlugs({
+      categorySlugs: [taxon.dbCategorySlug],
+      audience: "kadin",
+      copy,
+      options,
+    });
+  }
+  return null;
+}
+
+export async function getErkekListingMeta(
+  slug?: string,
+  options: CategoryListingOptions = {},
+): Promise<ListingIndexMeta | null> {
+  if (slug && !ERKEK_CATEGORY_SLUGS.includes(slug as ErkekCategorySlug)) return null;
+  const name = slug ? erkekCategoryLabel(slug as ErkekCategorySlug) : "Erkek Takı";
+  const copy = resolveListingCopy({
+    codeKey: slug ? `erkek-${slug}` : "erkek",
+    fallbackTitle: name,
+    fallbackDescription: slug ? erkekLeafFallbackDescription(name) : erkekHubFallbackDescription(),
+  });
+  return indexMetaForSlugs({
+    categorySlugs: slug ? [slug] : [...ERKEK_CATEGORY_SLUGS],
+    audience: "erkek",
+    copy,
+    options,
+  });
+}
+
+export async function getBestsellersListingMeta(): Promise<ListingIndexMeta> {
+  const copy = resolveListingCopy({
+    codeKey: "cok-satanlar",
+    fallbackTitle: BESTSELLERS_FALLBACK_TITLE,
+    fallbackDescription: BESTSELLERS_FALLBACK_DESCRIPTION,
+  });
+  const inStockCount = await countStorefrontProducts(storefrontCountKey({ featuredOnly: true }));
+  return { ...copy, inStockCount, filteredCount: inStockCount };
+}
 
 /** `/kategori/[slug]` için ürün listesi veya hub verisi */
 export async function getCategoryPageData(
@@ -425,6 +644,7 @@ export async function getCategoryPageData(
         max: options.max,
         ...pageOpts,
       });
+      const copy = categoryCopy(taxon, r.categories);
       return {
         mode: "hub",
         taxon,
@@ -436,6 +656,8 @@ export async function getCategoryPageData(
         page: r.page,
         pageSize: r.pageSize,
         totalPages: r.totalPages,
+        intro: copy.intro,
+        body: copy.body,
       };
     }
     if (taxon.slug === "aksesuar") {
@@ -448,6 +670,7 @@ export async function getCategoryPageData(
         max: options.max,
         ...pageOpts,
       });
+      const copy = categoryCopy(taxon, r.categories);
       return {
         mode: "hub",
         taxon,
@@ -459,6 +682,8 @@ export async function getCategoryPageData(
         page: r.page,
         pageSize: r.pageSize,
         totalPages: r.totalPages,
+        intro: copy.intro,
+        body: copy.body,
       };
     }
     return null;
@@ -475,6 +700,7 @@ export async function getCategoryPageData(
       page: options.page,
       pageSize: options.pageSize ?? LISTING_PAGE_SIZE,
     });
+    const copy = categoryCopy(taxon, r.categories);
     const listCaption =
       taxon.slug === "setler" ? "Kolye, küpe, bileklik ve kombin takı setleri." : undefined;
     return {
@@ -488,6 +714,8 @@ export async function getCategoryPageData(
       page: r.page,
       pageSize: r.pageSize,
       totalPages: r.totalPages,
+      intro: copy.intro,
+      body: copy.body,
     };
   }
 
@@ -505,6 +733,8 @@ export type ErkekPageData =
       page: number;
       pageSize: number;
       totalPages: number;
+      intro: string | null;
+      body: string | null;
     }
   | {
       mode: "list";
@@ -517,6 +747,8 @@ export type ErkekPageData =
       page: number;
       pageSize: number;
       totalPages: number;
+      intro: string | null;
+      body: string | null;
     };
 
 export async function getErkekPageData(
@@ -540,6 +772,11 @@ export async function getErkekPageData(
       max: options.max,
       ...pageOpts,
     });
+    const copy = resolveListingCopy({
+      codeKey: "erkek",
+      fallbackTitle: "Erkek Takı",
+      fallbackDescription: erkekHubFallbackDescription(),
+    });
     return {
       mode: "hub",
       products: r.products,
@@ -550,10 +787,13 @@ export async function getErkekPageData(
       page: r.page,
       pageSize: r.pageSize,
       totalPages: r.totalPages,
+      intro: copy.intro,
+      body: copy.body,
     };
   }
 
   const erkekSlug = slug as ErkekCategorySlug;
+  const leafName = erkekCategoryLabel(erkekSlug);
   const r = await getProducts({
     audience: "erkek",
     category: erkekSlug,
@@ -563,10 +803,15 @@ export async function getErkekPageData(
     max: options.max,
     ...pageOpts,
   });
+  const leafCopy = resolveListingCopy({
+    codeKey: `erkek-${erkekSlug}`,
+    fallbackTitle: `Erkek ${leafName}`,
+    fallbackDescription: erkekLeafFallbackDescription(leafName),
+  });
   return {
     mode: "list",
     slug: erkekSlug,
-    name: erkekCategoryLabel(erkekSlug),
+    name: leafName,
     products: r.products,
     categories: r.categories,
     collections: r.collections,
@@ -574,6 +819,8 @@ export async function getErkekPageData(
     page: r.page,
     pageSize: r.pageSize,
     totalPages: r.totalPages,
+    intro: leafCopy.intro,
+    body: leafCopy.body,
   };
 }
 

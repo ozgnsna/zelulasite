@@ -2,19 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ProductListingGrid } from "@/components/product/ProductListingGrid";
+import { ListingIntro, ListingSeoBody } from "@/components/product/ListingSeoCopy";
 import { ListingPagination } from "@/components/product/ListingPagination";
 import { ViewItemListTracker } from "@/components/analytics/ViewItemListTracker";
 import { loadFavoriteUiContext } from "@/lib/account/favorite-context";
 import { ERKEK_HUB_HREF, erkekCategoryHref } from "@/lib/products/audience";
-import { getErkekPageData } from "@/lib/storefront";
+import { getErkekListingMeta, getErkekPageData } from "@/lib/storefront";
 import {
-  FILTERED_LISTING_ROBOTS,
   LISTING_PAGE_SIZE,
-  listingCanonicalUrl,
-  listingDescriptionWithPage,
+  buildSliceListingMetadata,
   listingHasNoindexFilters,
-  listingTitleWithPage,
   parseSayfaParam,
+  totalPagesFor,
 } from "@/lib/storefront/listing-pagination";
 
 type Props = {
@@ -27,43 +26,26 @@ type Props = {
   }>;
 };
 
-const BASE_TITLE = "Erkek Takı";
-const BASE_DESCRIPTION =
-  "Erkek çelik bileklik ve yüzük modelleri — maskülen, günlük ve statement Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.";
-
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const sp = await searchParams;
   const parsed = parseSayfaParam(sp.sayfa);
   if (parsed.kind === "invalid") notFound();
   const page = parsed.kind === "ok" ? parsed.page : 1;
-  if (page > 1) {
-    const data = await getErkekPageData(undefined, {
-      sort: sp.sirala ?? "newest",
-      collection: sp.koleksiyon || undefined,
-      min: sp.min ? Number(sp.min) : undefined,
-      max: sp.max ? Number(sp.max) : undefined,
-      page: 1,
-      pageSize: LISTING_PAGE_SIZE,
-    });
-    if (!data || data.totalPages === 0 || page > data.totalPages) notFound();
-  }
-  const noindex = listingHasNoindexFilters(sp);
-  const title = listingTitleWithPage(BASE_TITLE, page);
-  const description = listingDescriptionWithPage(BASE_DESCRIPTION, page);
-  return {
-    title,
-    description,
-    alternates: { canonical: listingCanonicalUrl(ERKEK_HUB_HREF, page) },
-    ...(noindex ? { robots: FILTERED_LISTING_ROBOTS } : {}),
-    openGraph: {
-      title: `${title} | Zelula Design`,
-      description,
-      url: listingCanonicalUrl(ERKEK_HUB_HREF, page),
-      type: "website",
-      locale: "tr_TR",
-      siteName: "Zelula Design",
-    },
-  };
+  const meta = await getErkekListingMeta(undefined, {
+    collection: sp.koleksiyon || undefined,
+    min: sp.min ? Number(sp.min) : undefined,
+    max: sp.max ? Number(sp.max) : undefined,
+  });
+  if (!meta) return { title: "Erkek" };
+  const totalPages = totalPagesFor(meta.filteredCount, LISTING_PAGE_SIZE);
+  if (page > 1 && (totalPages === 0 || page > totalPages)) notFound();
+  return buildSliceListingMetadata({
+    titleSegment: meta.titleSegment,
+    description: meta.description,
+    path: ERKEK_HUB_HREF,
+    page,
+    noindex: listingHasNoindexFilters(sp) || meta.inStockCount === 0,
+  });
 }
 
 export default async function ErkekHubPage({ searchParams }: Props) {
@@ -133,9 +115,11 @@ export default async function ErkekHubPage({ searchParams }: Props) {
             <span className="ml-2 text-lg font-normal text-stone-500">· Sayfa {page}</span>
           ) : null}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-stone-600">
-          Bileklik ve yüzük seçkisi. İleride saat ve gözlük de bu bölüme eklenecek.
-        </p>
+        <ListingIntro text={data.intro}>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600">
+            Bileklik ve yüzük seçkisi. İleride saat ve gözlük de bu bölüme eklenecek.
+          </p>
+        </ListingIntro>
       </header>
 
       <section className="mt-10">
@@ -225,6 +209,7 @@ export default async function ErkekHubPage({ searchParams }: Props) {
           </>
         )}
       </section>
+      <ListingSeoBody text={data.body} />
     </main>
   );
 }

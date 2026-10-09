@@ -990,6 +990,38 @@ export async function loadTrendyolCategoryAttributePickerRowsAction(categoryId: 
   return { ok: true, rows: extractCategoryAttributesForPicker(res.payload) };
 }
 
+export async function saveCategorySeo(formData: FormData) {
+  const supabase = createAdminClient();
+  const id = String(formData.get("id") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
+  const returnTo = "/admin/settings";
+  if (!id) {
+    redirect(withQueryParam(returnTo, "seoError", "Kategori bulunamadı."));
+  }
+  const clip = (name: string, max: number) => {
+    const value = String(formData.get(name) ?? "").trim();
+    return value ? value.slice(0, max) : null;
+  };
+  const titleRaw = clip("seo_title", 80);
+  const seoTitle = titleRaw ? titleRaw.replace(/\s*\|\s*Zelula(?:\s+Design)?\s*$/i, "").trim() || null : null;
+  const { error } = await supabase
+    .from("categories")
+    .update({
+      seo_title: seoTitle,
+      seo_description: clip("seo_description", 320),
+      seo_intro: clip("seo_intro", 800),
+      seo_body: clip("seo_body", 4000),
+    })
+    .eq("id", id);
+  if (error) {
+    redirect(withQueryParam(returnTo, "seoError", error.message || "SEO metni kaydedilemedi."));
+  }
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  if (slug) revalidatePath(`/kategori/${slug}`);
+  redirect(withQueryParam(returnTo, "seoOk", "1"));
+}
+
 export async function saveCategory(formData: FormData) {
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "");

@@ -5,6 +5,11 @@ export type Category = {
   image_url?: string | null;
   /** Opsiyonel; Supabase `categories.parent_id` ile uyumlu */
   parent_id?: string | null;
+  /** `<title>` parçası. Layout sonuna " | Zelula" ekler. */
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_intro?: string | null;
+  seo_body?: string | null;
 };
 
 export type Collection = {
