@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import { normalizeProductImages, sortProductImages } from "@/lib/products/cover-image";
+import {
+  ERKEK_HUB_HREF,
+  erkekCategoryHref,
+  erkekCategoryLabel,
+  isErkekCategorySlug,
+} from "@/lib/products/audience";
 import { isProductVideoUrl } from "@/lib/products/media-url";
 import { absoluteUrl, getSiteOrigin, truncateMetaDescription } from "@/lib/seo/site";
 
@@ -42,33 +48,21 @@ export function pickSeoProductImageUrl(
   return absoluteUrl(picked);
 }
 
-export function productDescriptionParagraphs(shortRaw: string, fullRaw: string): string[] {
-  const short = shortRaw.trim();
-  const paragraphs = fullRaw
-    .trim()
+/** Meta description: full_description ilk paragrafı. short_description kullanılmaz. */
+export function productPageMetaDescription(product: {
+  name: string;
+  full_description?: string | null;
+}): string {
+  const first = String(product.full_description ?? "")
     .split(/\n\s*\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  if (short) {
-    if (paragraphs.length === 0) return [short];
-    const first = paragraphs[0] ?? "";
-    if (short.toLowerCase() !== first.toLowerCase() && !first.toLowerCase().startsWith(short.toLowerCase())) {
-      return [short, ...paragraphs];
-    }
-  }
-
-  return paragraphs.length > 0 ? paragraphs : short ? [short] : [];
+    .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
+    .find((paragraph) => paragraph.length > 0);
+  const raw = first || `${product.name} — Zelula Design takı seçkisi.`;
+  return truncateMetaDescription(raw) || `${product.name} — Zelula Design.`;
 }
 
 export function buildProductPageMetadata(product: ProductSeoInput): Metadata {
-  const paragraphs = productDescriptionParagraphs(
-    product.short_description ?? "",
-    product.full_description ?? "",
-  );
-  const description =
-    truncateMetaDescription(paragraphs[0] ?? `${product.name} — Zelula Design takı seçkisi.`) ||
-    `${product.name} — Zelula Design.`;
+  const description = productPageMetaDescription(product);
   const pageUrl = absoluteUrl(`/urunler/${product.slug}`);
   const imageUrl = pickSeoProductImageUrl(product.product_images);
 
@@ -101,13 +95,7 @@ export function buildProductJsonLd(
     reviewSummary?: { count: number; average: number } | null;
   },
 ) {
-  const paragraphs = productDescriptionParagraphs(
-    product.short_description ?? "",
-    product.full_description ?? "",
-  );
-  const description =
-    truncateMetaDescription(paragraphs[0] ?? `${product.name} — Zelula Design takı seçkisi.`) ||
-    `${product.name} — Zelula Design.`;
+  const description = productPageMetaDescription(product);
   const pageUrl = absoluteUrl(`/urunler/${product.slug}`);
   const images = sortProductImages(normalizeProductImages(product.product_images))
     .map((row) => String(row.image_url ?? "").trim())
@@ -151,10 +139,29 @@ export function buildProductJsonLd(
   };
 }
 
-export function buildProductBreadcrumbJsonLd(product: ProductSeoInput & { categorySlug?: string | null; categoryName?: string | null }) {
-  const items: { name: string; path: string }[] = [{ name: "Ürünler", path: "/urunler" }];
-  if (product.categorySlug && product.categoryName) {
-    items.push({ name: product.categoryName, path: `/kategori/${product.categorySlug}` });
+export function buildProductBreadcrumbJsonLd(
+  product: ProductSeoInput & {
+    categorySlug?: string | null;
+    categoryName?: string | null;
+    targetAudience?: string | null;
+  },
+) {
+  const categorySlug = product.categorySlug ?? null;
+  const erkekLeaf =
+    product.targetAudience === "erkek" && categorySlug && isErkekCategorySlug(categorySlug)
+      ? categorySlug
+      : null;
+  const items: { name: string; path: string }[] = erkekLeaf
+    ? [
+        { name: "Erkek", path: ERKEK_HUB_HREF },
+        {
+          name: `Erkek ${erkekCategoryLabel(erkekLeaf)}`,
+          path: erkekCategoryHref(erkekLeaf),
+        },
+      ]
+    : [{ name: "Ürünler", path: "/urunler" }];
+  if (!erkekLeaf && categorySlug && product.categoryName) {
+    items.push({ name: product.categoryName, path: `/kategori/${categorySlug}` });
   }
   items.push({ name: product.name, path: `/urunler/${product.slug}` });
 

@@ -19,6 +19,7 @@ import {
 } from "@/lib/storefront/unique-piece-copy";
 import { formatTry } from "@/lib/money";
 import { categoryHref } from "@/lib/categories/taxonomy";
+import { erkekCategoryHref, erkekCategoryLabel, isErkekCategorySlug } from "@/lib/products/audience";
 import type { Product } from "@/lib/types";
 import { ViewItemTracker } from "@/components/analytics/ViewItemTracker";
 import { createClient } from "@/lib/supabase/server";
@@ -95,7 +96,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const sp = await searchParams;
   const wantsPreview = String(sp.onizleme ?? "").trim() === "1";
   const product = await resolveStorefrontProduct(slug, wantsPreview);
-  if (!product) return { title: "Ürün" };
+  if (!product) notFound();
   return buildProductPageMetadata(product);
 }
 
@@ -117,6 +118,12 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const hasRealDiscount = Boolean(compareAt && compareAt > priceNum);
   const discountAmount = hasRealDiscount ? Math.round((compareAt ?? 0) - priceNum) : 0;
   const stockQty = Number(product.stock_quantity ?? 0);
+  const categorySlug = product.category?.slug ?? product.categorySlug ?? null;
+  const erkekLeaf =
+    product.target_audience === "erkek" && categorySlug && isErkekCategorySlug(categorySlug)
+      ? categorySlug
+      : null;
+  const materialLabel = product.material?.trim() ?? "";
   const isOutOfStock = stockQty < 1;
   const isStockOne = stockQty === 1;
   const isLowStockBand = stockQty >= 2 && stockQty <= 3;
@@ -172,6 +179,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
             ...product,
             categorySlug: product.category?.slug ?? product.categorySlug ?? null,
             categoryName: product.category?.name ?? null,
+            targetAudience: product.target_audience ?? null,
           }),
         ]}
       />
@@ -187,9 +195,21 @@ export default async function ProductPage({ params, searchParams }: Props) {
         }}
       />
       <nav className="text-sm text-stone-600">
-        <Link href="/urunler" className="transition hover:text-brand-gold-a11y">
-          Ürünler
-        </Link>
+        {erkekLeaf ? (
+          <>
+            <Link href="/erkek" className="transition hover:text-brand-gold-a11y">
+              Erkek
+            </Link>
+            <span className="mx-2 text-stone-500">/</span>
+            <Link href={erkekCategoryHref(erkekLeaf)} className="transition hover:text-brand-gold-a11y">
+              Erkek {erkekCategoryLabel(erkekLeaf)}
+            </Link>
+          </>
+        ) : (
+          <Link href="/urunler" className="transition hover:text-brand-gold-a11y">
+            Ürünler
+          </Link>
+        )}
         <span className="mx-2 text-stone-500">/</span>
         <span className="text-stone-800">{product.name}</span>
       </nav>
@@ -401,13 +421,15 @@ export default async function ProductPage({ params, searchParams }: Props) {
           </section>
 
           <section className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-brand-gold/20 bg-[#fffdfb] p-6 shadow-[0_10px_26px_rgba(70,53,38,0.06)] transition hover:shadow-[0_14px_30px_rgba(70,53,38,0.1)]">
-              <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-brand-gold">Materyal</h3>
-              <p className="mt-3 text-sm leading-relaxed text-stone-700">
-                <span className="font-medium text-stone-900">{product.material ?? "Premium alaşım"}</span> — günlük
-                kullanımda dayanıklılık ve parlaklık için seçildi.
-              </p>
-            </div>
+            {materialLabel ? (
+              <div className="rounded-2xl border border-brand-gold/20 bg-[#fffdfb] p-6 shadow-[0_10px_26px_rgba(70,53,38,0.06)] transition hover:shadow-[0_14px_30px_rgba(70,53,38,0.1)]">
+                <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-brand-gold">Materyal</h3>
+                <p className="mt-3 text-sm leading-relaxed text-stone-700">
+                  <span className="font-medium text-stone-900">{materialLabel}</span> — günlük kullanımda dayanıklılık
+                  ve parlaklık için seçildi.
+                </p>
+              </div>
+            ) : null}
             <div className="rounded-2xl border border-brand-gold/20 bg-[#fffdfb] p-6 shadow-[0_10px_26px_rgba(70,53,38,0.06)] transition hover:shadow-[0_14px_30px_rgba(70,53,38,0.1)]">
               <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-brand-gold">Bakım</h3>
               <p className="mt-3 text-sm leading-relaxed text-stone-700">
