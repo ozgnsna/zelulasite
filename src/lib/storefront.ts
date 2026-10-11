@@ -1060,6 +1060,7 @@ const SLUG_GENERIC_TOKENS = new Set([
   "yuzuk",
   "bileklik",
   "bilezik",
+  "saat",
   "set",
   "seti",
   "zirkon",

@@ -57,12 +57,12 @@ type HeroBannerDef = {
 
 const HERO_BANNER_DEFS: HeroBannerDef[] = [
   {
-    id: "bikini-charm",
-    imageSrc: "/hero-banner-bikini-charm.webp",
-    width: 2200,
-    height: 1465,
-    alt: "Zelula — Bikini Charm Koleksiyonu; yengeç, dondurma ve balık charm zincirleri",
-    href: "/kategori/aksesuar",
+    id: "saat-koleksiyonu",
+    imageSrc: "/hero-banner-saat.webp",
+    width: 1024,
+    height: 576,
+    alt: "Zelula — Saat Koleksiyonu; altın tonlu çelik saatler",
+    href: "/kategori/saat",
     objectPosition: "center center",
   },
   {

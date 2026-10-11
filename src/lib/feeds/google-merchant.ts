@@ -8,7 +8,7 @@ export const GOOGLE_FEED_BRAND = "Zelula";
 /** Google Merchant `id` üst sınırı. */
 export const GOOGLE_FEED_ID_MAX_LENGTH = 50;
 
-/** Apparel & Accessories > Jewelry — genel takı (201 saat; kullanılmaz). */
+/** Apparel & Accessories > Jewelry — genel takı. Saat kategorisi 201 kullanır. */
 export const GOOGLE_PRODUCT_CATEGORY_JEWELRY = "188";
 
 const MIN_DESCRIPTION_LENGTH = 30;
@@ -21,6 +21,7 @@ const GOOGLE_CATEGORY_BY_SLUG: Record<string, string> = {
   kupe: "194",
   bileklik: "191",
   bilezik: "191",
+  saat: "201",
   halhal: "189",
   sahmeran: "190",
   yuzuk: "200",

@@ -25,6 +25,7 @@ export const CATEGORY_TAXONOMY: CategoryTaxon[] = [
   { id: "kupe", name: "Küpe", slug: "kupe", parentId: "takilar", dbCategorySlug: "kupe", kind: "leaf" },
   { id: "bileklik", name: "Bileklik", slug: "bileklik", parentId: "takilar", dbCategorySlug: "bileklik", kind: "leaf" },
   { id: "bilezik", name: "Bilezik", slug: "bilezik", parentId: "takilar", dbCategorySlug: "bilezik", kind: "leaf" },
+  { id: "saat", name: "Saat", slug: "saat", parentId: "takilar", dbCategorySlug: "saat", kind: "leaf" },
   { id: "halhal", name: "Halhal", slug: "halhal", parentId: "takilar", dbCategorySlug: "halhal", kind: "leaf" },
   { id: "sahmeran", name: "Şahmeran", slug: "sahmeran", parentId: "takilar", dbCategorySlug: "sahmeran", kind: "leaf" },
   { id: "yuzuk", name: "Yüzük", slug: "yuzuk", parentId: "takilar", dbCategorySlug: "yuzuk", kind: "leaf" },
@@ -71,6 +72,7 @@ export const HEADER_NAV_BEFORE_ERKEK_SLUGS = [
   "kupe",
   "bileklik",
   "bilezik",
+  "saat",
   "yuzuk",
   "setler",
 ] as const;
@@ -97,4 +99,4 @@ export function categoryHref(slug: string): string {
 export { ERKEK_HUB_HREF, ERKEK_CATEGORY_SLUGS, erkekCategoryHref, erkekCategoryLabel } from "@/lib/products/audience";
 
 /** Takılar hub’ında listelenecek ürünler: çekirdek takı DB slug’ları */
-export const TAKILAR_PRODUCT_DB_SLUGS = ["kolye", "kupe", "bileklik", "bilezik", "halhal", "sahmeran", "yuzuk"] as const;
+export const TAKILAR_PRODUCT_DB_SLUGS = ["kolye", "kupe", "bileklik", "bilezik", "saat", "halhal", "sahmeran", "yuzuk"] as const;
