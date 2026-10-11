@@ -1,3 +1,5 @@
+import { FREE_SHIPPING_THRESHOLD_TRY } from "@/lib/free-shipping";
+
 /**
  * Kategori / vitrin SEO metinleri.
  * Yaprak kategoriler: `categories.seo_*` (admin). Boşsa aşağıdaki şablon.
@@ -114,17 +116,22 @@ export function resolveListingCopy(input: {
   };
 }
 
+function freeShippingFallbackClause(): string {
+  const amount = FREE_SHIPPING_THRESHOLD_TRY.toLocaleString("tr-TR");
+  return `${amount}₺ üzeri ücretsiz kargo.`;
+}
+
 export function categoryFallbackDescription(name: string): string {
-  return `${name} modelleri — paslanmaz çelik ve zamansız Zelula Design takı seçkisi. 650₺ üzeri ücretsiz kargo.`;
+  return `${name} modelleri — paslanmaz çelik ve zamansız Zelula Design takı seçkisi. ${freeShippingFallbackClause()}`;
 }
 
 export function erkekHubFallbackDescription(): string {
-  return "Erkek çelik bileklik ve yüzük modelleri — maskülen, günlük ve statement Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.";
+  return `Erkek çelik bileklik ve yüzük modelleri — maskülen, günlük ve statement Zelula Design seçkisi. ${freeShippingFallbackClause()}`;
 }
 
 export function erkekLeafFallbackDescription(name: string): string {
   const lower = name.toLocaleLowerCase("tr-TR");
-  return `Erkek ${lower} modelleri — paslanmaz çelik Zelula Design seçkisi. 650₺ üzeri ücretsiz kargo.`;
+  return `Erkek ${lower} modelleri — paslanmaz çelik Zelula Design seçkisi. ${freeShippingFallbackClause()}`;
 }
 
 export const BESTSELLERS_FALLBACK_TITLE = "Çok satanlar";
