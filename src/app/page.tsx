@@ -57,6 +57,15 @@ type HeroBannerDef = {
 
 const HERO_BANNER_DEFS: HeroBannerDef[] = [
   {
+    id: "29-ekim",
+    imageSrc: "/hero-banner-29-ekim.webp",
+    width: 1024,
+    height: 576,
+    alt: "Zelula — 29 Ekim Cumhuriyet Bayramı; rozet broş koleksiyonu",
+    href: "/kategori/bros",
+    objectPosition: "center center",
+  },
+  {
     id: "saat-koleksiyonu",
     imageSrc: "/hero-banner-saat.webp",
     width: 1024,
