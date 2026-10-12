@@ -41,7 +41,7 @@ export async function moderateProductReviewAction(formData: FormData) {
   const admin = createAdminClient();
   const { data: before } = await admin
     .from("customer_product_reviews")
-    .select("id,user_id,status")
+    .select("id,user_id,order_id,status")
     .eq("id", reviewId)
     .maybeSingle();
 
@@ -52,11 +52,15 @@ export async function moderateProductReviewAction(formData: FormData) {
 
   if (error) return;
 
-  if (nextStatus === "approved" && before?.user_id && before.status !== "approved") {
-    await grantLoyaltyForApprovedReview(admin, {
-      userId: String(before.user_id),
-      reviewId,
-    });
+  if (nextStatus === "approved" && before && before.status !== "approved") {
+    let rewardUserId = before.user_id ? String(before.user_id) : "";
+    if (!rewardUserId && before.order_id) {
+      const { data: order } = await admin.from("orders").select("user_id").eq("id", before.order_id).maybeSingle();
+      rewardUserId = order?.user_id ? String(order.user_id) : "";
+    }
+    if (rewardUserId) {
+      await grantLoyaltyForApprovedReview(admin, { userId: rewardUserId, reviewId });
+    }
   }
 
   revalidateReviewPaths(productSlug || null);

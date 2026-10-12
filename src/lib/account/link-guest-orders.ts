@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeEmailInput } from "@/lib/account/email-input";
+import { claimGuestReviewPoints } from "@/lib/loyalty/claim-guest-review-points";
 
 export type LinkGuestOrdersResult = {
   linked: number;
@@ -33,7 +34,10 @@ export async function linkGuestOrdersToUser(
     .filter((r) => normalizeEmailInput(String((r as { email?: string | null }).email ?? "")) === norm)
     .map((r) => String((r as { id: string }).id));
 
-  if (orderIds.length === 0) return { linked: 0, orderIds: [] };
+  if (orderIds.length === 0) {
+    await claimGuestReviewPoints(admin, uid);
+    return { linked: 0, orderIds: [] };
+  }
 
   const { error: updateError } = await admin.from("orders").update({ user_id: uid }).in("id", orderIds);
   if (updateError) {
@@ -45,5 +49,6 @@ export async function linkGuestOrdersToUser(
     return { linked: 0, orderIds: [] };
   }
 
+  await claimGuestReviewPoints(admin, uid);
   return { linked: orderIds.length, orderIds };
 }
