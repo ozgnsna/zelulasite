@@ -2,10 +2,12 @@ import Link from "next/link";
 
 type Props = {
   pendingCount: number;
+  guestCount?: number;
 };
 
-export function PendingReviewsCard({ pendingCount }: Props) {
+export function PendingReviewsCard({ pendingCount, guestCount = 0 }: Props) {
   const count = Math.max(0, Math.floor(pendingCount));
+  const guests = Math.max(0, Math.floor(guestCount));
 
   return (
     <section className="rounded-2xl border border-stone-200/60 bg-white/95 p-4 shadow-sm">
@@ -39,6 +41,7 @@ export function PendingReviewsCard({ pendingCount }: Props) {
         <>
           <p className="mt-3 text-[13px] font-medium text-amber-950">
             {count.toLocaleString("tr-TR")} yorum onay bekliyor
+            {guests > 0 ? ` · ${guests.toLocaleString("tr-TR")} misafir` : ""}
           </p>
           <Link
             href="/admin/reviews?status=pending"

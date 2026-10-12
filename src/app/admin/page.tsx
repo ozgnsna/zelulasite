@@ -155,6 +155,7 @@ export default async function AdminPage({
     paidOrdersAllTimeRes,
     recentMarketplaceOrdersRes,
     pendingReviewsCountRes,
+    guestPendingReviewsCountRes,
   ] = await Promise.all([
     admin
       .from("orders")
@@ -209,6 +210,11 @@ export default async function AdminPage({
       .from("customer_product_reviews")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending"),
+    admin
+      .from("customer_product_reviews")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+      .is("user_id", null),
   ]);
 
   const todayOrders = todayOrdersRes.data ?? [];
@@ -233,6 +239,7 @@ export default async function AdminPage({
     });
   }
   const pendingReviewsCount = pendingReviewsCountRes.count ?? 0;
+  const guestPendingReviewsCount = guestPendingReviewsCountRes.count ?? 0;
 
   const { outOfStockCount, lowStockCount, notListedOnMarketplaceCount } = productCounts;
 
@@ -455,7 +462,7 @@ export default async function AdminPage({
 
           <UnmatchedTyOrdersCard orders={unmatchedTyOrders} />
 
-          <PendingReviewsCard pendingCount={pendingReviewsCount} />
+          <PendingReviewsCard pendingCount={pendingReviewsCount} guestCount={guestPendingReviewsCount} />
 
           <section>
             <h2 className="text-base font-semibold text-stone-950">Bugün yapılacaklar</h2>

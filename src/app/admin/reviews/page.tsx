@@ -100,6 +100,11 @@ export default async function AdminReviewsPage({
                       <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-600">
                         {reviewStatusLabelTr(review.status)}
                       </span>
+                      {!review.user_id ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950">
+                          Misafir
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-2 text-sm font-semibold text-stone-900">
                       {product?.name ?? "Ürün"}{" "}
