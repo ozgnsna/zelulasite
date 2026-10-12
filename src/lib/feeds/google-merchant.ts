@@ -1,5 +1,4 @@
 import { CATEGORY_TAXONOMY, getTaxonBySlug } from "@/lib/categories/taxonomy";
-import { STANDARD_SHIPPING_FEE_TRY } from "@/lib/free-shipping";
 import { unwrapSupabaseRelation } from "@/lib/gift-cards/unwrap-relation";
 import { pickProductCoverImageUrl } from "@/lib/products/cover-image";
 
@@ -117,14 +116,6 @@ export function formatFeedMoneyTry(amount: number): string {
   return `${amount.toFixed(2)} TRY`;
 }
 
-/**
- * Feed kargosunu sepet eşiğine göre değiştirme.
- * Ücretsiz kargo sepet toplamına bakıyor; tek ürün fiyatı yeterli değil.
- */
-export function feedShippingPriceTry(): number {
-  return STANDARD_SHIPPING_FEE_TRY;
-}
-
 /** Merchant `id`: SKU, varyantta `SKU-ölçü`. Slug kullanılmaz (50 karakter limiti). */
 export function buildFeedOfferId(sku: string, variantLabel?: string | null): string {
   const base = String(sku ?? "").trim().replace(/\s+/g, "");
@@ -196,7 +187,6 @@ function renderFeedItemXml(input: {
   itemGroupId?: string | null;
   size?: string | null;
 }): string {
-  const shipping = feedShippingPriceTry();
   const lines = [
     `    <item>`,
     `      <g:id>${escapeXml(input.offerId)}</g:id>`,
@@ -223,14 +213,7 @@ function renderFeedItemXml(input: {
     lines.push(`      <g:size>${escapeXml(input.size)}</g:size>`);
   }
 
-  lines.push(
-    `      <g:shipping>`,
-    `        <g:country>TR</g:country>`,
-    `        <g:service>Standart</g:service>`,
-    `        <g:price>${escapeXml(formatFeedMoneyTry(shipping))}</g:price>`,
-    `      </g:shipping>`,
-    `    </item>`,
-  );
+  lines.push(`    </item>`);
 
   return lines.join("\n");
 }
