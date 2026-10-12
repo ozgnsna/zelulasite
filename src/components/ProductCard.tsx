@@ -86,6 +86,8 @@ export function ProductCard({
       ? "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
       : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
   const cardRadius = compact || imageForward ? "rounded-xl sm:rounded-[1.35rem]" : "rounded-[1.35rem]";
+  const mediaRadius =
+    compact || imageForward ? "rounded-t-xl sm:rounded-t-[1.35rem]" : "rounded-t-[1.35rem]";
 
   const showPeek = Boolean(peekHint) && !conversionOverlay;
 
@@ -98,20 +100,18 @@ export function ProductCard({
         className,
       )}
     >
-      <div className={`relative ${aspectClass} overflow-hidden bg-white`}>
-        <ProductImage
-          src={imageUrl}
-          alt={name}
-          fill
-          sizes={imageSizes}
-          derivativeWidths={derivativeWidths}
-          derivativeUse="card"
-          className={
-            imageForward
-              ? "object-contain p-2 transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
-              : "object-contain p-2 transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
-          }
-        />
+      <div className={cn("relative overflow-hidden bg-white", aspectClass, mediaRadius)}>
+        <div className="absolute inset-2 overflow-hidden rounded-[0.95rem] [clip-path:inset(0_round_0.95rem)]">
+          <ProductImage
+            src={imageUrl}
+            alt={name}
+            fill
+            sizes={imageSizes}
+            derivativeWidths={derivativeWidths}
+            derivativeUse="card"
+            className="object-cover transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.05]"
+          />
+        </div>
         <Link
           href={`/urunler/${slug}`}
           className="absolute inset-0 z-[2]"
