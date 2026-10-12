@@ -14,11 +14,13 @@ export function ProductReviewForm({
   productSlug,
   existingReview,
   loginNext,
+  inviteToken = null,
 }: {
   productId: string;
   productSlug: string;
   existingReview: ProductReviewRow | null;
   loginNext: string;
+  inviteToken?: string | null;
 }) {
   const [rating, setRating] = useState(existingReview?.rating ?? 0);
   const initialBody =
@@ -83,7 +85,11 @@ export function ProductReviewForm({
       }}
     >
       <h3 className="font-serif text-lg text-stone-900">Deneyimini paylaş</h3>
-      <p className="mt-1 text-sm text-stone-600">Yalnızca teslim aldığın ürünler için yorum yazabilirsin.</p>
+      <p className="mt-1 text-sm text-stone-600">
+        {inviteToken
+          ? "Onaylanan yorumun puanı, sipariş e-postanla hesap açınca tanımlanır."
+          : "Yalnızca teslim aldığın ürünler için yorum yazabilirsin."}
+      </p>
 
       <div className="mt-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">Puanın</p>
@@ -163,6 +169,7 @@ export function ProductReviewForm({
 
       <input type="hidden" name="productId" value={productId} />
       <input type="hidden" name="productSlug" value={productSlug} />
+      {inviteToken ? <input type="hidden" name="inviteToken" value={inviteToken} /> : null}
 
       {existingReview?.status === "rejected" ? (
         <p className="mt-3 text-sm text-rose-800">Önceki yorumun yayınlanmadı — istersen düzenleyip tekrar gönderebilirsin.</p>

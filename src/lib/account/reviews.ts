@@ -4,7 +4,7 @@ export type ProductReviewStatus = "pending" | "approved" | "rejected" | "hidden"
 
 export type ProductReviewRow = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   product_id: string;
   order_id: string | null;
   rating: number;

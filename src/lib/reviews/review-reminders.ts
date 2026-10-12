@@ -3,6 +3,7 @@ import {
   sendReviewReminderEmail,
   type ReviewReminderProduct,
 } from "@/lib/notifications/review-reminder-email";
+import { ensureReviewInvite } from "@/lib/reviews/review-invite";
 
 export const REVIEW_REMINDER_LOOKBACK_DAYS = 60;
 export const REVIEW_REMINDER_SHIPPED_DELAY_DAYS = 7;
@@ -234,7 +235,7 @@ export async function runReviewReminders(
       shippedAt: o.shipped_at ? String(o.shipped_at) : null,
       deliveredAt: o.delivered_at ? String(o.delivered_at) : null,
       createdAt: String(o.created_at ?? ""),
-      products: pendingProducts.map((p) => ({ name: p.name, slug: p.slug })),
+      products: pendingProducts.map((p) => ({ name: p.name, slug: p.slug, productId: p.productId })),
       trigger,
     });
   }
@@ -259,11 +260,34 @@ export async function runReviewReminders(
       continue;
     }
 
+    const linkedProducts: ReviewReminderProduct[] = [];
+    for (const product of c.products) {
+      const productId = String(product.productId ?? "").trim();
+      if (!productId) continue;
+      const issued = await ensureReviewInvite(admin, c.orderId, productId);
+      if (!issued.ok) {
+        errors += 1;
+        samples.push({
+          orderNumber: c.orderNumber,
+          trigger: c.trigger,
+          productCount: c.products.length,
+          email: c.customerEmail.replace(/(.{2}).+(@.+)/, "$1***$2"),
+          action: "error",
+          error: issued.error,
+        });
+        linkedProducts.length = 0;
+        break;
+      }
+      linkedProducts.push({ ...product, inviteToken: issued.token });
+    }
+    if (linkedProducts.length === 0) continue;
+
     const result = await sendReviewReminderEmail({
       customerName: c.customerName,
       customerEmail: c.customerEmail,
       orderNumber: c.orderNumber,
-      products: c.products,
+      products: linkedProducts,
+      pointsRequireAccount: !c.userId,
     });
 
     if (result.ok) {

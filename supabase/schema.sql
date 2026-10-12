@@ -260,7 +260,7 @@ create policy "product_favorites_delete_own" on customer_product_favorites
 
 create table if not exists customer_product_reviews (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   product_id uuid not null references products(id) on delete cascade,
   order_id uuid references orders(id) on delete set null,
   rating smallint not null check (rating between 1 and 5),
@@ -302,6 +302,26 @@ create policy "product_reviews_update_own" on customer_product_reviews
   with check (auth.uid() is not null and user_id = auth.uid());
 
 revoke delete on table customer_product_reviews from anon, authenticated;
+
+create unique index if not exists uq_customer_product_reviews_order_product
+  on customer_product_reviews (order_id, product_id)
+  where order_id is not null;
+
+create table if not exists review_invite_tokens (
+  id uuid primary key default gen_random_uuid(),
+  token_hash text not null unique,
+  order_id uuid not null references orders(id) on delete cascade,
+  product_id uuid not null references products(id) on delete cascade,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  review_id uuid references customer_product_reviews(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (order_id, product_id)
+);
+
+alter table review_invite_tokens enable row level security;
+revoke all on table review_invite_tokens from anon, authenticated;
+grant all on table review_invite_tokens to service_role;
 
 drop policy if exists "orders_select_own" on orders;
 create policy "orders_select_own" on orders for select using (auth.uid() is not null and user_id = auth.uid());

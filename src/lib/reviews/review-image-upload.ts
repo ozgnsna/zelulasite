@@ -30,9 +30,11 @@ function reviewImageExtension(file: File): string {
 
 export async function uploadReviewImage(
   admin: SupabaseClient,
-  params: { userId: string; productId: string; file: File },
+  params: { userId?: string; storagePrefix?: string; productId: string; file: File },
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  const { userId, productId, file } = params;
+  const { userId, storagePrefix, productId, file } = params;
+  const owner = String(storagePrefix ?? userId ?? "").trim();
+  if (!owner) return { ok: false, error: "Fotoğraf yüklenemedi. Lütfen tekrar dene." };
 
   if (!isAllowedReviewImageFile(file)) {
     return { ok: false, error: "Yalnızca JPG, PNG veya WebP yükleyebilirsin." };
@@ -42,7 +44,7 @@ export async function uploadReviewImage(
   }
 
   const ext = reviewImageExtension(file);
-  const path = `reviews/${userId}/${productId}/${Date.now()}.${ext}`;
+  const path = `reviews/${owner}/${productId}/${Date.now()}.${ext}`;
   const bytes = await file.arrayBuffer();
 
   const { error: uploadError } = await admin.storage.from(REVIEW_IMAGES_BUCKET).upload(path, bytes, {

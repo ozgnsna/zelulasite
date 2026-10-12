@@ -10,11 +10,28 @@ import {
   type PublicProductReview,
 } from "@/lib/account/reviews";
 import { ProductReviewForm } from "@/components/reviews/ProductReviewForm";
+import { validateReviewInvite } from "@/lib/reviews/review-invite";
 import { ReviewPhoto } from "@/components/reviews/ReviewPhoto";
 import { StarRatingDisplay } from "@/components/reviews/StarRating";
 
 function formatReviewDate(iso: string) {
   return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+export type GuestReviewAccess =
+  | { state: "open" | "pending" | "approved" | "revise"; token: string; review: ProductReviewRow | null }
+  | { state: "invalid" };
+
+export async function loadGuestReviewAccess(
+  admin: SupabaseClient,
+  productId: string,
+  rawToken: string,
+): Promise<GuestReviewAccess> {
+  const validated = await validateReviewInvite(admin, rawToken, productId);
+  if (!validated.ok) return { state: "invalid" };
+  const status = validated.invite.review?.status;
+  const state = status === "approved" ? "approved" : status === "pending" ? "pending" : status === "rejected" || status === "hidden" ? "revise" : "open";
+  return { state, token: rawToken, review: validated.invite.review };
 }
 
 export async function loadProductReviewSectionData(
@@ -51,6 +68,7 @@ export function ProductReviewsSection({
   isLoggedIn,
   highlightForm,
   loginNext,
+  guestAccess = null,
 }: {
   productName: string;
   productId: string;
@@ -62,9 +80,15 @@ export function ProductReviewsSection({
   isLoggedIn: boolean;
   highlightForm?: boolean;
   loginNext: string;
+  guestAccess?: GuestReviewAccess | null;
 }) {
+  const guestOpen = guestAccess?.state === "open" || guestAccess?.state === "revise";
+  const guestReview = guestAccess && guestAccess.state !== "invalid" ? guestAccess.review : null;
   const showForm =
-    isLoggedIn && canReview && userReview?.status !== "approved" && userReview?.status !== "pending";
+    guestOpen ||
+    (!guestAccess && isLoggedIn && canReview && userReview?.status !== "approved" && userReview?.status !== "pending");
+  const formReview = guestOpen ? guestReview : userReview;
+  const inviteToken = guestOpen ? guestAccess.token : null;
 
   return (
     <section
@@ -89,13 +113,36 @@ export function ProductReviewsSection({
         )}
       </div>
 
-      {showForm ? (
+      {guestAccess?.state === "approved" ? (
+        <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
+          <p>Yorumun yayında. Teşekkürler ✨</p>
+        </div>
+      ) : guestAccess?.state === "pending" ? (
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+          <p>Yorumun inceleniyor. Onaylandığında bu sayfada görünecek.</p>
+        </div>
+      ) : showForm ? (
         <ProductReviewForm
           productId={productId}
           productSlug={productSlug}
-          existingReview={userReview}
+          existingReview={formReview}
           loginNext={loginNext}
+          inviteToken={inviteToken}
         />
+      ) : guestAccess?.state === "invalid" ? (
+        <div className="rounded-2xl border border-[#e8dfd3] bg-[#faf8f5] px-4 py-4 text-sm text-stone-700">
+          Bu yorum bağlantısı geçersiz veya süresi dolmuş.
+          {!isLoggedIn ? (
+            <>
+              {" "}
+              Hesabın varsa{" "}
+              <Link href={`/giris?next=${encodeURIComponent(loginNext)}`} className="font-semibold text-[#8a734f] underline-offset-2 hover:underline">
+                giriş yap
+              </Link>
+              .
+            </>
+          ) : null}
+        </div>
       ) : !isLoggedIn ? (
         <div className="rounded-2xl border border-[#e8dfd3] bg-[#faf8f5] px-4 py-4 text-sm text-stone-700">
           Yorum yazmak için{" "}

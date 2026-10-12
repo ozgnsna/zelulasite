@@ -5,6 +5,8 @@ import { getPublicSiteUrl } from "@/lib/account/site-url";
 export type ReviewReminderProduct = {
   name: string;
   slug: string;
+  productId?: string;
+  inviteToken?: string | null;
 };
 
 export type ReviewReminderEmailInput = {
@@ -12,6 +14,8 @@ export type ReviewReminderEmailInput = {
   customerEmail: string;
   orderNumber: string;
   products: ReviewReminderProduct[];
+  /** Misafir sipariş: puan, aynı e-postayla hesap açılınca işlenir. */
+  pointsRequireAccount?: boolean;
 };
 
 export type ReviewReminderEmailResult = {
@@ -53,9 +57,19 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email ?? "").trim());
 }
 
-function productReviewUrl(slug: string): string {
+function productReviewUrl(product: ReviewReminderProduct): string {
   const base = getPublicSiteUrl().replace(/\/$/, "");
-  return `${base}/urunler/${encodeURIComponent(slug)}?yorum=1#yorumlar`;
+  const slug = encodeURIComponent(product.slug);
+  const token = String(product.inviteToken ?? "").trim();
+  if (token) return `${base}/urunler/${slug}?yorum=${encodeURIComponent(token)}#yorumlar`;
+  return `${base}/urunler/${slug}?yorum=1#yorumlar`;
+}
+
+function pointsSentence(requireAccount: boolean): string {
+  if (requireAccount) {
+    return `Yorumun onaylandığında ${ZELULA_PUAN_PER_APPROVED_REVIEW} Zelula Puan kazanırsın; puanı kullanmak için hesabını açman yeterli.`;
+  }
+  return `Yorumun onaylandığında ${ZELULA_PUAN_PER_APPROVED_REVIEW} Zelula Puan kazanırsın.`;
 }
 
 export function buildReviewReminderSubject(orderNumber: string): string {
@@ -64,13 +78,14 @@ export function buildReviewReminderSubject(orderNumber: string): string {
 
 /** Düz metin şablon (rapor + Resend text). */
 export function buildReviewReminderText(input: ReviewReminderEmailInput): string {
-  const lines = input.products.map((p) => `- ${p.name}: ${productReviewUrl(p.slug)}`);
+  const lines = input.products.map((p) => `- ${p.name}: ${productReviewUrl(p)}`);
+  const points = pointsSentence(Boolean(input.pointsRequireAccount));
   return [
     `Merhaba ${firstName(input.customerName)},`,
     "",
     `Siparişin (${input.orderNumber}) sana ulaştı. Deneyimini kısaca paylaşmak istersen ürün sayfasından yorum bırakabilirsin.`,
     "",
-    `Yorumun onaylandığında ${ZELULA_PUAN_PER_APPROVED_REVIEW} Zelula Puan kazanırsın.`,
+    points,
     "",
     "Ürünler:",
     ...lines,
@@ -89,7 +104,7 @@ export function buildReviewReminderHtml(input: ReviewReminderEmailInput): string
   const orderNo = escapeHtml(input.orderNumber);
   const productRows = input.products
     .map((p) => {
-      const href = escapeHtml(productReviewUrl(p.slug));
+      const href = escapeHtml(productReviewUrl(p));
       const label = escapeHtml(p.name);
       return `
         <tr>
@@ -116,7 +131,7 @@ export function buildReviewReminderHtml(input: ReviewReminderEmailInput): string
               Siparişin (<strong style="color:${BRAND.text};">${orderNo}</strong>) sana ulaştı. Deneyimini kısaca paylaşmak istersen ürün sayfasından yorum bırakabilirsin.
             </p>
             <p style="margin:12px 0 0;font-size:14px;line-height:1.5;color:${BRAND.textSoft};">
-              Yorumun onaylandığında <strong style="color:${BRAND.text};">${ZELULA_PUAN_PER_APPROVED_REVIEW} Zelula Puan</strong> kazanırsın.
+              ${escapeHtml(pointsSentence(Boolean(input.pointsRequireAccount)))}
             </p>
           </td>
         </tr>

@@ -43,7 +43,7 @@ import {
   buildProductPageMetadata,
 } from "@/lib/seo/product";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { loadProductReviewSectionData, ProductReviewsSection } from "@/components/reviews/ProductReviewsSection";
+import { loadGuestReviewAccess, loadProductReviewSectionData, ProductReviewsSection } from "@/components/reviews/ProductReviewsSection";
 import { NecklaceTryOnButton } from "@/components/tryon/NecklaceTryOnButton";
 import { isNecklaceTryOnEnabled } from "@/lib/tryon/config";
 
@@ -97,13 +97,22 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const wantsPreview = String(sp.onizleme ?? "").trim() === "1";
   const product = await resolveStorefrontProduct(slug, wantsPreview);
   if (!product) notFound();
-  return buildProductPageMetadata(product);
+  const yorum = String(sp.yorum ?? "").trim();
+  const meta = buildProductPageMetadata(product);
+  if (!yorum || yorum === "1") return meta;
+  return {
+    ...meta,
+    robots: { index: false, follow: false },
+    alternates: { canonical: meta.alternates?.canonical },
+  };
 }
 
 export default async function ProductPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = await searchParams;
-  const highlightReviewForm = String(sp.yorum ?? "").trim() === "1";
+  const yorumParam = String(sp.yorum ?? "").trim();
+  const inviteToken = yorumParam && yorumParam !== "1" ? yorumParam : "";
+  const highlightReviewForm = yorumParam === "1" || Boolean(inviteToken);
   const wantsPreview = String(sp.onizleme ?? "").trim() === "1";
   const product = await resolveStorefrontProduct(slug, wantsPreview);
   if (!product) notFound();
@@ -134,7 +143,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
   const admin = createAdminClient();
-  const [favorited, referralCode, traitGroups, shippingPromise, variants, reviewSection, relatedProducts] =
+  const [favorited, referralCode, traitGroups, shippingPromise, variants, reviewSection, guestAccess, relatedProducts] =
     await Promise.all([
       user?.id ? isProductFavorited(supabase, user.id, product.id) : Promise.resolve(false),
       user?.id ? ensureUserReferralCode(admin, user.id) : Promise.resolve(null),
@@ -144,6 +153,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
       loadProductReviewSectionData(supabase, { id: product.id, slug: product.slug, name: product.name }, user?.id, {
         highlightForm: highlightReviewForm,
       }),
+      inviteToken ? loadGuestReviewAccess(admin, product.id, inviteToken) : Promise.resolve(null),
       fetchRelatedProducts(supabase, {
         id: product.id,
         price: priceNum,
@@ -468,8 +478,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
             userReview={reviewSection.userReview}
             canReview={reviewSection.canReview}
             isLoggedIn={Boolean(user?.id)}
-            highlightForm={reviewSection.highlightForm}
+            highlightForm={reviewSection.highlightForm || Boolean(inviteToken && guestAccess?.state !== "invalid")}
             loginNext={reviewSection.loginNext}
+            guestAccess={guestAccess}
           />
         </div>
       </div>
