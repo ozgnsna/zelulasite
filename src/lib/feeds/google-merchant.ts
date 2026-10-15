@@ -116,6 +116,37 @@ export function formatFeedMoneyTry(amount: number): string {
   return `${amount.toFixed(2)} TRY`;
 }
 
+/** Shopping kampanyası: stok 0 ilanda etiket yok. */
+export function feedStockCustomLabel(stock: number): "stok_cok" | "stok_tek" | null {
+  const qty = Math.trunc(Number(stock));
+  if (!Number.isFinite(qty) || qty <= 0) return null;
+  if (qty === 1) return "stok_tek";
+  return "stok_cok";
+}
+
+const SEASON_29EKIM_SKUS = new Set(["Zelula465", "Zelula466", "Zelula467", "Zelula468", "Zelula469"]);
+
+const SEASON_YILBASI_SKUS = new Set([
+  "Zelula199",
+  "Zelula209",
+  "Zelula218",
+  "Zelula222",
+  "Zelula224",
+  "Zelula225",
+  "Zelula226",
+  "Zelula228",
+  "ZL-JINGLE-GOLD",
+  "ZL-SANTA",
+]);
+
+/** Ürün SKU'su. Varyant ilanları da aynı sezon etiketini alır. */
+export function feedSeasonCustomLabel(sku: string): "sezon_29ekim" | "sezon_yilbasi" | "sezon_yok" {
+  const id = String(sku ?? "").trim().replace(/\s+/g, "");
+  if (SEASON_29EKIM_SKUS.has(id)) return "sezon_29ekim";
+  if (SEASON_YILBASI_SKUS.has(id)) return "sezon_yilbasi";
+  return "sezon_yok";
+}
+
 /** Merchant `id`: SKU, varyantta `SKU-ölçü`. Slug kullanılmaz (50 karakter limiti). */
 export function buildFeedOfferId(sku: string, variantLabel?: string | null): string {
   const base = String(sku ?? "").trim().replace(/\s+/g, "");
@@ -186,6 +217,7 @@ function renderFeedItemXml(input: {
   productType: string | null;
   itemGroupId?: string | null;
   size?: string | null;
+  stock: number;
 }): string {
   const lines = [
     `    <item>`,
@@ -212,6 +244,12 @@ function renderFeedItemXml(input: {
   if (input.size) {
     lines.push(`      <g:size>${escapeXml(input.size)}</g:size>`);
   }
+
+  const stockLabel = feedStockCustomLabel(input.stock);
+  if (stockLabel) {
+    lines.push(`      <g:custom_label_0>${escapeXml(stockLabel)}</g:custom_label_0>`);
+  }
+  lines.push(`      <g:custom_label_1>${escapeXml(feedSeasonCustomLabel(input.sku))}</g:custom_label_1>`);
 
   lines.push(`    </item>`);
 
@@ -264,11 +302,13 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
     variants.length > 0
       ? variants.map((v) => {
           const label = String(v.label ?? "").trim();
+          const variantStock = Number(v.stock_quantity ?? 0);
           return {
             offerId: buildFeedOfferId(sku, label),
-            inStock: Number(v.stock_quantity ?? 0) > 0,
+            inStock: variantStock > 0,
             itemGroupId: sku,
             size: label,
+            stock: variantStock,
           };
         })
       : [
@@ -277,6 +317,7 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
             inStock: Number(p.stock_quantity ?? 0) > 0,
             itemGroupId: null as string | null,
             size: null as string | null,
+            stock: Number(p.stock_quantity ?? 0),
           },
         ];
 
@@ -300,6 +341,7 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
       productType,
       itemGroupId: o.itemGroupId,
       size: o.size,
+      stock: o.stock,
     }),
   }));
 
