@@ -63,15 +63,15 @@ export function AnnouncementBar() {
 
   return (
     <div
-      className="relative z-[51] flex h-9 items-center overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-[background,color] duration-700 sm:h-10"
+      className="relative z-[51] -mt-[env(safe-area-inset-top)] flex min-h-[calc(2.25rem+env(safe-area-inset-top))] items-end overflow-hidden pt-[env(safe-area-inset-top)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-[background,color] duration-700 sm:min-h-[calc(2.5rem+env(safe-area-inset-top))]"
       style={{ background: monthTheme.background }}
       aria-label="Duyurular"
     >
       <div
         className={
           reduceMotion
-            ? "zl-announcement-static flex w-full flex-nowrap items-center justify-center gap-0 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            : "zl-announcement-marquee flex w-max flex-nowrap items-center"
+            ? "zl-announcement-static flex h-9 w-full flex-nowrap items-center justify-center gap-0 overflow-x-auto px-2 [scrollbar-width:none] sm:h-10 [&::-webkit-scrollbar]:hidden"
+            : "zl-announcement-marquee flex h-9 w-max flex-nowrap items-center sm:h-10"
         }
       >
         {loop.map((text, index) => (

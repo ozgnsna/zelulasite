@@ -147,10 +147,6 @@ export function trackEvent(
 ) {
   if (typeof window === "undefined") return;
   if (isAnalyticsExcludedPath(window.location.pathname)) return;
-  if (!analyticsConsentGranted()) {
-    if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
-    return;
-  }
   ensureAdminGuardListener();
   void (async () => {
     if (await shouldExcludeStorefrontAnalytics()) {
@@ -160,13 +156,20 @@ export function trackEvent(
     const shouldDedupe = options?.dedupe ?? false;
     if (shouldDedupe && shouldSkipDuplicate(name, params, options?.dedupeKey)) return;
 
-    if (isDebug()) console.info("[analytics:event]", name, params);
-    window.dataLayer = window.dataLayer ?? [];
-    window.dataLayer.push({ event: name, ...params });
+    const granted = analyticsConsentGranted();
+    if (isDebug()) {
+      console.info("[analytics:event]", name, params, granted ? "granted" : "cookieless");
+    }
 
+    // Consent Mode v2: denied iken de gtag'e yazılır (cookieless / modeled).
     if (typeof window.gtag === "function") {
       window.gtag("event", name, params);
     }
+
+    if (!granted) return;
+
+    window.dataLayer = window.dataLayer ?? [];
+    window.dataLayer.push({ event: name, ...params });
     sendToBackend(name, { meta: params });
   })();
 }
@@ -209,10 +212,6 @@ function trackEcommerceEvent(
 ) {
   if (typeof window === "undefined") return;
   if (isAnalyticsExcludedPath(window.location.pathname)) return;
-  if (!analyticsConsentGranted()) {
-    if (isDebug()) console.info("[analytics:skipped]", name, "analytics consent off or unset");
-    return;
-  }
   ensureAdminGuardListener();
   void (async () => {
     if (await shouldExcludeStorefrontAnalytics()) {
@@ -234,14 +233,19 @@ function trackEcommerceEvent(
       items: ga4Items,
     };
 
-    if (isDebug()) console.info("[analytics:ecommerce]", name, ecommerce);
-    window.dataLayer = window.dataLayer ?? [];
-    window.dataLayer.push({ event: name, ecommerce });
+    const granted = analyticsConsentGranted();
+    if (isDebug()) {
+      console.info("[analytics:ecommerce]", name, ecommerce, granted ? "granted" : "cookieless");
+    }
 
     if (typeof window.gtag === "function") {
-      // gtag event paramlarını GA4 formatında düz geçiriyoruz.
       window.gtag("event", name, ecommerce);
     }
+
+    if (!granted) return;
+
+    window.dataLayer = window.dataLayer ?? [];
+    window.dataLayer.push({ event: name, ecommerce });
     sendToBackend(name, { ecommerce });
   })();
 }
@@ -338,16 +342,16 @@ export function trackPurchase(params: {
       items: ga4Items,
     };
 
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "purchase", ecommerce);
+    }
     if (analyticsConsentGranted()) {
       if (isDebug()) console.info("[analytics:ecommerce]", "purchase", ecommerce);
       window.dataLayer = window.dataLayer ?? [];
       window.dataLayer.push({ event: "purchase", ecommerce });
-      if (typeof window.gtag === "function") {
-        window.gtag("event", "purchase", ecommerce);
-      }
       sendToBackend("purchase", { ecommerce });
     } else if (isDebug()) {
-      console.info("[analytics:skipped]", "purchase", "analytics consent off or unset");
+      console.info("[analytics:ecommerce]", "purchase", "cookieless");
     }
 
     fireGoogleAdsPurchaseConversion({

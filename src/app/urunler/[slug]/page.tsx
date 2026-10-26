@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Check, MessageCircle, Sparkles } from "lucide-react";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { ProductStickyBuyBar } from "@/components/product/ProductStickyBuyBar";
 import { ProductReferralShare } from "@/components/referral/ProductReferralShare";
 import { ProductGallery } from "@/components/ProductGallery";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
@@ -487,39 +488,19 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
       {!isOutOfStock ? relatedBlock : null}
 
-      <div className="fixed inset-x-0 bottom-3 z-[110] mx-auto w-[calc(100%-1rem)] max-w-md rounded-2xl border border-brand-gold/25 bg-[#fffdfb]/95 p-3 shadow-[0_12px_32px_rgba(45,37,33,0.14)] backdrop-blur-md md:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-stone-500">Toplam</p>
-            <p className="text-lg font-semibold text-brand-gold">{formatTry(priceNum)}</p>
-            <p className="text-[11px] text-stone-500">
-              {isOutOfStock
-                ? OOS_PDP_BADGE
-                : isStockOne
-                  ? "Son 1 adet"
-                  : isLowStockBand
-                    ? `Son ${stockQty} ürün`
-                    : "Stokta var"}
-            </p>
-          </div>
-          <div className="min-w-[9.5rem] shrink-0">
-            <AddToCartButton
-              productId={product.id}
-              productName={product.name}
-              price={priceNum}
-              category={product.category?.name}
-              collection={product.collection?.name ?? null}
-              stock={product.stock_quantity}
-              tone="luxury"
-              label="Şimdi satın al"
-              secondaryLabel="Sepete Ekle"
-              redirectAfterAdd="/sepet"
-              productSlug={product.slug}
-              className="!space-y-2 [&_button]:!py-3 [&_button]:text-xs"
-            />
-          </div>
-        </div>
-      </div>
+      <ProductStickyBuyBar
+        productId={product.id}
+        productName={product.name}
+        productSlug={product.slug}
+        price={priceNum}
+        stock={product.stock_quantity}
+        category={product.category?.name}
+        collection={product.collection?.name ?? null}
+        isOutOfStock={isOutOfStock}
+        isStockOne={isStockOne}
+        isLowStockBand={isLowStockBand}
+        stockQty={stockQty}
+      />
      </ProductVariantProvider>
     </main>
   );

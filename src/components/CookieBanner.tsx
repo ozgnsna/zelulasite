@@ -69,7 +69,7 @@ export function CookieBanner() {
     <>
       {showBar ? (
         <div
-          className="zl-cookie-banner-enter pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex justify-center p-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] sm:p-3"
+          className="zl-cookie-banner-enter pointer-events-none fixed inset-x-0 bottom-0 z-[120] flex justify-center p-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] sm:p-3"
           role="region"
           aria-label="Çerez bildirimi"
         >

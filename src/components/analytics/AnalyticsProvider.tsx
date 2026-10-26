@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { CONSENT_UPDATED_EVENT, getCookieConsent } from "@/lib/cookies/consent";
+import { CONSENT_UPDATED_EVENT } from "@/lib/cookies/consent";
 import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
 import { bindAdminAnalyticsExclusionListener } from "@/lib/analytics/admin-session-guard";
 import { trackPageView } from "@/lib/analytics";
@@ -18,8 +18,7 @@ export function AnalyticsProvider() {
   useEffect(() => {
     const fire = () => {
       if (isAnalyticsExcludedPath(pathname)) return;
-      const consent = getCookieConsent();
-      if (!consent?.analytics && !consent?.marketing) return;
+      // Consent Mode v2: onay yokken de gtag cookieless ping alır; Meta ayrı gated.
       const search = searchParams?.toString();
       const path = search ? `${pathname}?${search}` : pathname;
       trackPageView(path);

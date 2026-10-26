@@ -35,7 +35,7 @@ function CookieSettingsModalInner({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center sm:p-4" role="presentation">
+    <div className="fixed inset-0 z-[130] flex items-end justify-center sm:items-center sm:p-4" role="presentation">
       <button
         type="button"
         className="absolute inset-0 bg-stone-900/50 backdrop-blur-[2px]"

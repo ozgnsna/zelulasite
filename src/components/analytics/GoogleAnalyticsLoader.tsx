@@ -2,14 +2,41 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
-import { CONSENT_UPDATED_EVENT, getCookieConsent } from "@/lib/cookies/consent";
+import {
+  CONSENT_UPDATED_EVENT,
+  getCookieConsent,
+  type CookieConsent,
+} from "@/lib/cookies/consent";
 
 function safeTagId(raw: string): string {
   return raw.replace(/[^a-zA-Z0-9/_-]/g, "");
 }
 
+function applyGtagConsentUpdate(consent: CookieConsent | null) {
+  if (typeof window.gtag !== "function") return;
+  const analytics = consent?.analytics === true;
+  const marketing = consent?.marketing === true;
+  window.gtag("consent", "update", {
+    analytics_storage: analytics ? "granted" : "denied",
+    ad_storage: marketing ? "granted" : "denied",
+    ad_user_data: marketing ? "granted" : "denied",
+    ad_personalization: marketing ? "granted" : "denied",
+  });
+}
+
+declare global {
+  interface Window {
+    dataLayer?: Array<Record<string, unknown>>;
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+/**
+ * gtag Consent Mode v2: script consent'ten bağımsız yüklenir.
+ * Default denied `layout.tsx` beforeInteractive script'inde.
+ */
 export function GoogleAnalyticsLoader({
   gaId,
   adsId,
@@ -18,19 +45,13 @@ export function GoogleAnalyticsLoader({
   adsId?: string | null | undefined;
 }) {
   const pathname = usePathname() ?? "";
-  const [allowGa, setAllowGa] = useState(false);
-  const [allowAds, setAllowAds] = useState(false);
-
   const ga = gaId?.trim() ? safeTagId(gaId.trim()) : "";
   const ads = adsId?.trim() ? safeTagId(adsId.trim()) : "";
+  const adminPath = isAnalyticsExcludedPath(pathname);
+  const scriptId = ga || ads;
 
   useEffect(() => {
-    const sync = () => {
-      const consent = getCookieConsent();
-      const adminPath = isAnalyticsExcludedPath(pathname);
-      setAllowGa(Boolean(ga && consent?.analytics === true));
-      setAllowAds(Boolean(ads && consent?.marketing === true && !adminPath));
-    };
+    const sync = () => applyGtagConsentUpdate(getCookieConsent());
     sync();
     window.addEventListener(CONSENT_UPDATED_EVENT, sync);
     window.addEventListener("storage", sync);
@@ -38,34 +59,31 @@ export function GoogleAnalyticsLoader({
       window.removeEventListener(CONSENT_UPDATED_EVENT, sync);
       window.removeEventListener("storage", sync);
     };
-  }, [ga, ads, pathname]);
+  }, []);
 
   useEffect(() => {
     if (typeof window.gtag !== "function") return;
-    if (allowGa && ga) {
+    if (ga) {
       window.gtag("config", ga, { send_page_view: false });
     }
-    if (allowAds && ads) {
+    if (ads && !adminPath) {
       window.gtag("config", ads);
     }
-  }, [allowGa, allowAds, ga, ads]);
+  }, [ga, ads, adminPath]);
 
-  if (!allowGa && !allowAds) return null;
-
-  const scriptId = allowGa && ga ? ga : ads;
   if (!scriptId) return null;
 
   const initConfigs = [
-    allowGa && ga ? `gtag('config','${ga}',{send_page_view:false});` : "",
-    allowAds && ads ? `gtag('config','${ads}');` : "",
+    ga ? `gtag('config','${ga}',{send_page_view:false});` : "",
+    ads && !adminPath ? `gtag('config','${ads}');` : "",
   ]
     .filter(Boolean)
     .join("");
 
   return (
     <>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${scriptId}`} strategy="lazyOnload" />
-      <Script id="gtag-init-consented" strategy="lazyOnload">
+      <Script src={`https://www.googletagmanager.com/gtag/js?id=${scriptId}`} strategy="afterInteractive" />
+      <Script id="gtag-init" strategy="afterInteractive">
         {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());${initConfigs}`}
       </Script>
     </>
