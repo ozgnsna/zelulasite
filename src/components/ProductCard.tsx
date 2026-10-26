@@ -64,12 +64,12 @@ export function ProductCard({
   const hasDiscount = discountPercent > 0;
   const aspectClass =
     imageForward && imageEmphasis === "high"
-      ? "aspect-square sm:aspect-[10/15] lg:aspect-[3/4]"
+      ? "aspect-[3/4] sm:aspect-[10/15] lg:aspect-[3/4]"
       : imageForward
-        ? "aspect-square sm:aspect-[3/4]"
+        ? "aspect-[3/4]"
         : compact
-          ? "aspect-[4/5] sm:aspect-[4/5]"
-          : "aspect-[4/5]";
+          ? "aspect-[3/4] sm:aspect-[3/4]"
+          : "aspect-[3/4]";
   const contentPad = compact
     ? "gap-1 p-2.5 sm:gap-2 sm:p-5"
     : imageForward

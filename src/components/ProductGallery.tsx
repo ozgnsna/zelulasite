@@ -54,7 +54,7 @@ export function ProductGallery({
 
   return (
     <div className="space-y-4">
-      <div className="group relative aspect-[4/5] overflow-hidden rounded-3xl border border-[#e8dfd3] bg-white shadow-[0_16px_40px_rgba(70,53,38,0.08)] transition duration-200 hover:border-[#d8ccb9] hover:shadow-[0_20px_48px_rgba(70,53,38,0.1)]">
+      <div className="group relative aspect-[3/4] overflow-hidden rounded-3xl border border-[#e8dfd3] bg-white shadow-[0_16px_40px_rgba(70,53,38,0.08)] transition duration-200 hover:border-[#d8ccb9] hover:shadow-[0_20px_48px_rgba(70,53,38,0.1)]">
         {mainIsVideo ? (
           <video
             key={mainSrc}
