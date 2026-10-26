@@ -107,8 +107,8 @@ export default async function RootLayout({
   const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
   const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
   return (
-    <html lang="tr" className={`${display.variable} ${sans.variable} h-full`}>
-      <body className="flex min-h-full flex-col bg-[color:var(--background)] font-sans text-stone-900 antialiased">
+    <html lang="tr" className={`${display.variable} ${sans.variable} h-full overflow-x-clip`}>
+      <body className="flex min-h-full flex-col overflow-x-clip bg-[color:var(--background)] font-sans text-stone-900 antialiased">
         <Script id="gtag-consent-default" strategy="beforeInteractive">
           {GTAG_CONSENT_DEFAULT_SCRIPT}
         </Script>
@@ -121,7 +121,7 @@ export default async function RootLayout({
           <ReferralTrackingBridge />
         </Suspense>
         {isAdminRoute ? null : (
-          <div className="sticky top-0 z-50 pt-[env(safe-area-inset-top)] shadow-[0_4px_16px_-6px_rgba(62,52,38,0.14)]">
+          <div className="sticky top-0 z-50 w-full max-w-full min-w-0 overflow-x-hidden pt-[env(safe-area-inset-top)] shadow-[0_4px_16px_-6px_rgba(62,52,38,0.14)]">
             <AnnouncementBar />
             <div className="border-t-2 border-[#d4c8b8] border-b border-[#e0d5c8] bg-white">
               <StorefrontSiteChrome />

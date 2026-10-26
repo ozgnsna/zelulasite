@@ -63,7 +63,7 @@ export function AnnouncementBar() {
 
   return (
     <div
-      className="relative z-[51] -mt-[env(safe-area-inset-top)] flex min-h-[calc(2.25rem+env(safe-area-inset-top))] items-end overflow-hidden pt-[env(safe-area-inset-top)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-[background,color] duration-700 sm:min-h-[calc(2.5rem+env(safe-area-inset-top))]"
+      className="relative z-[51] -mt-[env(safe-area-inset-top)] flex w-full min-w-0 min-h-[calc(2.25rem+env(safe-area-inset-top))] items-end overflow-x-hidden overflow-y-hidden pt-[env(safe-area-inset-top)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-[background,color] duration-700 sm:min-h-[calc(2.5rem+env(safe-area-inset-top))]"
       style={{ background: monthTheme.background }}
       aria-label="Duyurular"
     >
