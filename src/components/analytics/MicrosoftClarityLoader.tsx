@@ -1,7 +1,13 @@
 "use client";
 
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  bindAdminAnalyticsExclusionListener,
+  shouldExcludeStorefrontAnalytics,
+} from "@/lib/analytics/admin-session-guard";
+import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
 import { CONSENT_UPDATED_EVENT, getCookieConsent } from "@/lib/cookies/consent";
 
 declare global {
@@ -15,23 +21,42 @@ export function MicrosoftClarityLoader({
 }: {
   projectId: string | null | undefined;
 }) {
+  const pathname = usePathname() ?? "";
   const [allow, setAllow] = useState(false);
   const normalizedProjectId = projectId?.trim() ?? "";
+  const adminPath = isAnalyticsExcludedPath(pathname);
 
   useEffect(() => {
+    bindAdminAnalyticsExclusionListener();
+    let cancelled = false;
+
     const sync = () => {
-      setAllow(Boolean(normalizedProjectId && getCookieConsent()?.analytics === true));
+      void (async () => {
+        if (!normalizedProjectId || isAnalyticsExcludedPath(pathname)) {
+          if (!cancelled) setAllow(false);
+          return;
+        }
+        if (await shouldExcludeStorefrontAnalytics()) {
+          if (!cancelled) setAllow(false);
+          return;
+        }
+        if (!cancelled) {
+          setAllow(getCookieConsent()?.analytics === true);
+        }
+      })();
     };
+
     sync();
     window.addEventListener(CONSENT_UPDATED_EVENT, sync);
     window.addEventListener("storage", sync);
     return () => {
+      cancelled = true;
       window.removeEventListener(CONSENT_UPDATED_EVENT, sync);
       window.removeEventListener("storage", sync);
     };
-  }, [normalizedProjectId]);
+  }, [normalizedProjectId, pathname]);
 
-  if (!normalizedProjectId || !allow) return null;
+  if (!normalizedProjectId || adminPath || !allow) return null;
 
   return (
     <Script id="clarity-init-consented" strategy="lazyOnload">

@@ -2,7 +2,11 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import {
+  bindAdminAnalyticsExclusionListener,
+  shouldExcludeStorefrontAnalytics,
+} from "@/lib/analytics/admin-session-guard";
 import { isAnalyticsExcludedPath } from "@/lib/analytics/excluded-path";
 import {
   CONSENT_UPDATED_EVENT,
@@ -34,8 +38,11 @@ declare global {
 }
 
 /**
- * gtag Consent Mode v2: script consent'ten bağımsız yüklenir.
+ * gtag Consent Mode v2: script consent'ten bağımsız yüklenir (normal ziyaretçi).
  * Default denied `layout.tsx` beforeInteractive script'inde.
+ *
+ * Admin path (/admin/*) ve authenticated admin session: script/config yok.
+ * Consent granted, exclusion'ı override etmez.
  */
 export function GoogleAnalyticsLoader({
   gaId,
@@ -49,33 +56,59 @@ export function GoogleAnalyticsLoader({
   const ads = adsId?.trim() ? safeTagId(adsId.trim()) : "";
   const adminPath = isAnalyticsExcludedPath(pathname);
   const scriptId = ga || ads;
+  /** Session exclude çözülene kadar false — admin vitrinde tag ayağa kalkmasın. */
+  const [allow, setAllow] = useState(false);
 
   useEffect(() => {
-    const sync = () => applyGtagConsentUpdate(getCookieConsent());
-    sync();
-    window.addEventListener(CONSENT_UPDATED_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(CONSENT_UPDATED_EVENT, sync);
-      window.removeEventListener("storage", sync);
+    bindAdminAnalyticsExclusionListener();
+    let cancelled = false;
+
+    const syncExclusion = () => {
+      void (async () => {
+        if (!scriptId || isAnalyticsExcludedPath(pathname)) {
+          if (!cancelled) setAllow(false);
+          return;
+        }
+        if (await shouldExcludeStorefrontAnalytics()) {
+          if (!cancelled) setAllow(false);
+          return;
+        }
+        if (!cancelled) setAllow(true);
+      })();
     };
-  }, []);
+
+    const onConsentOrStorage = () => {
+      syncExclusion();
+      applyGtagConsentUpdate(getCookieConsent());
+    };
+
+    syncExclusion();
+    applyGtagConsentUpdate(getCookieConsent());
+    window.addEventListener(CONSENT_UPDATED_EVENT, onConsentOrStorage);
+    window.addEventListener("storage", onConsentOrStorage);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(CONSENT_UPDATED_EVENT, onConsentOrStorage);
+      window.removeEventListener("storage", onConsentOrStorage);
+    };
+  }, [scriptId, pathname]);
 
   useEffect(() => {
+    if (!allow || adminPath) return;
     if (typeof window.gtag !== "function") return;
     if (ga) {
       window.gtag("config", ga, { send_page_view: false });
     }
-    if (ads && !adminPath) {
+    if (ads) {
       window.gtag("config", ads);
     }
-  }, [ga, ads, adminPath]);
+  }, [ga, ads, adminPath, allow]);
 
-  if (!scriptId) return null;
+  if (!scriptId || adminPath || !allow) return null;
 
   const initConfigs = [
     ga ? `gtag('config','${ga}',{send_page_view:false});` : "",
-    ads && !adminPath ? `gtag('config','${ads}');` : "",
+    ads ? `gtag('config','${ads}');` : "",
   ]
     .filter(Boolean)
     .join("");
