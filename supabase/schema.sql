@@ -35,6 +35,7 @@ create table if not exists products (
   collection_id uuid references collections(id) on delete set null,
   material text,
   color text,
+  brand text,
   is_active boolean not null default true,
   target_audience text not null default 'kadin' check (target_audience in ('kadin', 'erkek', 'unisex')),
   created_at timestamptz default now()

@@ -330,6 +330,29 @@ export function ProductForm({
                   </p>
                 ) : null}
               </div>
+              <div>
+                <label className={adminLabel} htmlFor="product-brand">
+                  Marka
+                </label>
+                <input
+                  id="product-brand"
+                  name="brand"
+                  list="product-brand-suggestions"
+                  defaultValue={p.brand ?? ""}
+                  placeholder="Boş = Zelula"
+                  autoComplete="off"
+                  className={cn(adminField, "py-2")}
+                />
+                <datalist id="product-brand-suggestions">
+                  <option value="Zelula" />
+                  <option value="Coliseum" />
+                  <option value="Xuping" />
+                </datalist>
+                <p className="mt-1.5 text-[10px] leading-relaxed text-stone-500">
+                  Google Merchant / vitrin markası. Boş bırakılırsa Zelula kabul edilir. Trendyol marka ID
+                  alanından ayrıdır.
+                </p>
+              </div>
               <OptionalDetails defaultOpen summary="SEO: slug ve yardımcılar">
                 <div className="space-y-3">
                   <div>

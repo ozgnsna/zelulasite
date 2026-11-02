@@ -16,6 +16,7 @@ const FEED_SELECT = [
   "slug",
   "name",
   "sku",
+  "brand",
   "short_description",
   "full_description",
   "price",

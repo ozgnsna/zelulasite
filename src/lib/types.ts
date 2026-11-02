@@ -38,6 +38,8 @@ export type Product = {
   collection_id: string | null;
   material: string | null;
   color: string | null;
+  /** Vitrin / Google Merchant markası. NULL/boş = Zelula. */
+  brand?: string | null;
   is_active: boolean;
   /** Hedef kitle — vitrin filtreleri (kadın / erkek / unisex). */
   target_audience?: "kadin" | "erkek" | "unisex";

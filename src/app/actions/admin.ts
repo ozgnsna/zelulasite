@@ -440,6 +440,7 @@ export async function saveProduct(formData: FormData): Promise<SaveProductResult
     collection_id: String(formData.get("collection_id") ?? "") || null,
     material: String(formData.get("material") ?? "") || null,
     color: String(formData.get("color") ?? "") || null,
+    brand: String(formData.get("brand") ?? "").trim() || null,
     is_active: formData.get("is_active") === "on",
     trendyol_barcode: String(formData.get("trendyol_barcode") ?? "") || null,
     trendyol_stock_code: String(formData.get("trendyol_stock_code") ?? "") || null,

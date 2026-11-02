@@ -7,6 +7,17 @@ export const GOOGLE_FEED_BRAND = "Zelula";
 /** Google Merchant `id` üst sınırı. */
 export const GOOGLE_FEED_ID_MAX_LENGTH = 50;
 
+/** NULL/boş brand → Zelula private label. */
+export function resolveFeedBrand(brand: string | null | undefined): string {
+  const trimmed = String(brand ?? "").trim();
+  return trimmed || GOOGLE_FEED_BRAND;
+}
+
+/** Zelula private label mi? (mpn=SKU gönderilir). Üçüncü parti markada mpn gönderilmez. */
+export function isZelulaPrivateLabelBrand(brand: string): boolean {
+  return brand.trim().toLocaleLowerCase("tr-TR") === GOOGLE_FEED_BRAND.toLocaleLowerCase("tr-TR");
+}
+
 /** Apparel & Accessories > Jewelry — genel takı. Saat kategorisi 201 kullanır. */
 export const GOOGLE_PRODUCT_CATEGORY_JEWELRY = "188";
 
@@ -35,6 +46,7 @@ export type GoogleFeedProductRow = {
   slug: string | null;
   name: string | null;
   sku?: string | null;
+  brand?: string | null;
   short_description?: string | null;
   full_description?: string | null;
   price: number | null;
@@ -213,12 +225,14 @@ function renderFeedItemXml(input: {
   price: number;
   inStock: boolean;
   sku: string;
+  brand: string;
   categorySlug: string | null;
   productType: string | null;
   itemGroupId?: string | null;
   size?: string | null;
   stock: number;
 }): string {
+  const privateLabel = isZelulaPrivateLabelBrand(input.brand);
   const lines = [
     `    <item>`,
     `      <g:id>${escapeXml(input.offerId)}</g:id>`,
@@ -229,11 +243,16 @@ function renderFeedItemXml(input: {
     `      <g:price>${escapeXml(formatFeedMoneyTry(input.price))}</g:price>`,
     `      <g:availability>${input.inStock ? "in_stock" : "out_of_stock"}</g:availability>`,
     `      <g:condition>new</g:condition>`,
-    `      <g:brand>${escapeXml(GOOGLE_FEED_BRAND)}</g:brand>`,
-    `      <g:identifier_exists>false</g:identifier_exists>`,
-    `      <g:mpn>${escapeXml(input.sku)}</g:mpn>`,
-    `      <g:google_product_category>${escapeXml(googleProductCategoryId(input.categorySlug))}</g:google_product_category>`,
+    `      <g:brand>${escapeXml(input.brand)}</g:brand>`,
   ];
+  // Private label: brand + own MPN (SKU). Third-party: brand only — don't invent MPN/GTIN.
+  // identifier_exists=false omitted in both cases (contradicts brand+mpn / brand present).
+  if (privateLabel) {
+    lines.push(`      <g:mpn>${escapeXml(input.sku)}</g:mpn>`);
+  }
+  lines.push(
+    `      <g:google_product_category>${escapeXml(googleProductCategoryId(input.categorySlug))}</g:google_product_category>`,
+  );
 
   if (input.productType) {
     lines.push(`      <g:product_type>${escapeXml(input.productType)}</g:product_type>`);
@@ -326,6 +345,7 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
     return { ok: false, reason: "id_too_long", slug, name };
   }
 
+  const brand = resolveFeedBrand(p.brand);
   const offers = offerInputs.map((o) => ({
     id: o.offerId,
     xml: renderFeedItemXml({
@@ -337,6 +357,7 @@ export function buildGoogleFeedItem(p: GoogleFeedProductRow, siteOrigin: string)
       price: currentPrice,
       inStock: o.inStock,
       sku,
+      brand,
       categorySlug,
       productType,
       itemGroupId: o.itemGroupId,

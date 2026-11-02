@@ -18,9 +18,15 @@ type ProductSeoInput = {
   compare_at_price?: number | null;
   stock_quantity?: number | null;
   sku?: string | null;
+  brand?: string | null;
   material?: string | null;
   product_images?: { image_url?: string | null; is_cover?: boolean | null; sort_order?: number | null }[] | null;
 };
+
+function resolveSchemaBrandName(brand: string | null | undefined): string {
+  const trimmed = String(brand ?? "").trim();
+  return trimmed || "Zelula";
+}
 
 const TRENDYOL_CDN_HOST = "cdn.dsmcdn.com";
 
@@ -113,7 +119,7 @@ export function buildProductJsonLd(
     url: pageUrl,
     image,
     sku: product.sku ?? undefined,
-    brand: { "@type": "Brand", name: "Zelula Design" },
+    brand: { "@type": "Brand", name: resolveSchemaBrandName(product.brand) },
     ...(product.categoryName ? { category: product.categoryName } : {}),
     ...(product.material ? { material: product.material } : {}),
     ...(reviewSummary && reviewSummary.count > 0

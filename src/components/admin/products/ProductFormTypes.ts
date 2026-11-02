@@ -20,6 +20,8 @@ export type ProductFormInitialProduct = {
   collection_id?: string | null;
   material?: string | null;
   color?: string | null;
+  /** Google/vitrin markası. Boş = Zelula. trendyol_brand ile karıştırılmaz. */
+  brand?: string | null;
   featured?: boolean | null;
   new_arrival?: boolean | null;
   is_active?: boolean | null;
